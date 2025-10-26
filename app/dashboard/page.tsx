@@ -4,8 +4,6 @@ import { useRole } from "@/app/context/RoleContext"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Spinner } from "@/components/ui/spinner"
-import { AppSidebar } from "@/components/app-sidebar"
-import { SiteHeader } from "@/components/site-header"
 import {
   SidebarInset,
   SidebarProvider,
@@ -13,9 +11,11 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DataTable } from "./teacher/data-table"
 import { columns } from "./teacher/columns"
-import { mockIgazolasok } from "./mockData"
 import { StudentsManagementView } from "./teacher/components/StudentsManagementView"
 import { StudentTableView } from "./student/components/StudentTableView"
+import { StudentSidebar } from "./student/components/StudentSidebar"
+import { TeacherSidebar } from "./teacher/components/TeacherSidebar"
+import { DashboardHeader } from "./student/components/DashboardHeader"
 
 export default function Page() {
   const { isAuthenticated, user } = useRole()
@@ -54,6 +54,16 @@ export default function Page() {
   const isTeacher = user?.role === 'teacher'
   const studentId = '1' // For demo, in real app this comes from auth
 
+  const handleTeacherViewChange = (view: 'overview' | 'pending' | 'approved' | 'all' | 'students') => {
+    setCurrentView(view)
+    window.location.hash = view
+  }
+
+  const handleStudentViewChange = (view: 'overview' | 'igazolasok' | 'new') => {
+    setCurrentView(view)
+    window.location.hash = view
+  }
+
   return (
     <SidebarProvider
       style={
@@ -63,9 +73,22 @@ export default function Page() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      {isTeacher ? (
+        <TeacherSidebar 
+          onViewChange={handleTeacherViewChange} 
+          currentView={currentView} 
+        />
+      ) : (
+        <StudentSidebar 
+          onViewChange={handleStudentViewChange} 
+          currentView={currentView} 
+        />
+      )}
       <SidebarInset>
-        <SiteHeader />
+        <DashboardHeader 
+          userName={user?.name || ''} 
+          userRole={isTeacher ? "Osztályfőnök" : "Diák"} 
+        />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -81,7 +104,7 @@ export default function Page() {
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
-                          <DataTable columns={columns} data={mockIgazolasok} />
+                          <DataTable columns={columns} data={[]} />
                         </CardContent>
                       </Card>
                     </div>
@@ -89,6 +112,36 @@ export default function Page() {
                   {currentView === 'students' && (
                     <div className="px-4 lg:px-6">
                       <StudentsManagementView />
+                    </div>
+                  )}
+                  {currentView === 'pending' && (
+                    <div className="px-4 lg:px-6 space-y-4">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle><h1 className="text-xl font-bold">Ellenőrzésre váró igazolások</h1></CardTitle>
+                          <CardDescription>
+                            <span>Jóváhagyásra váró beküldött igazolások</span>
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <DataTable columns={columns} data={[]} />
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+                  {currentView === 'approved' && (
+                    <div className="px-4 lg:px-6 space-y-4">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle><h1 className="text-xl font-bold">Jóváhagyott igazolások</h1></CardTitle>
+                          <CardDescription>
+                            <span>Elfogadott és feldolgozott igazolások</span>
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <DataTable columns={columns} data={[]} />
+                        </CardContent>
+                      </Card>
                     </div>
                   )}
                 </>

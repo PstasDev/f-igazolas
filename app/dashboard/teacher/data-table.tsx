@@ -66,7 +66,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert"
-import { Igazolas } from "@/app/dashboard/mockData"
+import { IgazolasTableRow } from "@/app/dashboard/types"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { GoogleDriveIcon } from "./columns"
 
@@ -84,7 +84,7 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
-  const [selectedRow, setSelectedRow] = React.useState<Igazolas | null>(null)
+  const [selectedRow, setSelectedRow] = React.useState<IgazolasTableRow | null>(null)
   const [isSheetOpen, setIsSheetOpen] = React.useState(false)
   const [teacherNote, setTeacherNote] = React.useState("")
   const [filterStatus, setFilterStatus] = React.useState<string>("all")
@@ -113,7 +113,7 @@ export function DataTable<TData, TValue>({
   })
 
   const handleRowClick = (row: TData) => {
-    const igazolas = row as unknown as Igazolas
+    const igazolas = row as unknown as IgazolasTableRow
     setSelectedRow(igazolas)
     setTeacherNote(igazolas.teacherNote || "")
     setIsSheetOpen(true)
@@ -139,14 +139,14 @@ export function DataTable<TData, TValue>({
 
   const handleBulkApprove = () => {
     const selectedRows = table.getFilteredSelectedRowModel().rows
-    console.log('Bulk Approve:', selectedRows.map(row => (row.original as unknown as Igazolas).id))
+    console.log('Bulk Approve:', selectedRows.map(row => (row.original as unknown as IgazolasTableRow).id))
     // TODO: Implement actual API call
     setRowSelection({})
   }
 
   const handleBulkReject = () => {
     const selectedRows = table.getFilteredSelectedRowModel().rows
-    console.log('Bulk Reject:', selectedRows.map(row => (row.original as unknown as Igazolas).id))
+    console.log('Bulk Reject:', selectedRows.map(row => (row.original as unknown as IgazolasTableRow).id))
     // TODO: Implement actual API call
     setRowSelection({})
   }
@@ -155,7 +155,7 @@ export function DataTable<TData, TValue>({
 
   // Get filtered data based on all filters
   const getFilteredData = React.useMemo(() => {
-    const igazolasokData = data as unknown as Igazolas[]
+    const igazolasokData = data as unknown as IgazolasTableRow[]
     let filtered = [...igazolasokData]
 
     // Apply search filter from column filters
@@ -209,7 +209,7 @@ export function DataTable<TData, TValue>({
     if (groupBy === "none") return null
 
     const filtered = getFilteredData
-    const groups: Record<string, Igazolas[]> = {}
+    const groups: Record<string, IgazolasTableRow[]> = {}
 
     filtered.forEach((item) => {
       let key = ""
@@ -237,7 +237,7 @@ export function DataTable<TData, TValue>({
     return groups
   }, [groupBy, getFilteredData])
 
-  const getHoursDisplay = (igazolas: Igazolas) => {
+  const getHoursDisplay = (igazolas: IgazolasTableRow) => {
     const hours = igazolas.hours
     const approved = igazolas.approved
     const fromFTV = igazolas.fromFTV || false
@@ -326,7 +326,7 @@ export function DataTable<TData, TValue>({
       <div className="space-y-4">
         {/* Enhanced Filters */}
         <Card>
-          <CardHeader className="pb-4">
+          <CardHeader className="pb-3">
             <CardTitle className="text-lg">Szűrők és csoportosítás</CardTitle>
             <CardDescription>Keress, szűrj és csoportosítsd az igazolásokat</CardDescription>
           </CardHeader>
@@ -603,7 +603,7 @@ export function DataTable<TData, TValue>({
             {groupedData && Object.entries(groupedData).length > 0 ? (
               Object.entries(groupedData).map(([groupKey, groupRows]) => (
                 <Card key={groupKey}>
-                  <CardHeader className="pb-3 bg-muted/30">
+                  <CardHeader className="pb-2 bg-muted/30">
                     <CardTitle className="text-base font-semibold flex items-center gap-2">
                       <span className="text-primary">{groupKey}</span>
                       <Badge variant="secondary" className="ml-auto">
@@ -634,7 +634,7 @@ export function DataTable<TData, TValue>({
                         </TableHeader>
                         <TableBody>
                           {groupRows.map((rowData) => {
-                            const row = table.getRowModel().rows.find(r => (r.original as Igazolas).id === rowData.id)
+                            const row = table.getRowModel().rows.find(r => (r.original as IgazolasTableRow).id === rowData.id)
                             if (!row) return null
                             
                             return (

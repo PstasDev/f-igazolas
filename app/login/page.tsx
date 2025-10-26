@@ -2,21 +2,36 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { LoginForm } from "@/components/login-form"
 import { useRole } from "@/app/context/RoleContext"
 import Hyperspeed from "@/components/Hyperspeed"
+import { Spinner } from "@/components/ui/spinner"
 
 export default function LoginPage() {
-  const { isAuthenticated } = useRole()
+  const { isAuthenticated, isLoading } = useRole()
   const router = useRouter()
+  const [shouldRender, setShouldRender] = useState(false)
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/dashboard')
+    if (!isLoading) {
+      if (isAuthenticated) {
+        router.replace('/dashboard')
+      } else {
+        setShouldRender(true)
+      }
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, isLoading, router])
+
+  // Show loading while checking auth status
+  if (isLoading || !shouldRender) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Spinner className="w-8 h-8" />
+      </div>
+    )
+  }
 
   return (
     <div className="grid min-h-svh lg:grid-cols-2 overflow-hidden">

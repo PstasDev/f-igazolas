@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Igazolas, getIgazolasType } from "@/app/dashboard/mockData"
+import { IgazolasTableRow, getIgazolasType } from "@/app/dashboard/types"
 import { Calendar, FileText, Video, Check, X, Clock } from "lucide-react"
 
 // Google Drive SVG Icon Component
@@ -20,7 +20,7 @@ const GoogleDriveIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
   </svg>
 )
 
-export const columns: ColumnDef<Igazolas>[] = [
+export const columns: ColumnDef<IgazolasTableRow>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -103,6 +103,7 @@ export const columns: ColumnDef<Igazolas>[] = [
   {
     accessorKey: "hours",
     header: "Órarend",
+    size: 600, // Prevent column from being squished
     cell: ({ row }) => {
       const hours = row.original.hours
       const approved = row.original.approved
@@ -125,7 +126,7 @@ export const columns: ColumnDef<Igazolas>[] = [
       
       return (
         <TooltipProvider>
-          <div className="flex gap-1 flex-wrap">
+          <div className="flex gap-1 flex-nowrap min-w-[480px]">
             {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((h) => {
               const isFTVHour = fromFTV && hours.includes(h) // Media teacher verified
               const isCorrectionHour = correctionHours.includes(h) // Student correction

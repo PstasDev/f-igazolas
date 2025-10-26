@@ -3,9 +3,9 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Igazolas } from "@/app/dashboard/mockData"
+import { IgazolasTableRow } from "@/app/dashboard/types"
 
-export const studentColumns: ColumnDef<Igazolas>[] = [
+export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
   {
     accessorKey: "type",
     header: "Hiányzás oka",
