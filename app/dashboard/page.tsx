@@ -13,15 +13,15 @@ import { DataTable } from "./teacher/data-table"
 import { columns } from "./teacher/columns"
 import { StudentsManagementView } from "./teacher/components/StudentsManagementView"
 import { StudentTableView } from "./student/components/StudentTableView"
-import { StudentSidebar } from "./student/components/StudentSidebar"
-import { TeacherSidebar } from "./teacher/components/TeacherSidebar"
-import { DashboardHeader } from "./student/components/DashboardHeader"
+import { AppSidebar } from "@/components/app-sidebar"
+import { SiteHeader } from "@/components/site-header"
+import { NewIgazolasForm } from "./student/components/NewIgazolasForm"
 
 export default function Page() {
   const { isAuthenticated, user } = useRole()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
-  const [currentView, setCurrentView] = useState<string>('all')
+  const [currentView, setCurrentView] = useState<string>('igazolasok')
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -35,7 +35,7 @@ export default function Page() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '')
-      setCurrentView(hash || (user?.role === 'teacher' ? 'all' : 'igazolasok'))
+      setCurrentView(hash || (user?.role === 'teacher' ? 'igazolasok' : 'igazolasok'))
     }
     
     handleHashChange()
@@ -54,108 +54,77 @@ export default function Page() {
   const isTeacher = user?.role === 'teacher'
   const studentId = '1' // For demo, in real app this comes from auth
 
-  const handleTeacherViewChange = (view: 'overview' | 'pending' | 'approved' | 'all' | 'students') => {
+  const handleViewChange = (view: string) => {
     setCurrentView(view)
     window.location.hash = view
   }
 
-  const handleStudentViewChange = (view: 'overview' | 'igazolasok' | 'new') => {
-    setCurrentView(view)
-    window.location.hash = view
+  const getPageTitle = () => {
+    if (isTeacher) {
+      switch (currentView) {
+        case 'igazolasok': return 'Igazolások kezelése'
+        case 'students': return 'Diákok kezelése'
+        default: return 'Irányítópult'
+      }
+    } else {
+      switch (currentView) {
+        case 'igazolasok': return 'Igazolásaim'
+        case 'new': return 'Új igazolás'
+        default: return 'Irányítópult'
+      }
+    }
   }
 
   return (
     <SidebarProvider
       style={
         {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
+          "--sidebar-width": "16rem",
+          "--header-height": "4rem",
         } as React.CSSProperties
       }
     >
-      {isTeacher ? (
-        <TeacherSidebar 
-          onViewChange={handleTeacherViewChange} 
-          currentView={currentView} 
-        />
-      ) : (
-        <StudentSidebar 
-          onViewChange={handleStudentViewChange} 
-          currentView={currentView} 
-        />
-      )}
+      <AppSidebar onViewChange={handleViewChange} currentView={currentView} />
       <SidebarInset>
-        <DashboardHeader 
-          userName={user?.name || ''} 
-          userRole={isTeacher ? "Osztályfőnök" : "Diák"} 
-        />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              {isTeacher ? (
-                <>
-                  {currentView === 'all' && (
-                    <div className="px-4 lg:px-6 space-y-4">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle><h1 className="text-xl font-bold">Minden igazolás - 13.F</h1></CardTitle>
-                          <CardDescription className="flex items-center justify-between">
-                            <span>Osztályfőnöki nézet</span>
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <DataTable columns={columns} data={[]} />
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
-                  {currentView === 'students' && (
-                    <div className="px-4 lg:px-6">
-                      <StudentsManagementView />
-                    </div>
-                  )}
-                  {currentView === 'pending' && (
-                    <div className="px-4 lg:px-6 space-y-4">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle><h1 className="text-xl font-bold">Ellenőrzésre váró igazolások</h1></CardTitle>
-                          <CardDescription>
-                            <span>Jóváhagyásra váró beküldött igazolások</span>
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <DataTable columns={columns} data={[]} />
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
-                  {currentView === 'approved' && (
-                    <div className="px-4 lg:px-6 space-y-4">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle><h1 className="text-xl font-bold">Jóváhagyott igazolások</h1></CardTitle>
-                          <CardDescription>
-                            <span>Elfogadott és feldolgozott igazolások</span>
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <DataTable columns={columns} data={[]} />
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  {currentView === 'igazolasok' && (
-                    <div className="px-4 lg:px-6">
-                      <StudentTableView studentId={studentId} />
-                    </div>
-                  )}
-                </>
+        <SiteHeader />
+        <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+          {isTeacher ? (
+            <>
+              {currentView === 'igazolasok' && (
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle><h1 className="text-xl font-bold">Minden igazolás - 13.F</h1></CardTitle>
+                      <CardDescription className="flex items-center justify-between">
+                        <span>Osztályfőnöki nézet</span>
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <DataTable columns={columns} data={[]} />
+                    </CardContent>
+                  </Card>
+                </div>
               )}
-            </div>
-          </div>
+              {currentView === 'students' && (
+                <div>
+                  <StudentsManagementView />
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {currentView === 'igazolasok' && (
+                <div>
+                  <StudentTableView studentId={studentId} />
+                </div>
+              )}
+              {currentView === 'new' && (
+                <div>
+                  <NewIgazolasForm />
+                </div>
+              )}
+            </>
+          )}
         </div>
       </SidebarInset>
     </SidebarProvider>
