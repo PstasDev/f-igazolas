@@ -4,18 +4,16 @@ import { useRole } from "@/app/context/RoleContext"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Spinner } from "@/components/ui/spinner"
+import { AppSidebar } from "@/components/app-sidebar"
+import { SiteHeader } from "@/components/site-header"
 import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { DataTable } from "./teacher/data-table"
-import { columns } from "./teacher/columns"
-import { StudentsManagementView } from "./teacher/components/StudentsManagementView"
 import { StudentTableView } from "./student/components/StudentTableView"
-import { AppSidebar } from "@/components/app-sidebar"
-import { SiteHeader } from "@/components/site-header"
-import { NewIgazolasForm } from "./student/components/NewIgazolasForm"
+import { TeacherTableView } from "./teacher/components/TeacherTableView"
+import { StudentsManagementView } from "./teacher/components/StudentsManagementView"
+import { MultiStepIgazolasForm } from "./student/components/MultiStepIgazolasForm"
 
 export default function Page() {
   const { isAuthenticated, user } = useRole()
@@ -62,7 +60,7 @@ export default function Page() {
   const getPageTitle = () => {
     if (isTeacher) {
       switch (currentView) {
-        case 'igazolasok': return 'Igazolások kezelése'
+        case 'igazolasok': return 'Igazolások'
         case 'students': return 'Diákok kezelése'
         default: return 'Irányítópult'
       }
@@ -86,23 +84,13 @@ export default function Page() {
     >
       <AppSidebar onViewChange={handleViewChange} currentView={currentView} />
       <SidebarInset>
-        <SiteHeader />
+        <SiteHeader title={getPageTitle()} />
         <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
           {isTeacher ? (
             <>
               {currentView === 'igazolasok' && (
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle><h1 className="text-xl font-bold">Minden igazolás - 13.F</h1></CardTitle>
-                      <CardDescription className="flex items-center justify-between">
-                        <span>Osztályfőnöki nézet</span>
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <DataTable columns={columns} data={[]} />
-                    </CardContent>
-                  </Card>
+                <div>
+                  <TeacherTableView filter="all" />
                 </div>
               )}
               {currentView === 'students' && (
@@ -120,7 +108,7 @@ export default function Page() {
               )}
               {currentView === 'new' && (
                 <div>
-                  <NewIgazolasForm />
+                  <MultiStepIgazolasForm />
                 </div>
               )}
             </>

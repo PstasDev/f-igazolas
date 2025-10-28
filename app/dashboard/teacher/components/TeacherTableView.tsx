@@ -64,6 +64,7 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
     const fetchIgazolasok = async () => {
       try {
         setIsLoading(true);
+        // Teachers should see all igazolások from their class, not their own
         const data = await apiClient.listIgazolas();
         
         // Filter based on status

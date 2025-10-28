@@ -14,6 +14,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from '@/components/ui/breadcrumb';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useRouter } from 'next/navigation';
 
 interface DashboardHeaderProps {
@@ -49,6 +50,23 @@ export function DashboardHeader({ userName, userRole }: DashboardHeaderProps) {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
+        <div className="ml-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full shadow-sm animate-pulse cursor-help select-none">
+                  Korai Hozzáférés
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <div className="space-y-1">
+                  <p className="font-semibold">Korai hozzáférési verzió</p>
+                  <p className="text-xs">Ez az alkalmazás fejlesztés alatt áll és tesztelési célokra szolgál. Egyes funkciók hiányozhatnak vagy nem működnek megfelelően.</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
       
       <div className="ml-auto flex items-center gap-2">
