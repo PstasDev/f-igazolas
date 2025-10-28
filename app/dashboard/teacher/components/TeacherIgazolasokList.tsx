@@ -31,11 +31,11 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
       
       let filtered = data;
       if (filter === 'pending') {
-        filtered = data.filter(i => i.allapot === 'fuggohiany' || i.allapot === 'feldolgozas_alatt');
+        filtered = data.filter(i => i.allapot === 'Függőben');
       } else if (filter === 'approved') {
-        filtered = data.filter(i => i.allapot === 'elfogadva');
+        filtered = data.filter(i => i.allapot === 'Elfogadva');
       } else if (filter === 'rejected') {
-        filtered = data.filter(i => i.allapot === 'elutasitva');
+        filtered = data.filter(i => i.allapot === 'Elutasítva');
       }
       
       setIgazolasok(filtered);
@@ -54,21 +54,21 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
   const displayedIgazolasok = variant === 'recent' ? igazolasok.slice(0, 3) : igazolasok;
 
   const getStatusBadge = (allapot: string) => {
-    if (allapot === 'elfogadva') {
+    if (allapot === 'Elfogadva') {
       return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Jóváhagyva</Badge>;
-    } else if (allapot === 'elutasitva') {
+    } else if (allapot === 'Elutasítva') {
       return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Elutasítva</Badge>;
     }
-    return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Függőben</Badge>;
+    return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Függőben</Badge>;
   };
 
   const getStatusIcon = (allapot: string) => {
-    if (allapot === 'elfogadva') {
+    if (allapot === 'Elfogadva') {
       return <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />;
-    } else if (allapot === 'elutasitva') {
+    } else if (allapot === 'Elutasítva') {
       return <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />;
     }
-    return <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />;
+    return <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />;
   };
 
   const handleApprove = async (id: number) => {
@@ -244,7 +244,7 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
                   </div>
                 )}
 
-                {(selectedIgazolas.allapot === 'fuggohiany' || selectedIgazolas.allapot === 'feldolgozas_alatt') && (
+                {selectedIgazolas.allapot === 'Függőben' && (
                   <div className="pt-4 grid grid-cols-2 gap-2">
                     <Button 
                       onClick={() => handleApprove(selectedIgazolas.id)}

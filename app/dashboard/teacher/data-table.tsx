@@ -168,11 +168,18 @@ export function DataTable<TData, TValue>({
     }
   }
 
-  const handleResetToPending = () => {
-    console.log('Reset to Pending:', selectedRow?.id)
-    // TODO: Implement actual API call to reset status to pending
-    toast.info('Függőben státusz funkció hamarosan elérhető')
-    setIsSheetOpen(false)
+  const handleResetToPending = async () => {
+    if (!selectedRow) return
+    
+    try {
+      await apiClient.quickActionIgazolas(parseInt(selectedRow.id), { action: 'Függőben' })
+      toast.success('Igazolás státusza visszaállítva függőben állapotra')
+      setIsSheetOpen(false)
+      onDataChange?.()
+    } catch (error) {
+      console.error('Failed to reset to pending:', error)
+      toast.error('Hiba történt a státusz módosításakor')
+    }
   }
 
   const handleBulkApprove = async () => {
@@ -212,6 +219,26 @@ export function DataTable<TData, TValue>({
     } catch (error) {
       console.error('Failed to bulk reject:', error)
       toast.error('Hiba történt a tömeges elutasítás során')
+    }
+  }
+
+  const handleBulkSetPending = async () => {
+    try {
+      const selectedRows = table.getFilteredSelectedRowModel().rows
+      const ids = selectedRows.map(row => parseInt((row.original as unknown as IgazolasTableRow).id))
+      
+      if (ids.length === 0) {
+        toast.error('Nincs kiválasztott igazolás')
+        return
+      }
+
+      await apiClient.bulkQuickActionIgazolas({ action: 'Függőben', ids })
+      toast.success(`${ids.length} igazolás visszaállítva függőben állapotra`)
+      setRowSelection({})
+      onDataChange?.()
+    } catch (error) {
+      console.error('Failed to bulk set pending:', error)
+      toast.error('Hiba történt a tömeges státusz módosítás során')
     }
   }
 
@@ -548,6 +575,15 @@ export function DataTable<TData, TValue>({
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     Mind elutasít
+                  </Button>
+                  <Button
+                    onClick={handleBulkSetPending}
+                    size="sm"
+                    variant="outline"
+                    className="border-blue-300 text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                  >
+                    <Clock className="h-4 w-4 mr-2" />
+                    Mind függőben
                   </Button>
                   <Button
                     onClick={() => setRowSelection({})}

@@ -103,11 +103,11 @@ export interface ErrorResponse {
 
 // Quick Action types
 export interface QuickActionRequest {
-  action: 'Elfogadva' | 'Elutasítva'; // Updated to match Django model choices
+  action: 'Elfogadva' | 'Elutasítva' | 'Függőben'; // Updated to include all valid actions
 }
 
 export interface BulkQuickActionRequest {
-  action: 'Elfogadva' | 'Elutasítva'; // Updated to match Django model choices
+  action: 'Elfogadva' | 'Elutasítva' | 'Függőben'; // Updated to include all valid actions
   ids: number[]; // List of igazolas IDs
 }
 

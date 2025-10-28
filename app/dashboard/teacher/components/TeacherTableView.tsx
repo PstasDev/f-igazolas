@@ -110,10 +110,9 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
 
   const handleSetPending = async (id: string) => {
     try {
-      // For setting to pending, we can use the updateTeacherComment endpoint with status reset
-      // This would need to be implemented on the backend or we could use a different approach
-      console.log('Set to pending:', id);
-      toast.info('Függőben státusz funkció hamarosan elérhető');
+      await apiClient.quickActionIgazolas(parseInt(id), { action: 'Függőben' });
+      toast.success('Igazolás státusza visszaállítva függőben állapotra');
+      await fetchIgazolasok();
     } catch (error) {
       console.error('Failed to set pending:', error);
       toast.error('Hiba történt a státusz módosításakor');
