@@ -62,10 +62,10 @@ export function StudentsManagementView() {
           stats.set(profile.user.id, {
             total: studentIgazolasok.length,
             pending: studentIgazolasok.filter(
-              i => i.allapot === 'fuggohiany' || i.allapot === 'feldolgozas_alatt'
+              i => i.allapot === 'Függőben'
             ).length,
-            approved: studentIgazolasok.filter(i => i.allapot === 'elfogadva').length,
-            rejected: studentIgazolasok.filter(i => i.allapot === 'elutasitva').length,
+            approved: studentIgazolasok.filter(i => i.allapot === 'Elfogadva').length,
+            rejected: studentIgazolasok.filter(i => i.allapot === 'Elutasítva').length,
             totalHours: Math.round(totalHours),
           });
         });
