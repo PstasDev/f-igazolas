@@ -99,8 +99,49 @@ export function DataTable<TData, TValue>({
   const [filterFTV, setFilterFTV] = React.useState<string>("all")
   const [groupBy, setGroupBy] = React.useState<string>("none")
 
+  // Get filtered data based on all filters
+  const getFilteredData = React.useMemo(() => {
+    const igazolasokData = data as unknown as IgazolasTableRow[]
+    let filtered = [...igazolasokData]
+
+    // Apply search filter from column filters
+    const nameFilter = columnFilters.find(f => f.id === "studentName")
+    const searchValue = nameFilter?.value as string
+    if (searchValue) {
+      filtered = filtered.filter((item) =>
+        item.studentName.toLowerCase().includes(searchValue.toLowerCase())
+      )
+    }
+
+    // Status filter
+    if (filterStatus !== "all") {
+      filtered = filtered.filter((item) => {
+        if (filterStatus === "pending") return item.allapot === 'Függőben'
+        if (filterStatus === "approved") return item.allapot === 'Elfogadva'
+        if (filterStatus === "rejected") return item.allapot === 'Elutasítva'
+        return true
+      })
+    }
+
+    // Type filter
+    if (filterType !== "all") {
+      filtered = filtered.filter((item) => item.type === filterType)
+    }
+
+    // FTV filter
+    if (filterFTV !== "all") {
+      filtered = filtered.filter((item) => {
+        if (filterFTV === "ftv") return item.fromFTV === true
+        if (filterFTV === "non-ftv") return !item.fromFTV
+        return true
+      })
+    }
+
+    return filtered
+  }, [data, filterStatus, filterType, filterFTV, columnFilters])
+
   const table = useReactTable({
-    data,
+    data: getFilteredData as TData[],
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -309,49 +350,6 @@ export function DataTable<TData, TValue>({
   }
 
   const selectedRowsCount = table.getFilteredSelectedRowModel().rows.length
-
-  // Get filtered data based on all filters
-  const getFilteredData = React.useMemo(() => {
-    const igazolasokData = data as unknown as IgazolasTableRow[]
-    let filtered = [...igazolasokData]
-
-    // Apply search filter from column filters
-    const nameFilter = columnFilters.find(f => f.id === "studentName")
-    const searchValue = nameFilter?.value as string
-    if (searchValue) {
-      filtered = filtered.filter((item) =>
-        item.studentName.toLowerCase().includes(searchValue.toLowerCase())
-      )
-    }
-
-    // Status filter
-    if (filterStatus !== "all") {
-      filtered = filtered.filter((item) => {
-        if (filterStatus === "pending") return item.allapot === 'Függőben'
-        if (filterStatus === "approved") return item.allapot === 'Elfogadva'
-        if (filterStatus === "rejected") return item.allapot === 'Elutasítva'
-        return true
-      })
-    }
-
-    // Type filter
-    if (filterType !== "all") {
-      filtered = filtered.filter((item) => item.type === filterType)
-    }
-
-    // FTV filter
-    if (filterFTV !== "all") {
-      filtered = filtered.filter((item) => {
-        if (filterFTV === "ftv") return item.fromFTV === true
-        if (filterFTV === "regular") return !item.fromFTV
-        return true
-      })
-    }
-
-    // Correction filter - removed since not in new UI
-
-    return filtered
-  }, [data, filterStatus, filterType, filterFTV, columnFilters])
 
   // Group data if grouping is enabled
   const groupedData = React.useMemo(() => {
