@@ -165,3 +165,35 @@ export interface DiakjaCreateResponse {
   failed_users: string[];
   message: string;
 }
+
+// Forgot Password types
+export interface ForgotPasswordRequest {
+  username: string;
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+  email_sent: boolean;
+}
+
+export interface CheckOTPRequest {
+  username: string;
+  otp_code: string;
+}
+
+export interface CheckOTPResponse {
+  message: string;
+  reset_token: string;
+  expires_in_minutes: number;
+}
+
+export interface ChangePasswordOTPRequest {
+  username: string;
+  reset_token: string;
+  new_password: string;
+}
+
+export interface ChangePasswordOTPResponse {
+  message: string;
+  success: boolean;
+}

@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { 
   Check, 
@@ -109,6 +110,7 @@ export function DataTable<TData, TValue>({
   const [groupBy, setGroupBy] = React.useState<string>("none")
   const [dateFrom, setDateFrom] = React.useState<string>("")
   const [dateTo, setDateTo] = React.useState<string>("")
+  const [isSearchCollapsed, setIsSearchCollapsed] = React.useState(true)
 
   // Get filtered data based on all filters
   const getFilteredData = React.useMemo(() => {
@@ -567,27 +569,34 @@ export function DataTable<TData, TValue>({
       <div className="space-y-4">
         {/* Enhanced Filters */}
         <Card className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-200/50 dark:border-blue-800/50">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-blue-100/50 dark:bg-blue-900/50">
-                  <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
-                  </svg>
+          <Collapsible open={!isSearchCollapsed} onOpenChange={(open) => setIsSearchCollapsed(!open)}>
+            <CardHeader className="pb-4">
+              <CollapsibleTrigger className="w-full cursor-pointer">
+                <div className="flex items-center justify-between font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-blue-100/50 dark:bg-blue-900/50">
+                      <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+                      </svg>
+                    </div>
+                    <div className="text-left">
+                      <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">Keresés és szűrés</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        Szűrd az igazolásokat és rendezd őket oszlopfejlécre kattintással
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="px-3 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      {table.getFilteredRowModel().rows.length} találat
+                    </Badge>
+                    <ChevronDown className={`h-5 w-5 text-blue-600 dark:text-blue-400 transition-transform duration-200 ${isSearchCollapsed ? '' : 'rotate-180'}`} />
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">Keresés és szűrés</CardTitle>
-                  <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
-                    Szűrd az igazolásokat és rendezd őket oszlopfejlécre kattintással
-                  </CardDescription>
-                </div>
-              </div>
-              <Badge variant="secondary" className="px-3 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                {table.getFilteredRowModel().rows.length} találat
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
+              </CollapsibleTrigger>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="pt-3 border-t border-blue-200 dark:border-blue-800 space-y-6">
             {/* Primary Search */}
             <div className="space-y-3">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Keresés</Label>
@@ -798,7 +807,9 @@ export function DataTable<TData, TValue>({
                 </Button>
               </div>
             )}
-          </CardContent>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
 
         {/* Bulk Actions */}

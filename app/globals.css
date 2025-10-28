@@ -100,8 +100,21 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+@keyframes caret-blink {
+  0%,70%,100% {
+    opacity: 1;
+  }
+  20%,50% {
+    opacity: 0;
+  }
+}
+
 .animate-fadeIn {
   animation: fadeIn 0.2s ease-in-out;
+}
+
+.animate-caret-blink {
+  animation: caret-blink 1.25s ease-out infinite;
 }
 
 @theme inline {
@@ -186,4 +199,21 @@ h1, h2, h3, h4, h5, h6 {
 
 .period-glow-purple {
   @apply shadow-lg shadow-purple-500/50 dark:shadow-purple-400/40;
+}
+
+/* Sidebar transition enhancements */
+.sidebar-menu-button-enhanced {
+  @apply cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-[1.02] active:scale-[0.98];
+}
+
+.sidebar-menu-action-enhanced {
+  @apply cursor-pointer transition-all duration-200 ease-in-out hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground active:bg-sidebar-accent/90;
+}
+
+.sidebar-rail-enhanced {
+  @apply cursor-pointer transition-all duration-200 ease-in-out;
+}
+
+.sidebar-group-action-enhanced {
+  @apply cursor-pointer transition-all duration-200 ease-in-out hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground active:bg-sidebar-accent/90;
 }

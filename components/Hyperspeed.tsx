@@ -934,6 +934,7 @@ class App {
   speedUpTarget: number;
   speedUp: number;
   timeOffset: number;
+  activeAnimations: Set<number> = new Set(); // Track active animations
 
   constructor(container: HTMLElement, options: HyperspeedOptions) {
     this.options = options;
@@ -1205,6 +1206,156 @@ class App {
     this.composer.setSize(width, height, updateStyles);
   }
 
+  updateColors(newColors: Colors) {
+    // Cancel all active animations before starting new ones
+    this.activeAnimations.clear();
+
+    // Smoothly transition road colors
+    if (this.road && newColors) {
+      // Update left road colors
+      if (this.road.leftRoadWay?.material) {
+        const leftMaterial = this.road.leftRoadWay.material as THREE.ShaderMaterial;
+        if (leftMaterial.uniforms) {
+          this.animateColorChange(leftMaterial.uniforms.uColor.value, new THREE.Color(newColors.roadColor));
+          this.animateColorChange(leftMaterial.uniforms.uBrokenLinesColor.value, new THREE.Color(newColors.brokenLines));
+          this.animateColorChange(leftMaterial.uniforms.uShoulderLinesColor.value, new THREE.Color(newColors.shoulderLines));
+        }
+      }
+
+      // Update right road colors
+      if (this.road.rightRoadWay?.material) {
+        const rightMaterial = this.road.rightRoadWay.material as THREE.ShaderMaterial;
+        if (rightMaterial.uniforms) {
+          this.animateColorChange(rightMaterial.uniforms.uColor.value, new THREE.Color(newColors.roadColor));
+          this.animateColorChange(rightMaterial.uniforms.uBrokenLinesColor.value, new THREE.Color(newColors.brokenLines));
+          this.animateColorChange(rightMaterial.uniforms.uShoulderLinesColor.value, new THREE.Color(newColors.shoulderLines));
+        }
+      }
+
+      // Update island colors
+      if (this.road.island?.material) {
+        const islandMaterial = this.road.island.material as THREE.ShaderMaterial;
+        if (islandMaterial.uniforms) {
+          this.animateColorChange(islandMaterial.uniforms.uColor.value, new THREE.Color(newColors.islandColor));
+        }
+      }
+
+      // Update fog color
+      if (this.scene.fog) {
+        this.animateColorChange(this.scene.fog.color, new THREE.Color(newColors.background));
+        this.animateColorChange(this.fogUniforms.fogColor.value, new THREE.Color(newColors.background));
+      }
+
+      // Update car lights colors (this is more complex as they use instanced attributes)
+      this.updateCarLightColors(newColors);
+    }
+  }
+
+  private animateColorChange(currentColor: THREE.Color, targetColor: THREE.Color, duration: number = 3000) {
+    const startColor = currentColor.clone();
+    const startTime = Date.now();
+    const animationId = Math.random();
+    this.activeAnimations.add(animationId);
+
+    const animate = () => {
+      if (!this.activeAnimations.has(animationId)) return; // Animation was cancelled
+
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Simple smooth easing
+      const easedProgress = progress * progress * (3 - 2 * progress);
+
+      currentColor.lerpColors(startColor, targetColor, easedProgress);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        this.activeAnimations.delete(animationId);
+      }
+    };
+
+    animate();
+  }
+
+  private updateCarLightColors(newColors: Colors) {
+    // Update left car lights
+    if (this.leftCarLights?.mesh?.geometry?.attributes?.aColor) {
+      const leftColors = newColors.leftCars.map(c => new THREE.Color(c));
+      const colorAttr = this.leftCarLights.mesh.geometry.attributes.aColor;
+      if (colorAttr instanceof THREE.BufferAttribute) {
+        this.updateInstancedColors(colorAttr, leftColors);
+      }
+    }
+
+    // Update right car lights
+    if (this.rightCarLights?.mesh?.geometry?.attributes?.aColor) {
+      const rightColors = newColors.rightCars.map(c => new THREE.Color(c));
+      const colorAttr = this.rightCarLights.mesh.geometry.attributes.aColor;
+      if (colorAttr instanceof THREE.BufferAttribute) {
+        this.updateInstancedColors(colorAttr, rightColors);
+      }
+    }
+
+    // Update light sticks
+    if (this.leftSticks?.mesh?.geometry?.attributes?.aColor && typeof newColors.sticks === 'number') {
+      const sticksColor = [new THREE.Color(newColors.sticks)];
+      const colorAttr = this.leftSticks.mesh.geometry.attributes.aColor;
+      if (colorAttr instanceof THREE.BufferAttribute) {
+        this.updateInstancedColors(colorAttr, sticksColor);
+      }
+    }
+  }
+
+  private updateInstancedColors(colorAttribute: THREE.BufferAttribute, newColors: THREE.Color[]) {
+    const colors = colorAttribute.array as Float32Array;
+    const itemCount = colors.length / 3;
+
+    for (let i = 0; i < itemCount; i++) {
+      const colorIndex = i % newColors.length;
+      const color = newColors[colorIndex];
+      
+      const startR = colors[i * 3];
+      const startG = colors[i * 3 + 1];
+      const startB = colors[i * 3 + 2];
+      
+      const startColor = new THREE.Color(startR, startG, startB);
+      const targetColor = color.clone();
+      
+      // Animate color change
+      this.animateInstancedColor(colors, i * 3, startColor, targetColor, colorAttribute);
+    }
+  }
+
+  private animateInstancedColor(colorsArray: Float32Array, index: number, startColor: THREE.Color, targetColor: THREE.Color, attributeRef?: THREE.BufferAttribute, duration: number = 3000) {
+    const startTime = Date.now();
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Simple smooth easing
+      const easedProgress = progress * progress * (3 - 2 * progress);
+
+      const currentColor = new THREE.Color().lerpColors(startColor, targetColor, easedProgress);
+
+      colorsArray[index] = currentColor.r;
+      colorsArray[index + 1] = currentColor.g;
+      colorsArray[index + 2] = currentColor.b;
+
+      // Update buffer attribute continuously for smoother animation
+      if (attributeRef) {
+        attributeRef.needsUpdate = true;
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+
+    animate();
+  }
+
   tick() {
     if (this.disposed || !this) return;
     if (resizeRendererToDisplaySize(this.renderer, this.setSize)) {
@@ -1226,21 +1377,14 @@ const Hyperspeed: FC<HyperspeedProps> = ({ effectOptions = {} }) => {
   };
   const hyperspeed = useRef<HTMLDivElement>(null);
   const appRef = useRef<App | null>(null);
+  const initializedRef = useRef(false);
+  const currentOptionsRef = useRef<HyperspeedOptions>(mergedOptions);
 
+  // Initialize the app only once
   useEffect(() => {
-    if (appRef.current) {
-      appRef.current.dispose();
-      const container = document.getElementById('lights');
-      if (container) {
-        while (container.firstChild) {
-          container.removeChild(container.firstChild);
-        }
-      }
-    }
+    if (initializedRef.current || !hyperspeed.current) return;
 
     const container = hyperspeed.current;
-    if (!container) return;
-
     const options = { ...mergedOptions };
     if (typeof options.distortion === 'string') {
       options.distortion = distortions[options.distortion];
@@ -1248,14 +1392,32 @@ const Hyperspeed: FC<HyperspeedProps> = ({ effectOptions = {} }) => {
 
     const myApp = new App(container, options);
     appRef.current = myApp;
+    currentOptionsRef.current = options;
     myApp.loadAssets().then(myApp.init);
+    initializedRef.current = true;
 
     return () => {
       if (appRef.current) {
         appRef.current.dispose();
+        initializedRef.current = false;
       }
     };
-  }, [mergedOptions]);
+  }, []);
+
+  // Update colors smoothly when effectOptions change
+  useEffect(() => {
+    if (!appRef.current || !initializedRef.current) return;
+
+    const app = appRef.current;
+    const newColors = mergedOptions.colors;
+    const currentColors = currentOptionsRef.current.colors;
+
+    // Only update if colors actually changed
+    if (newColors && JSON.stringify(newColors) !== JSON.stringify(currentColors)) {
+      app.updateColors(newColors);
+      currentOptionsRef.current = { ...currentOptionsRef.current, colors: newColors };
+    }
+  }, [mergedOptions.colors]);
 
   return <div id="lights" className="w-full h-full" ref={hyperspeed}></div>;
 };

@@ -40,8 +40,8 @@ export function NavMain({
               <SidebarMenuButton 
                 tooltip={item.title}
                 className={item.isPrimary ? 
-                  "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground duration-200 ease-linear" : 
-                  ""
+                  "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground transition-all duration-200 ease-in-out cursor-pointer hover:transform hover:scale-[1.02] active:scale-[0.98]" : 
+                  "cursor-pointer transition-all duration-200 ease-in-out hover:transform hover:scale-[1.02] active:scale-[0.98]"
                 }
                 isActive={currentView === item.url.replace('#', '')}
                 onClick={() => handleNavClick(item.url)}

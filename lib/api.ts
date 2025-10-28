@@ -19,6 +19,12 @@ import type {
   DiakjaSignle,
   DiakjaCreateRequest,
   DiakjaCreateResponse,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
+  CheckOTPRequest,
+  CheckOTPResponse,
+  ChangePasswordOTPRequest,
+  ChangePasswordOTPResponse,
 } from './types';
 
 // Use the config for API base URL
@@ -262,6 +268,107 @@ class APIClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  // Forgot Password endpoints (these don't require authentication)
+
+  async forgotPassword(data: ForgotPasswordRequest): Promise<ForgotPasswordResponse> {
+    const url = `${this.baseUrl}/forgot-password`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData: ErrorResponse = await response.json().catch(() => ({
+          error: 'Request failed',
+          detail: `HTTP ${response.status}: ${response.statusText}`,
+        }));
+
+        const error = new Error(errorData.detail || errorData.error) as APIError;
+        error.status = response.status;
+        error.detail = errorData.detail;
+        throw error;
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred');
+    }
+  }
+
+  async checkOTP(data: CheckOTPRequest): Promise<CheckOTPResponse> {
+    const url = `${this.baseUrl}/check-otp`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData: ErrorResponse = await response.json().catch(() => ({
+          error: 'Request failed',
+          detail: `HTTP ${response.status}: ${response.statusText}`,
+        }));
+
+        const error = new Error(errorData.detail || errorData.error) as APIError;
+        error.status = response.status;
+        error.detail = errorData.detail;
+        throw error;
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred');
+    }
+  }
+
+  async changePasswordOTP(data: ChangePasswordOTPRequest): Promise<ChangePasswordOTPResponse> {
+    const url = `${this.baseUrl}/change-password-otp`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData: ErrorResponse = await response.json().catch(() => ({
+          error: 'Request failed',
+          detail: `HTTP ${response.status}: ${response.statusText}`,
+        }));
+
+        const error = new Error(errorData.detail || errorData.error) as APIError;
+        error.status = response.status;
+        error.detail = errorData.detail;
+        throw error;
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred');
+    }
   }
 }
 

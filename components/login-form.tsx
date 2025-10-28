@@ -7,21 +7,31 @@ import { Label } from "@/components/ui/label"
 import {
   Field,
   FieldGroup,
+  FieldSeparator,
 } from "@/components/ui/field"
 import { useRouter } from "next/navigation"
 import { useRole } from "@/app/context/RoleContext"
 import { toast } from "sonner"
 import { useState } from "react"
-import { LogIn } from "lucide-react"
+import { KeyRound, LogIn } from "lucide-react"
+import { ForgotPasswordForm } from "./forgot-password-form"
+import { FirstPasswordForm } from "./first-password-form"
+
+interface LoginFormProps extends React.ComponentProps<"form"> {
+  onModeChange?: (isSpecialMode: boolean) => void;
+}
 
 export function LoginForm({
   className,
+  onModeChange,
   ...props
-}: React.ComponentProps<"form">) {
+}: LoginFormProps) {
   const { login, isLoading } = useRole();
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showFirstPassword, setShowFirstPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +51,42 @@ export function LoginForm({
       console.error('Login error:', error);
     }
   };
+
+  const handleForgotPassword = () => {
+    setShowForgotPassword(true);
+    onModeChange?.(true);
+  };
+
+  const handleFirstPassword = () => {
+    setShowFirstPassword(true);
+    onModeChange?.(true);
+  };
+
+  const handleBackToLogin = () => {
+    setShowForgotPassword(false);
+    setShowFirstPassword(false);
+    setUsername('');
+    setPassword('');
+    onModeChange?.(false);
+  };
+
+  if (showForgotPassword) {
+    return (
+      <ForgotPasswordForm 
+        className={className} 
+        onBack={handleBackToLogin}
+      />
+    );
+  }
+
+  if (showFirstPassword) {
+    return (
+      <FirstPasswordForm 
+        className={className} 
+        onBack={handleBackToLogin}
+      />
+    );
+  }
 
   return (
     <form 
@@ -99,6 +145,32 @@ export function LoginForm({
             </>
           )}
         </Button>
+
+        <FieldSeparator className="*:data-[slot=field-separator-content]:bg-background">
+          vagy
+        </FieldSeparator>
+
+        <Field>
+          <Button 
+            variant="outline" 
+            type="button"
+            onClick={handleFirstPassword}
+          >
+            <KeyRound className="mr-2 h-4 w-4" />
+            Még nincs jelszavam
+          </Button>
+        </Field>
+
+        <div className="text-center">
+          <Button 
+            type="button"
+            variant="link"
+            onClick={handleForgotPassword}
+            className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200"
+          >
+            Elfelejtett jelszó?
+          </Button>
+        </div>
       </FieldGroup>
     </form>
   )

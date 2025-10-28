@@ -15,6 +15,7 @@ export default function LoginPage() {
   const { isDark } = useTheme()
   const router = useRouter()
   const [shouldRender, setShouldRender] = useState(false)
+  const [isSpecialMode, setIsSpecialMode] = useState(false)
 
   useEffect(() => {
     if (!isLoading) {
@@ -33,6 +34,18 @@ export default function LoginPage() {
         <Spinner className="w-8 h-8" />
       </div>
     )
+  }
+
+  // Custom colors for first password and forgot password modes
+  const specialModeColors = {
+    roadColor: 0x080808,
+    islandColor: 0x0a0a0a,
+    background: 0x000000,
+    shoulderLines: 0x131318,
+    brokenLines: 0x131318,
+    leftCars: [0xff102a, 0xeb383e, 0xff102a],
+    rightCars: [0xdadafa, 0xbebae3, 0x8f97e4],
+    sticks: 0xdadafa
   }
 
   return (
@@ -57,23 +70,22 @@ export default function LoginPage() {
         </div>
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-xs">
-            <LoginForm />
+            <LoginForm onModeChange={setIsSpecialMode} />
           </div>
         </div>
         {/* <div className="text-center text-xs text-muted-foreground">
-          <Link href="/" className="hover:underline">
-            ← Vissza a főoldalra
-          </Link>
-        </div> */}
+            <Link href="/" className="hover:underline">
+              ← Vissza a főoldalra
+            </Link>
+          </div> */}
       </div>
       <div className="bg-black relative hidden lg:block overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
           <Hyperspeed 
             effectOptions={
-              {
-
-              }
-
+              isSpecialMode ? {
+                colors: specialModeColors
+              } : {}
             }/>
           <div className="absolute inset-0 flex h-full items-center justify-center p-10 bg-black/30">
             <div className="max-w-md text-white">

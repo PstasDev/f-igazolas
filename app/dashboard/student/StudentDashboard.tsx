@@ -10,12 +10,11 @@ import { StudentSidebar } from '@/app/dashboard/student/components/StudentSideba
 import { DashboardHeader } from '@/app/dashboard/student/components/DashboardHeader';
 import { StatsCards } from '@/app/dashboard/student/components/StatsCards';
 import { StudentTableView } from '@/app/dashboard/student/components/StudentTableView';
-import { NewIgazolasForm } from '@/app/dashboard/student/components/NewIgazolasForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function StudentDashboard() {
   const { user } = useRole();
-  const [selectedView, setSelectedView] = useState<'overview' | 'igazolasok' | 'new'>('overview');
+  const [selectedView, setSelectedView] = useState<'overview' | 'igazolasok'>('overview');
   
   // For demo purposes, use a fixed student ID (in real app, this would come from auth)
   const studentId = '1';
@@ -46,7 +45,6 @@ export default function StudentDashboard() {
                     <p className="mb-2">Mit tehetsz itt:</p>
                     <ul className="list-disc list-inside space-y-1">
                       <li>Igazolásaim - Megtekintheted az összes beküldött igazolást</li>
-                      <li>Új igazolás - Új hiányzást jelenthetsz be</li>
                       <li>Státusz követés - Lásd, hogy az osztályfőnök jóváhagyta-e az igazolásaidat</li>
                     </ul>
                   </div>
@@ -56,9 +54,6 @@ export default function StudentDashboard() {
           )}
           {selectedView === 'igazolasok' && (
             <StudentTableView studentId={studentId} />
-          )}
-          {selectedView === 'new' && (
-            <NewIgazolasForm />
           )}
         </div>
       </SidebarInset>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, FileText, Plus, Settings, Calendar } from 'lucide-react';
+import { Home, FileText, Settings, Calendar } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -19,7 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Image from 'next/image';
 
 interface StudentSidebarProps {
-  onViewChange: (view: 'overview' | 'igazolasok' | 'new') => void;
+  onViewChange: (view: 'overview' | 'igazolasok') => void;
   currentView: string;
 }
 
@@ -29,12 +29,11 @@ export function StudentSidebar({ onViewChange, currentView }: StudentSidebarProp
   const mainNav = [
     { title: 'Áttekintés', icon: Home, view: 'overview' as const },
     { title: 'Igazolásaim', icon: FileText, view: 'igazolasok' as const },
-    { title: 'Új igazolás', icon: Plus, view: 'new' as const },
   ];
 
   const secondaryNav = [
-    { title: 'Beállítások', icon: Settings, view: 'settings' as 'overview' | 'igazolasok' | 'new' },
-    { title: 'Órarend', icon: Calendar, view: 'schedule' as 'overview' | 'igazolasok' | 'new' },
+    { title: 'Beállítások', icon: Settings, view: 'overview' as 'overview' | 'igazolasok' },
+    { title: 'Órarend', icon: Calendar, view: 'overview' as 'overview' | 'igazolasok' },
   ];
 
   return (
