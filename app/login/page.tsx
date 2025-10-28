@@ -60,11 +60,11 @@ export default function LoginPage() {
             <LoginForm />
           </div>
         </div>
-        <div className="text-center text-xs text-muted-foreground">
+        {/* <div className="text-center text-xs text-muted-foreground">
           <Link href="/" className="hover:underline">
             ← Vissza a főoldalra
           </Link>
-        </div>
+        </div> */}
       </div>
       <div className="bg-black relative hidden lg:block overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
