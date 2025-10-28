@@ -5,6 +5,7 @@ import PageTransition from "./components/PageTransition";
 import { ThemeProvider } from "./context/ThemeContext";
 import { RoleProvider } from "./context/RoleContext";
 import { Toaster } from "@/components/ui/sonner";
+import DebugInfo from "@/components/DebugInfo";
 
 const notoSans = Noto_Sans({
   variable: "--font-noto-sans",
@@ -60,6 +61,7 @@ export default function RootLayout({
           <RoleProvider>
             <PageTransition>{children}</PageTransition>
             <Toaster position="top-right" />
+            <DebugInfo />
           </RoleProvider>
         </ThemeProvider>
       </body>

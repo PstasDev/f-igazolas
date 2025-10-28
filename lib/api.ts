@@ -1,5 +1,6 @@
 // API client for communicating with Django backend
 import Cookies from 'js-cookie';
+import { config } from './config';
 import type {
   LoginRequest,
   TokenResponse,
@@ -17,7 +18,8 @@ import type {
   TeacherCommentUpdateResponse,
 } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+// Use the config for API base URL
+const API_BASE_URL = config.api.baseUrl;
 
 // Cookie key for JWT token
 const JWT_COOKIE_KEY = 'jwt_token';
