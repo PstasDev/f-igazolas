@@ -33,6 +33,7 @@
     "@tabler/icons-react": "^3.35.0",
     "@tanstack/react-table": "^8.21.3",
     "@types/js-cookie": "^3.0.6",
+    "@types/xlsx": "^0.0.36",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -50,6 +51,7 @@
     "tailwind-merge": "^3.3.1",
     "three": "^0.180.0",
     "vaul": "^1.1.2",
+    "xlsx": "^0.18.5",
     "zod": "^4.1.12"
   },
   "devDependencies": {

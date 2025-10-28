@@ -16,6 +16,9 @@ import type {
   BulkQuickActionResponse,
   TeacherCommentUpdateRequest,
   TeacherCommentUpdateResponse,
+  DiakjaSignle,
+  DiakjaCreateRequest,
+  DiakjaCreateResponse,
 } from './types';
 
 // Use the config for API base URL
@@ -244,6 +247,19 @@ class APIClient {
   ): Promise<TeacherCommentUpdateResponse> {
     return this.fetchWithAuth<TeacherCommentUpdateResponse>(`/igazolas/${igazolasId}/teacher-comment`, {
       method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Diakjaim endpoints (for class teachers only)
+
+  async getDiakjaim(): Promise<DiakjaSignle[]> {
+    return this.fetchWithAuth<DiakjaSignle[]>('/diakjaim');
+  }
+
+  async createDiakjaim(data: DiakjaCreateRequest[]): Promise<DiakjaCreateResponse> {
+    return this.fetchWithAuth<DiakjaCreateResponse>('/diakjaim', {
+      method: 'POST',
       body: JSON.stringify(data),
     });
   }

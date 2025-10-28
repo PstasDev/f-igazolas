@@ -133,3 +133,35 @@ export interface TeacherCommentUpdateResponse {
   megjegyzes_tanar?: string;
   message: string;
 }
+
+// Diakjaim (Students Management) types
+export interface IgazolasSimple {
+  id: number;
+  eleje: string; // ISO datetime string
+  vege: string; // ISO datetime string
+  tipus: IgazolasTipus;
+  allapot: 'Függőben' | 'Elfogadva' | 'Elutasítva';
+  rogzites_datuma: string; // ISO date string
+  megjegyzes_diak?: string;
+}
+
+export interface DiakjaSignle {
+  id: number;
+  username: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  igazolasok: IgazolasSimple[];
+}
+
+export interface DiakjaCreateRequest {
+  last_name: string;
+  first_name: string;
+  email: string;
+}
+
+export interface DiakjaCreateResponse {
+  created_count: number;
+  failed_users: string[];
+  message: string;
+}

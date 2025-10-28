@@ -45,7 +45,9 @@ import {
   RotateCcw,
   CheckCheck,
   XCircle,
-  Clapperboard
+  Clapperboard,
+  Download,
+  ChevronDown
 } from "lucide-react"
 import {
   Sheet,
@@ -54,6 +56,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { getIgazolasType } from "../types"
 import {
   Select,
@@ -73,6 +81,7 @@ import { GoogleDriveIcon } from "./columns"
 import { apiClient } from "@/lib/api"
 import { toast } from "sonner"
 import { getPeriodSchedule } from "@/lib/periods"
+import * as XLSX from 'xlsx'
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -98,6 +107,8 @@ export function DataTable<TData, TValue>({
   const [filterType, setFilterType] = React.useState<string>("all")
   const [filterFTV, setFilterFTV] = React.useState<string>("all")
   const [groupBy, setGroupBy] = React.useState<string>("none")
+  const [dateFrom, setDateFrom] = React.useState<string>("")
+  const [dateTo, setDateTo] = React.useState<string>("")
 
   // Get filtered data based on all filters
   const getFilteredData = React.useMemo(() => {
@@ -137,8 +148,29 @@ export function DataTable<TData, TValue>({
       })
     }
 
+    // Date range filter
+    if (dateFrom || dateTo) {
+      filtered = filtered.filter((item) => {
+        const itemDate = new Date(item.submittedAt);
+        let isValid = true;
+        
+        if (dateFrom) {
+          const fromDate = new Date(dateFrom);
+          isValid = isValid && itemDate >= fromDate;
+        }
+        
+        if (dateTo) {
+          const toDate = new Date(dateTo);
+          toDate.setHours(23, 59, 59, 999); // Include the entire end date
+          isValid = isValid && itemDate <= toDate;
+        }
+        
+        return isValid;
+      })
+    }
+
     return filtered
-  }, [data, filterStatus, filterType, filterFTV, columnFilters])
+  }, [data, filterStatus, filterType, filterFTV, columnFilters, dateFrom, dateTo])
 
   const table = useReactTable({
     data: getFilteredData as TData[],
@@ -348,6 +380,66 @@ export function DataTable<TData, TValue>({
       onDataChange?.()
     }
   }
+
+  const handleExportData = (format: 'csv' | 'tsv' | 'xlsx') => {
+    const exportData = getFilteredData.map(igazolas => ({
+      'Diák neve': igazolas.studentName,
+      'Osztály': igazolas.studentClass,
+      'Dátum': igazolas.date,
+      'Típus': igazolas.type,
+      'Státusz': igazolas.allapot,
+      'Órák': igazolas.hours.join(', '),
+      'Korrigált órák': igazolas.correctedHours?.join(', ') || '',
+      'Megjegyzés': igazolas.status || '',
+      'Tanári megjegyzés': igazolas.teacherNote || '',
+      'Beküldve': igazolas.submittedAt,
+      'FTV importált': igazolas.fromFTV ? 'Igen' : 'Nem'
+    }));
+
+    const timestamp = new Date().toISOString().split('T')[0];
+
+    if (format === 'xlsx') {
+      // Export as XLSX
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Igazolások');
+      XLSX.writeFile(wb, `igazolasok_${timestamp}.xlsx`);
+    } else {
+      // Export as CSV or TSV
+      const separator = format === 'csv' ? ',' : '\t';
+      const headers = Object.keys(exportData[0] || {});
+      const csvRows = [
+        headers.join(separator),
+        ...exportData.map(row => headers.map(header => {
+          const value = row[header as keyof typeof row];
+          // Escape values containing separator, quotes, or newlines
+          const stringValue = String(value);
+          if (stringValue.includes(separator) || stringValue.includes('"') || stringValue.includes('\n')) {
+            return `"${stringValue.replace(/"/g, '""')}"`;
+          }
+          return stringValue;
+        }).join(separator))
+      ];
+
+      const content = csvRows.join('\n');
+      // Use UTF-8 BOM for proper encoding in Excel
+      const bom = '\uFEFF';
+      const blob = new Blob([bom + content], { 
+        type: format === 'csv' ? 'text/csv;charset=utf-8;' : 'text/tab-separated-values;charset=utf-8;' 
+      });
+      
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `igazolasok_${timestamp}.${format}`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    
+    toast.success(`Igazolások exportálva ${format.toUpperCase()} formátumban!`);
+  };
 
   const selectedRowsCount = table.getFilteredSelectedRowModel().rows.length
 
@@ -605,8 +697,33 @@ export function DataTable<TData, TValue>({
               </div>
             </div>
 
+            {/* Date Range Filter */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Dátum tartomány</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-600 dark:text-gray-400">Ettől</Label>
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-600 dark:text-gray-400">Eddig</Label>
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Active Filters */}
-            {(filterStatus !== "all" || filterType !== "all" || filterFTV !== "all") && (
+            {(filterStatus !== "all" || filterType !== "all" || filterFTV !== "all" || dateFrom || dateTo) && (
               <div className="flex flex-wrap gap-2 items-center pt-4 border-t border-gray-200 dark:border-gray-700">
                 <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Aktív szűrők:</span>
                 {filterStatus !== "all" && (
@@ -642,6 +759,28 @@ export function DataTable<TData, TValue>({
                     </button>
                   </Badge>
                 )}
+                {dateFrom && (
+                  <Badge variant="outline" className="gap-2 bg-orange-50 text-orange-700 border-orange-300 dark:bg-orange-900/20 dark:text-orange-400">
+                    Ettől: {dateFrom}
+                    <button 
+                      onClick={() => setDateFrom("")} 
+                      className="ml-1 hover:bg-orange-200 dark:hover:bg-orange-800 rounded-full p-0.5 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {dateTo && (
+                  <Badge variant="outline" className="gap-2 bg-orange-50 text-orange-700 border-orange-300 dark:bg-orange-900/20 dark:text-orange-400">
+                    Eddig: {dateTo}
+                    <button 
+                      onClick={() => setDateTo("")} 
+                      className="ml-1 hover:bg-orange-200 dark:hover:bg-orange-800 rounded-full p-0.5 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -649,6 +788,8 @@ export function DataTable<TData, TValue>({
                     setFilterStatus("all")
                     setFilterType("all")
                     setFilterFTV("all")
+                    setDateFrom("")
+                    setDateTo("")
                   }}
                   className="h-7 px-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
@@ -898,10 +1039,35 @@ export function DataTable<TData, TValue>({
           </div>
         )}
 
-        {/* Pagination */}
+        {/* Pagination and Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-sm text-muted-foreground font-medium">
-            Összesen {table.getFilteredRowModel().rows.length} igazolás
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-muted-foreground font-medium">
+              Összesen {table.getFilteredRowModel().rows.length} igazolás
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                  <ChevronDown className="h-4 w-4 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleExportData('csv')}>
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportData('tsv')}>
+                  Export TSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportData('xlsx')}>
+                  Export XLSX
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           {groupBy === "none" && (
             <div className="flex items-center gap-2">
