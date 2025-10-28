@@ -61,7 +61,6 @@ export default function RootLayout({
           <RoleProvider>
             <PageTransition>{children}</PageTransition>
             <Toaster position="top-right" />
-            <DebugInfo />
           </RoleProvider>
         </ThemeProvider>
       </body>
