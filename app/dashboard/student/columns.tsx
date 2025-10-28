@@ -21,7 +21,7 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
     header: "Órák",
     cell: ({ row }) => {
       const hours = row.original.hours
-      const approved = row.original.approved
+      const allapot = row.original.allapot
       const fromFTV = row.original.fromFTV || false
       const minutesBefore = row.original.minutesBefore || 0
       const minutesAfter = row.original.minutesAfter || 0
@@ -50,11 +50,11 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
             if (isFTVCorrection) {
               bgColor = "bg-purple-500 text-white"
             } else if (isImpacted) {
-              if (approved === null) {
+              if (allapot === 'Függőben') {
                 bgColor = "bg-blue-500 text-white"
-              } else if (approved === true) {
+              } else if (allapot === 'Elfogadva') {
                 bgColor = "bg-green-500 text-white"
-              } else {
+              } else if (allapot === 'Elutasítva') {
                 bgColor = "bg-red-500 text-white"
               }
             }
@@ -97,23 +97,31 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
     id: "status",
     header: "Státusz",
     cell: ({ row }) => {
-      const approved = row.original.approved
+      const allapot = row.original.allapot
       
-      if (approved === null) {
+      if (allapot === 'Függőben') {
         return (
           <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
             Függőben
           </Badge>
         )
+      } else if (allapot === 'Elfogadva') {
+        return (
+          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+            Elfogadva
+          </Badge>
+        )
+      } else if (allapot === 'Elutasítva') {
+        return (
+          <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+            Elutasítva
+          </Badge>
+        )
       }
       
       return (
-        <Badge className={
-          approved 
-            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" 
-            : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-        }>
-          {approved ? "Jóváhagyva" : "Elutasítva"}
+        <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+          Ismeretlen
         </Badge>
       )
     },

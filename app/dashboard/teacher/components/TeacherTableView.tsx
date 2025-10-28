@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DataTable } from '../data-table';
-import { columns } from '../columns';
+import { createColumns } from '../columns';
 import { apiClient } from '@/lib/api';
 import { Igazolas } from '@/lib/types';
 import { toast } from 'sonner';
@@ -31,11 +31,8 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
     }
   }
   
-  // Map allapot to approved status
-  let approved: boolean | null = null;
-  if (igazolas.allapot === 'elfogadva') approved = true;
-  else if (igazolas.allapot === 'elutasitva') approved = false;
-  else approved = null; // pending statuses
+  // Map allapot to the new status structure
+  const allapot = igazolas.allapot;
   
   return {
     id: igazolas.id.toString(),
@@ -49,7 +46,7 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
     imageUrl: igazolas.imgDriveURL || '',
     teacherNote: igazolas.megjegyzes_tanar || '',
     submittedAt: igazolas.rogzites_datuma,
-    approved: approved,
+    allapot: allapot,
     fromFTV: igazolas.ftv || false,
     minutesBefore: igazolas.diak_extra_ido_elotte || 0,
     minutesAfter: igazolas.diak_extra_ido_utana || 0,
@@ -60,34 +57,75 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
   const [igazolasok, setIgazolasok] = useState<Igazolas[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchIgazolasok = async () => {
-      try {
-        setIsLoading(true);
-        // Teachers should see all igazolások from their class, not their own
-        const data = await apiClient.listIgazolas();
-        
-        // Filter based on status
-        let filtered = data;
-        if (filter === 'pending') {
-          filtered = data.filter(i => i.allapot === 'fuggohiany' || i.allapot === 'feldolgozas_alatt');
-        } else if (filter === 'approved') {
-          filtered = data.filter(i => i.allapot === 'elfogadva');
-        } else if (filter === 'rejected') {
-          filtered = data.filter(i => i.allapot === 'elutasitva');
-        }
-        
-        setIgazolasok(filtered);
-      } catch (error) {
-        console.error('Failed to fetch igazolások:', error);
-        toast.error('Hiba történt az igazolások betöltésekor');
-      } finally {
-        setIsLoading(false);
+  const fetchIgazolasok = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      // Teachers should see all igazolások from their class, not their own
+      const data = await apiClient.listIgazolas();
+      
+      // Filter based on status
+      let filtered = data;
+      if (filter === 'pending') {
+        filtered = data.filter(i => i.allapot === 'Függőben');
+      } else if (filter === 'approved') {
+        filtered = data.filter(i => i.allapot === 'Elfogadva');
+      } else if (filter === 'rejected') {
+        filtered = data.filter(i => i.allapot === 'Elutasítva');
       }
-    };
-
-    fetchIgazolasok();
+      
+      setIgazolasok(filtered);
+    } catch (error) {
+      console.error('Failed to fetch igazolások:', error);
+      toast.error('Hiba történt az igazolások betöltésekor');
+    } finally {
+      setIsLoading(false);
+    }
   }, [filter]);
+
+  useEffect(() => {
+    fetchIgazolasok();
+  }, [fetchIgazolasok]);
+
+  const handleApprove = async (id: string) => {
+    try {
+      await apiClient.quickActionIgazolas(parseInt(id), { action: 'Elfogadva' });
+      toast.success('Igazolás jóváhagyva');
+      await fetchIgazolasok();
+    } catch (error) {
+      console.error('Failed to approve igazolás:', error);
+      toast.error('Hiba történt az igazolás jóváhagyásakor');
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    try {
+      await apiClient.quickActionIgazolas(parseInt(id), { action: 'Elutasítva' });
+      toast.success('Igazolás elutasítva');
+      await fetchIgazolasok();
+    } catch (error) {
+      console.error('Failed to reject igazolás:', error);
+      toast.error('Hiba történt az igazolás elutasításakor');
+    }
+  };
+
+  const handleSetPending = async (id: string) => {
+    try {
+      // For setting to pending, we can use the updateTeacherComment endpoint with status reset
+      // This would need to be implemented on the backend or we could use a different approach
+      console.log('Set to pending:', id);
+      toast.info('Függőben státusz funkció hamarosan elérhető');
+    } catch (error) {
+      console.error('Failed to set pending:', error);
+      toast.error('Hiba történt a státusz módosításakor');
+    }
+  };
+
+  // Create columns with action handlers
+  const columns = createColumns({
+    onApprove: handleApprove,
+    onReject: handleReject,
+    onSetPending: handleSetPending,
+  });
 
   const getTitle = () => {
     switch (filter) {
@@ -122,7 +160,7 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
             <Spinner />
           </div>
         ) : (
-          <DataTable columns={columns} data={tableData} />
+          <DataTable columns={columns} data={tableData} onDataChange={fetchIgazolasok} />
         )}
       </CardContent>
     </Card>

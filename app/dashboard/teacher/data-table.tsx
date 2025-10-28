@@ -69,16 +69,19 @@ import {
 import { IgazolasTableRow } from "@/app/dashboard/types"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { GoogleDriveIcon } from "./columns"
-
+import { apiClient } from "@/lib/api"
+import { toast } from "sonner"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  onDataChange?: () => void
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  onDataChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -119,36 +122,97 @@ export function DataTable<TData, TValue>({
     setIsSheetOpen(true)
   }
 
-  const handleApprove = () => {
-    console.log('Approve:', selectedRow?.id, 'Note:', teacherNote)
-    // TODO: Implement actual API call
-    setIsSheetOpen(false)
+  const handleApprove = async () => {
+    if (!selectedRow) return
+    
+    try {
+      // First update teacher comment if provided
+      if (teacherNote.trim()) {
+        await apiClient.updateTeacherComment(parseInt(selectedRow.id), { 
+          megjegyzes_tanar: teacherNote.trim() 
+        })
+      }
+      
+      // Then approve the igazolás
+      await apiClient.quickActionIgazolas(parseInt(selectedRow.id), { action: 'Elfogadva' })
+      
+      toast.success('Igazolás jóváhagyva')
+      setIsSheetOpen(false)
+      onDataChange?.()
+    } catch (error) {
+      console.error('Failed to approve igazolás:', error)
+      toast.error('Hiba történt az igazolás jóváhagyásakor')
+    }
   }
 
-  const handleReject = () => {
-    console.log('Reject:', selectedRow?.id, 'Note:', teacherNote)
-    // TODO: Implement actual API call
-    setIsSheetOpen(false)
+  const handleReject = async () => {
+    if (!selectedRow) return
+    
+    try {
+      // First update teacher comment if provided
+      if (teacherNote.trim()) {
+        await apiClient.updateTeacherComment(parseInt(selectedRow.id), { 
+          megjegyzes_tanar: teacherNote.trim() 
+        })
+      }
+      
+      // Then reject the igazolás
+      await apiClient.quickActionIgazolas(parseInt(selectedRow.id), { action: 'Elutasítva' })
+      
+      toast.success('Igazolás elutasítva')
+      setIsSheetOpen(false)
+      onDataChange?.()
+    } catch (error) {
+      console.error('Failed to reject igazolás:', error)
+      toast.error('Hiba történt az igazolás elutasításakor')
+    }
   }
 
   const handleResetToPending = () => {
     console.log('Reset to Pending:', selectedRow?.id)
     // TODO: Implement actual API call to reset status to pending
+    toast.info('Függőben státusz funkció hamarosan elérhető')
     setIsSheetOpen(false)
   }
 
-  const handleBulkApprove = () => {
-    const selectedRows = table.getFilteredSelectedRowModel().rows
-    console.log('Bulk Approve:', selectedRows.map(row => (row.original as unknown as IgazolasTableRow).id))
-    // TODO: Implement actual API call
-    setRowSelection({})
+  const handleBulkApprove = async () => {
+    try {
+      const selectedRows = table.getFilteredSelectedRowModel().rows
+      const ids = selectedRows.map(row => parseInt((row.original as unknown as IgazolasTableRow).id))
+      
+      if (ids.length === 0) {
+        toast.error('Nincs kiválasztott igazolás')
+        return
+      }
+
+      await apiClient.bulkQuickActionIgazolas({ action: 'Elfogadva', ids })
+      toast.success(`${ids.length} igazolás jóváhagyva`)
+      setRowSelection({})
+      onDataChange?.()
+    } catch (error) {
+      console.error('Failed to bulk approve:', error)
+      toast.error('Hiba történt a tömeges jóváhagyás során')
+    }
   }
 
-  const handleBulkReject = () => {
-    const selectedRows = table.getFilteredSelectedRowModel().rows
-    console.log('Bulk Reject:', selectedRows.map(row => (row.original as unknown as IgazolasTableRow).id))
-    // TODO: Implement actual API call
-    setRowSelection({})
+  const handleBulkReject = async () => {
+    try {
+      const selectedRows = table.getFilteredSelectedRowModel().rows
+      const ids = selectedRows.map(row => parseInt((row.original as unknown as IgazolasTableRow).id))
+      
+      if (ids.length === 0) {
+        toast.error('Nincs kiválasztott igazolás')
+        return
+      }
+
+      await apiClient.bulkQuickActionIgazolas({ action: 'Elutasítva', ids })
+      toast.success(`${ids.length} igazolás elutasítva`)
+      setRowSelection({})
+      onDataChange?.()
+    } catch (error) {
+      console.error('Failed to bulk reject:', error)
+      toast.error('Hiba történt a tömeges elutasítás során')
+    }
   }
 
   const selectedRowsCount = table.getFilteredSelectedRowModel().rows.length
@@ -170,9 +234,9 @@ export function DataTable<TData, TValue>({
     // Status filter
     if (filterStatus !== "all") {
       filtered = filtered.filter((item) => {
-        if (filterStatus === "pending") return item.approved === null
-        if (filterStatus === "approved") return item.approved === true
-        if (filterStatus === "rejected") return item.approved === false
+        if (filterStatus === "pending") return item.allapot === 'Függőben'
+        if (filterStatus === "approved") return item.allapot === 'Elfogadva'
+        if (filterStatus === "rejected") return item.allapot === 'Elutasítva'
         return true
       })
     }
@@ -215,7 +279,7 @@ export function DataTable<TData, TValue>({
       let key = ""
       switch (groupBy) {
         case "status":
-          key = item.approved === null ? "Függőben" : item.approved ? "Jóváhagyva" : "Elutasítva"
+          key = item.allapot
           break
         case "type":
           key = item.type
@@ -239,7 +303,7 @@ export function DataTable<TData, TValue>({
 
   const getHoursDisplay = (igazolas: IgazolasTableRow) => {
     const hours = igazolas.hours
-    const approved = igazolas.approved
+    const allapot = igazolas.allapot
     const fromFTV = igazolas.fromFTV || false
     const minutesBefore = igazolas.minutesBefore || 0
     const minutesAfter = igazolas.minutesAfter || 0
@@ -268,7 +332,7 @@ export function DataTable<TData, TValue>({
             let tooltipText = "Nincs hiányzás"
             
             if (isCorrectionHour) {
-              if (approved === true) {
+              if (allapot === 'Elfogadva') {
                 bgColor = "bg-green-500 text-white shadow-md"
                 tooltipText = "Diák korrekció - Osztályfőnök jóváhagyta"
               } else {
@@ -276,10 +340,10 @@ export function DataTable<TData, TValue>({
                 tooltipText = "Diák korrekció - Osztályfőnöki jóváhagyásra vár"
               }
             } else if (isFTVHour) {
-              if (approved === true) {
+              if (allapot === 'Elfogadva') {
                 bgColor = "bg-green-500 text-white shadow-md"
                 tooltipText = "FTV importált - Osztályfőnök jóváhagyta"
-              } else if (approved === false) {
+              } else if (allapot === 'Elutasítva') {
                 bgColor = "bg-red-500 text-white shadow-md"
                 tooltipText = "FTV importált - Osztályfőnök elutasította"
               } else {
@@ -287,10 +351,10 @@ export function DataTable<TData, TValue>({
                 tooltipText = "FTV importált - Médiatanár igazolta"
               }
             } else if (isRegularHour) {
-              if (approved === null) {
+              if (allapot === 'Függőben') {
                 bgColor = "bg-blue-500 text-white shadow-md" // Blue for pending
                 tooltipText = "Ellenőrzésre vár"
-              } else if (approved === true) {
+              } else if (allapot === 'Elfogadva') {
                 bgColor = "bg-green-500 text-white shadow-md"
                 tooltipText = "Jóváhagyva"
               } else {
@@ -721,17 +785,17 @@ export function DataTable<TData, TValue>({
                       {selectedRow.studentName} • {selectedRow.studentClass}
                     </SheetDescription>
                   </div>
-                  {selectedRow.approved === null && (
+                  {selectedRow.allapot === 'Függőben' && (
                     <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:text-blue-400">
                       Függőben
                     </Badge>
                   )}
-                  {selectedRow.approved === true && (
+                  {selectedRow.allapot === 'Elfogadva' && (
                     <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 dark:bg-green-900/20 dark:text-green-400">
-                      Jóváhagyva
+                      Elfogadva
                     </Badge>
                   )}
-                  {selectedRow.approved === false && (
+                  {selectedRow.allapot === 'Elutasítva' && (
                     <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 dark:bg-red-900/20 dark:text-red-400 shrink-0">
                       Elutasítva
                     </Badge>
@@ -888,10 +952,10 @@ export function DataTable<TData, TValue>({
                             onChange={(e) => setTeacherNote(e.target.value)}
                             rows={5}
                             className="resize-none"
-                            disabled={selectedRow.approved !== null}
+                            disabled={selectedRow.allapot !== 'Függőben'}
                           />
                           <p className="text-xs text-muted-foreground">
-                            {selectedRow.approved !== null 
+                            {selectedRow.allapot !== 'Függőben' 
                               ? "Ez az igazolás már feldolgozásra került." 
                               : "A megjegyzésed látható lesz a diák számára."}
                           </p>
@@ -902,19 +966,19 @@ export function DataTable<TData, TValue>({
                         <div className="space-y-3">
                           <Label className="text-sm font-semibold">Jelenlegi státusz</Label>
                           <div className="flex items-center gap-2">
-                            {selectedRow.approved === null && (
+                            {selectedRow.allapot === 'Függőben' && (
                               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/20 text-base px-4 py-2">
                                 <Clock className="h-4 w-4 mr-2" />
                                 Függőben - Döntésre vár
                               </Badge>
                             )}
-                            {selectedRow.approved === true && (
+                            {selectedRow.allapot === 'Elfogadva' && (
                               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 dark:bg-green-900/20 text-base px-4 py-2">
                                 <Check className="h-4 w-4 mr-2" />
-                                Jóváhagyva
+                                Elfogadva
                               </Badge>
                             )}
-                            {selectedRow.approved === false && (
+                            {selectedRow.allapot === 'Elutasítva' && (
                               <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 dark:bg-red-900/20 text-base px-4 py-2">
                                 <X className="h-4 w-4 mr-2" />
                                 Elutasítva
@@ -923,7 +987,7 @@ export function DataTable<TData, TValue>({
                           </div>
                         </div>
 
-                        {selectedRow.approved === null ? (
+                        {selectedRow.allapot === 'Függőben' ? (
                           <div className="grid grid-cols-2 gap-3 pt-4">
                             <Button
                               onClick={handleApprove}

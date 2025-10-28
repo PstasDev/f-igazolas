@@ -14,7 +14,7 @@ export interface IgazolasTableRow {
   submittedAt: string;
   reviewedAt?: string;
   reviewedBy?: string;
-  approved: boolean | null;
+  allapot: 'Függőben' | 'Elfogadva' | 'Elutasítva'; // Updated to match Django model
   fromFTV?: boolean;
   minutesBefore?: number;
   minutesAfter?: number;

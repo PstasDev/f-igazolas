@@ -8,6 +8,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { IgazolasTableRow, getIgazolasType } from "@/app/dashboard/types"
 import { Calendar, FileText, Video, Check, X, Clock } from "lucide-react"
 
+interface ActionHandlers {
+  onApprove?: (id: string) => void;
+  onReject?: (id: string) => void;
+  onSetPending?: (id: string) => void;
+}
+
 // Google Drive SVG Icon Component
 const GoogleDriveIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
   <svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -20,7 +26,7 @@ const GoogleDriveIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
   </svg>
 )
 
-export const columns: ColumnDef<IgazolasTableRow>[] = [
+export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<IgazolasTableRow>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -106,7 +112,7 @@ export const columns: ColumnDef<IgazolasTableRow>[] = [
     size: 600, // Prevent column from being squished
     cell: ({ row }) => {
       const hours = row.original.hours
-      const approved = row.original.approved
+      const allapot = row.original.allapot
       const fromFTV = row.original.fromFTV || false
       const minutesBefore = row.original.minutesBefore || 0
       const minutesAfter = row.original.minutesAfter || 0
@@ -137,7 +143,7 @@ export const columns: ColumnDef<IgazolasTableRow>[] = [
               
               if (isCorrectionHour) {
                 // Purple: Student correction (unverified by class teacher)
-                if (approved === true) {
+                if (allapot === 'Elfogadva') {
                   bgColor = "bg-green-500 hover:bg-green-600 text-white shadow-sm" // Approved by class teacher
                   tooltipText = "Diák korrekció - Osztályfőnök jóváhagyta"
                 } else {
@@ -146,10 +152,10 @@ export const columns: ColumnDef<IgazolasTableRow>[] = [
                 }
               } else if (isFTVHour) {
                 // Blue: Media teacher verified, waiting for class teacher approval
-                if (approved === true) {
+                if (allapot === 'Elfogadva') {
                   bgColor = "bg-green-500 hover:bg-green-600 text-white shadow-sm" // Approved by class teacher
                   tooltipText = "FTV importált - Osztályfőnök jóváhagyta"
-                } else if (approved === false) {
+                } else if (allapot === 'Elutasítva') {
                   bgColor = "bg-red-500 hover:bg-red-600 text-white shadow-sm" // Rejected by class teacher
                   tooltipText = "FTV importált - Osztályfőnök elutasította"
                 } else {
@@ -158,13 +164,13 @@ export const columns: ColumnDef<IgazolasTableRow>[] = [
                 }
               } else if (isRegularHour) {
                 // Regular submission - follows normal approval flow
-                if (approved === null) {
+                if (allapot === 'Függőben') {
                   bgColor = "bg-blue-500 hover:bg-blue-600 text-white shadow-sm" // Pending - BLUE not yellow
                   tooltipText = "Ellenőrzésre vár"
-                } else if (approved === true) {
+                } else if (allapot === 'Elfogadva') {
                   bgColor = "bg-green-500 hover:bg-green-600 text-white shadow-sm" // Approved
                   tooltipText = "Jóváhagyva"
-                } else {
+                } else if (allapot === 'Elutasítva') {
                   bgColor = "bg-red-500 hover:bg-red-600 text-white shadow-sm" // Rejected
                   tooltipText = "Elutasítva"
                 }
@@ -216,39 +222,39 @@ export const columns: ColumnDef<IgazolasTableRow>[] = [
     id: "actions",
     header: "Műveletek",
     cell: ({ row }) => {
-      const approved = row.original.approved
+      const allapot = row.original.allapot
       
       return (
         <div className="flex gap-1">
           <Button
             size="sm"
-            variant={approved === true ? "default" : "outline"}
-            className={approved === true ? "bg-green-600 hover:bg-green-700 text-white" : "hover:bg-green-50"}
+            variant={allapot === 'Elfogadva' ? "default" : "outline"}
+            className={allapot === 'Elfogadva' ? "bg-green-600 hover:bg-green-700 text-white" : "hover:bg-green-50"}
             onClick={(e) => {
               e.stopPropagation()
-              console.log("Approve", row.original.id)
+              actionHandlers?.onApprove?.(row.original.id)
             }}
           >
             <Check className="h-4 w-4" />
           </Button>
           <Button
             size="sm"
-            variant={approved === false ? "destructive" : "outline"}
-            className={approved === false ? "" : "hover:bg-red-50"}
+            variant={allapot === 'Elutasítva' ? "destructive" : "outline"}
+            className={allapot === 'Elutasítva' ? "" : "hover:bg-red-50"}
             onClick={(e) => {
               e.stopPropagation()
-              console.log("Reject", row.original.id)
+              actionHandlers?.onReject?.(row.original.id)
             }}
           >
             <X className="h-4 w-4" />
           </Button>
           <Button
             size="sm"
-            variant={approved === null ? "default" : "outline"}
-            className={approved === null ? "bg-blue-600 hover:bg-blue-700 text-white" : "hover:bg-blue-50"}
+            variant={allapot === 'Függőben' ? "default" : "outline"}
+            className={allapot === 'Függőben' ? "bg-blue-600 hover:bg-blue-700 text-white" : "hover:bg-blue-50"}
             onClick={(e) => {
               e.stopPropagation()
-              console.log("Set to pending", row.original.id)
+              actionHandlers?.onSetPending?.(row.original.id)
             }}
           >
             <Clock className="h-4 w-4" />
@@ -258,5 +264,8 @@ export const columns: ColumnDef<IgazolasTableRow>[] = [
     },
   },
 ]
+
+// Backward compatible export with no-op handlers
+export const columns = createColumns()
 
 export { GoogleDriveIcon }

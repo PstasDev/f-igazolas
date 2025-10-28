@@ -6,11 +6,13 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { LoginForm } from "@/components/login-form"
 import { useRole } from "@/app/context/RoleContext"
+import { useTheme } from "@/app/context/ThemeContext"
 import Hyperspeed from "@/components/Hyperspeed"
 import { Spinner } from "@/components/ui/spinner"
 
 export default function LoginPage() {
   const { isAuthenticated, isLoading } = useRole()
+  const { isDark } = useTheme()
   const router = useRouter()
   const [shouldRender, setShouldRender] = useState(false)
 
@@ -43,7 +45,12 @@ export default function LoginPage() {
               alt="Szent László Gimnázium"
               width={32}
               height={32}
-              className="size-8"
+              className="w-8 h-8 md:w-8 md:h-8 transition-all"
+              style={
+                isDark
+                  ? { filter: 'brightness(0) saturate(100%) invert(100%)' }
+                  : { filter: 'brightness(0) saturate(100%) invert(19%) sepia(9%) saturate(879%) hue-rotate(137deg) brightness(95%) contrast(91%)' }
+              }
             />
             <span className="font-serif">Igazoláskezelő</span>
           </Link>

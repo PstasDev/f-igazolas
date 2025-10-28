@@ -74,7 +74,7 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
   const handleApprove = async (id: number) => {
     try {
       setIsUpdating(true);
-      await apiClient.updateIgazolasStatus(id, 'elfogadva');
+      await apiClient.quickActionIgazolas(id, { action: 'Elfogadva' });
       toast.success('Igazolás jóváhagyva');
       await fetchIgazolasok();
       // Update selected if it's the same one
@@ -93,7 +93,7 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
   const handleReject = async (id: number) => {
     try {
       setIsUpdating(true);
-      await apiClient.updateIgazolasStatus(id, 'elutasitva');
+      await apiClient.quickActionIgazolas(id, { action: 'Elutasítva' });
       toast.success('Igazolás elutasítva');
       await fetchIgazolasok();
       // Update selected if it's the same one

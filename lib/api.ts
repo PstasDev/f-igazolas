@@ -9,6 +9,12 @@ import type {
   Igazolas,
   IgazolasCreateRequest,
   ErrorResponse,
+  QuickActionRequest,
+  BulkQuickActionRequest,
+  QuickActionResponse,
+  BulkQuickActionResponse,
+  TeacherCommentUpdateRequest,
+  TeacherCommentUpdateResponse,
 } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
@@ -204,6 +210,39 @@ class APIClient {
   async deleteIgazolas(igazolasId: number): Promise<void> {
     return this.fetchWithAuth<void>(`/igazolas/${igazolasId}`, {
       method: 'DELETE',
+    });
+  }
+
+  // Quick Action endpoints
+
+  async quickActionIgazolas(
+    igazolasId: number,
+    data: QuickActionRequest
+  ): Promise<QuickActionResponse> {
+    return this.fetchWithAuth<QuickActionResponse>(`/igazolas/${igazolasId}/quick-action`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async bulkQuickActionIgazolas(
+    data: BulkQuickActionRequest
+  ): Promise<BulkQuickActionResponse> {
+    return this.fetchWithAuth<BulkQuickActionResponse>('/igazolas/quick-action/bulk', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Teacher Comment Update endpoint
+
+  async updateTeacherComment(
+    igazolasId: number,
+    data: TeacherCommentUpdateRequest
+  ): Promise<TeacherCommentUpdateResponse> {
+    return this.fetchWithAuth<TeacherCommentUpdateResponse>(`/igazolas/${igazolasId}/teacher-comment`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
     });
   }
 }

@@ -37,11 +37,9 @@ export function TeacherStatsCards() {
 
         const calculatedStats: TeacherStats = {
           total: igazolasok.length,
-          approved: igazolasok.filter(i => i.allapot === 'elfogadva').length,
-          pending: igazolasok.filter(i => 
-            i.allapot === 'fuggohiany' || i.allapot === 'feldolgozas_alatt'
-          ).length,
-          rejected: igazolasok.filter(i => i.allapot === 'elutasitva').length,
+          approved: igazolasok.filter(i => i.allapot === 'Elfogadva').length,
+          pending: igazolasok.filter(i => i.allapot === 'Függőben').length,
+          rejected: igazolasok.filter(i => i.allapot === 'Elutasítva').length,
           totalHours: igazolasok.reduce((sum, i) => {
             const start = new Date(i.eleje);
             const end = new Date(i.vege);

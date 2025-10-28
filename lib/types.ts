@@ -66,7 +66,7 @@ export interface Igazolas {
   diak_extra_ido_elotte?: number;
   diak_extra_ido_utana?: number;
   imgDriveURL?: string;
-  allapot: string;
+  allapot: 'Függőben' | 'Elfogadva' | 'Elutasítva';
   megjegyzes_tanar?: string;
   kretaban_rogzitettem: boolean;
 }
@@ -99,4 +99,37 @@ export interface TokenResponse {
 export interface ErrorResponse {
   error: string;
   detail: string;
+}
+
+// Quick Action types
+export interface QuickActionRequest {
+  action: 'Elfogadva' | 'Elutasítva'; // Updated to match Django model choices
+}
+
+export interface BulkQuickActionRequest {
+  action: 'Elfogadva' | 'Elutasítva'; // Updated to match Django model choices
+  ids: number[]; // List of igazolas IDs
+}
+
+export interface QuickActionResponse {
+  id: number;
+  allapot: 'Függőben' | 'Elfogadva' | 'Elutasítva';
+  message: string;
+}
+
+export interface BulkQuickActionResponse {
+  updated_count: number;
+  failed_ids: number[];
+  message: string;
+}
+
+// Teacher comment update types
+export interface TeacherCommentUpdateRequest {
+  megjegyzes_tanar?: string;
+}
+
+export interface TeacherCommentUpdateResponse {
+  id: number;
+  megjegyzes_tanar?: string;
+  message: string;
 }
