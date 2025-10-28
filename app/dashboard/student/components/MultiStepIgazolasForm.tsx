@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
 import { 
   CalendarIcon, 
   Upload, 
@@ -25,21 +27,21 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { apiClient } from "@/lib/api"
-import { IgazolasTipus } from "@/lib/types"
-import { useRouter } from "next/navigation"
+import { format } from "date-fns"
+import { hu } from "date-fns/locale"
 
 interface IgazolasFormData {
   // Step 1: Basic Info
-  selectedTipus: string
+  type: string
+  reason: string
   
   // Step 2: Dates
-  startDateTime: string
-  endDateTime: string
+  startDate: Date | undefined
+  endDate: Date | undefined
   
   // Step 3: Details
-  megjegyzesDiak: string
-  imageURL: string
+  description: string
+  attachment: File | null
 }
 
 const steps = [
@@ -82,19 +84,15 @@ const reasonTypes = [
   { value: "egyeb", label: "Egyéb", emoji: "📝" },
 ]
 
-interface MultiStepIgazolasFormProps {
-  onSuccess?: () => void;
-  onCancel?: () => void;
-}
-
 export function MultiStepIgazolasForm() {
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<IgazolasFormData>({
-    selectedTipus: "",
-    startDateTime: "",
-    endDateTime: "",
-    megjegyzesDiak: "",
-    imageURL: "",
+    type: "",
+    reason: "",
+    startDate: undefined,
+    endDate: undefined,
+    description: "",
+    attachment: null,
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
@@ -104,12 +102,13 @@ export function MultiStepIgazolasForm() {
     
     switch (step) {
       case 1:
-        if (!formData.selectedTipus) errors.push("Válassza ki a hiányzás típusát")
+        if (!formData.type) errors.push("Válassza ki a hiányzás típusát")
+        if (!formData.reason) errors.push("Adja meg a hiányzás okát")
         break
       case 2:
-        if (!formData.startDateTime) errors.push("Válassza ki a kezdő dátumot")
-        if (!formData.endDateTime) errors.push("Válassza ki a befejező dátumot")
-        if (formData.startDateTime && formData.endDateTime && formData.startDateTime >= formData.endDateTime) {
+        if (!formData.startDate) errors.push("Válassza ki a kezdő dátumot")
+        if (!formData.endDate) errors.push("Válassza ki a befejező dátumot")
+        if (formData.startDate && formData.endDate && formData.startDate >= formData.endDate) {
           errors.push("A befejező dátum későbbi kell legyen a kezdőnél")
         }
         break
@@ -158,7 +157,6 @@ export function MultiStepIgazolasForm() {
         endDate: undefined,
         description: "",
         attachment: null,
-        isUrgent: false,
       })
       setCurrentStep(1)
     } catch {
