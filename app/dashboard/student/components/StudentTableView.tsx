@@ -34,7 +34,7 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
   return {
     id: igazolas.id.toString(),
     studentId: igazolas.profile.user.id.toString(),
-    studentName: `${igazolas.profile.user.first_name} ${igazolas.profile.user.last_name}`,
+    studentName: `${igazolas.profile.user.last_name} ${igazolas.profile.user.first_name}`,
     studentClass: igazolas.profile.osztalyom?.nev || 'N/A',
     type: igazolas.tipus.nev,
     date: new Date(igazolas.eleje).toLocaleDateString('hu-HU'),

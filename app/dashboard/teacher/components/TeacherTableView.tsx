@@ -8,6 +8,7 @@ import { apiClient } from '@/lib/api';
 import { Igazolas } from '@/lib/types';
 import { toast } from 'sonner';
 import { Spinner } from '@/components/ui/spinner';
+import { mapApiResponseToPeriods } from '@/lib/periods';
 
 interface TeacherTableViewProps {
   filter: 'all' | 'pending' | 'approved' | 'rejected';
@@ -15,21 +16,13 @@ interface TeacherTableViewProps {
 
 // Helper function to map Igazolas to the format expected by columns
 function mapIgazolasToTableData(igazolas: Igazolas) {
-  // Calculate hours array from start and end time
-  const start = new Date(igazolas.eleje);
-  const end = new Date(igazolas.vege);
-  
-  // Extract hours (assuming school day starts at 8:00 AM = hour 0)
-  const startHour = start.getHours();
-  const endHour = end.getHours();
-  
-  // Generate hours array (0-8 representing school hours)
-  const hours: number[] = [];
-  for (let h = Math.max(0, startHour - 8); h <= Math.min(8, endHour - 8); h++) {
-    if (h >= 0 && h <= 8) {
-      hours.push(h);
-    }
-  }
+  // Use the new period calculation logic
+  const { originalPeriods, correctedPeriods } = mapApiResponseToPeriods(
+    igazolas.eleje,
+    igazolas.vege,
+    igazolas.diak_extra_ido_elotte,
+    igazolas.diak_extra_ido_utana
+  );
   
   // Map allapot to the new status structure
   const allapot = igazolas.allapot;
@@ -37,13 +30,15 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
   return {
     id: igazolas.id.toString(),
     studentId: igazolas.profile.user.id.toString(),
-    studentName: `${igazolas.profile.user.first_name} ${igazolas.profile.user.last_name}`,
+    studentName: `${igazolas.profile.user.last_name} ${igazolas.profile.user.first_name}`,
     studentClass: igazolas.profile.osztalyom?.nev || 'N/A',
     type: igazolas.tipus.nev,
     date: new Date(igazolas.eleje).toLocaleDateString('hu-HU'),
-    hours: hours,
+    hours: originalPeriods,
+    correctedHours: correctedPeriods,
     status: igazolas.megjegyzes_diak || igazolas.megjegyzes || 'Nincs megjegyzés',
     imageUrl: igazolas.imgDriveURL || '',
+    imgDriveURL: igazolas.imgDriveURL || undefined,
     teacherNote: igazolas.megjegyzes_tanar || '',
     submittedAt: igazolas.rogzites_datuma,
     allapot: allapot,
@@ -88,36 +83,86 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
 
   const handleApprove = async (id: string) => {
     try {
+      // Optimistic update - update state immediately
+      setIgazolasok(prevIgazolasok => 
+        prevIgazolasok.map(igazolas => 
+          igazolas.id.toString() === id 
+            ? { ...igazolas, allapot: 'Elfogadva' } 
+            : igazolas
+        )
+      );
+
       await apiClient.quickActionIgazolas(parseInt(id), { action: 'Elfogadva' });
       toast.success('Igazolás jóváhagyva');
-      await fetchIgazolasok();
+      
+      // No need to refetch - optimistic update already applied
     } catch (error) {
       console.error('Failed to approve igazolás:', error);
       toast.error('Hiba történt az igazolás jóváhagyásakor');
+      
+      // Revert optimistic update on error and refetch to get correct state
+      await fetchIgazolasok();
     }
   };
 
   const handleReject = async (id: string) => {
     try {
+      // Optimistic update - update state immediately
+      setIgazolasok(prevIgazolasok => 
+        prevIgazolasok.map(igazolas => 
+          igazolas.id.toString() === id 
+            ? { ...igazolas, allapot: 'Elutasítva' } 
+            : igazolas
+        )
+      );
+
       await apiClient.quickActionIgazolas(parseInt(id), { action: 'Elutasítva' });
       toast.success('Igazolás elutasítva');
-      await fetchIgazolasok();
+      
+      // No need to refetch - optimistic update already applied
     } catch (error) {
       console.error('Failed to reject igazolás:', error);
       toast.error('Hiba történt az igazolás elutasításakor');
+      
+      // Revert optimistic update on error and refetch to get correct state
+      await fetchIgazolasok();
     }
   };
 
   const handleSetPending = async (id: string) => {
     try {
+      // Optimistic update - update state immediately
+      setIgazolasok(prevIgazolasok => 
+        prevIgazolasok.map(igazolas => 
+          igazolas.id.toString() === id 
+            ? { ...igazolas, allapot: 'Függőben' } 
+            : igazolas
+        )
+      );
+
       await apiClient.quickActionIgazolas(parseInt(id), { action: 'Függőben' });
       toast.success('Igazolás státusza visszaállítva függőben állapotra');
-      await fetchIgazolasok();
+      
+      // No need to refetch - optimistic update already applied
     } catch (error) {
       console.error('Failed to set pending:', error);
       toast.error('Hiba történt a státusz módosításakor');
+      
+      // Revert optimistic update on error and refetch to get correct state
+      await fetchIgazolasok();
     }
   };
+
+  // Handle optimistic updates for the data table
+  const handleOptimisticUpdate = useCallback((id: string, newAllapot: string) => {
+    setIgazolasok(prevIgazolasok => 
+      prevIgazolasok.map(igazolas => 
+        igazolas.id.toString() === id 
+          ? { ...igazolas, allapot: newAllapot as 'Függőben' | 'Elfogadva' | 'Elutasítva' } 
+          : igazolas
+      )
+    );
+  }, []);
 
   // Create columns with action handlers
   const columns = createColumns({
@@ -159,7 +204,12 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
             <Spinner />
           </div>
         ) : (
-          <DataTable columns={columns} data={tableData} onDataChange={fetchIgazolasok} />
+          <DataTable 
+            columns={columns} 
+            data={tableData} 
+            onDataChange={fetchIgazolasok} 
+            onOptimisticUpdate={handleOptimisticUpdate}
+          />
         )}
       </CardContent>
     </Card>

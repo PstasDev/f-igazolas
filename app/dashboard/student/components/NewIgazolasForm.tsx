@@ -11,10 +11,13 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
 import { IgazolasTipus } from '@/lib/types';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
 
-export function NewIgazolasForm() {
-  const router = useRouter();
+interface NewIgazolasFormProps {
+  onSuccess?: () => void;
+  onCancel?: () => void;
+}
+
+export function NewIgazolasForm({ onSuccess, onCancel }: NewIgazolasFormProps) {
   const [igazolasTipusok, setIgazolasTipusok] = useState<IgazolasTipus[]>([]);
   const [isLoadingTipusok, setIsLoadingTipusok] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,8 +84,13 @@ export function NewIgazolasForm() {
       setMegjegyzesDiak('');
       setImageURL('');
       
-      // Navigate back to overview
-      router.push('/dashboard');
+      // Call success callback instead of navigating
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        // Navigate to igazolasok view using hash instead of router.push
+        window.location.hash = 'igazolasok';
+      }
     } catch (error) {
       console.error('Failed to create igazolás:', error);
       const errorMessage = (error as Error)?.message || 'Hiba történt az igazolás beküldésekor';
@@ -209,7 +217,7 @@ export function NewIgazolasForm() {
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => router.back()}
+              onClick={() => onCancel ? onCancel() : (window.location.hash = 'igazolasok')}
               disabled={isSubmitting}
             >
               Mégse

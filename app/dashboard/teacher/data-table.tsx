@@ -37,7 +37,6 @@ import {
   Clock, 
   FileText, 
   User, 
-  Video,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
@@ -45,7 +44,8 @@ import {
   Info,
   RotateCcw,
   CheckCheck,
-  XCircle
+  XCircle,
+  Clapperboard
 } from "lucide-react"
 import {
   Sheet,
@@ -54,6 +54,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { getIgazolasType } from "../types"
 import {
   Select,
   SelectContent,
@@ -71,17 +72,20 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { GoogleDriveIcon } from "./columns"
 import { apiClient } from "@/lib/api"
 import { toast } from "sonner"
+import { getPeriodSchedule } from "@/lib/periods"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onDataChange?: () => void
+  onOptimisticUpdate?: (id: string, newAllapot: string) => void
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   onDataChange,
+  onOptimisticUpdate,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -93,7 +97,6 @@ export function DataTable<TData, TValue>({
   const [filterStatus, setFilterStatus] = React.useState<string>("all")
   const [filterType, setFilterType] = React.useState<string>("all")
   const [filterFTV, setFilterFTV] = React.useState<string>("all")
-  const [filterCorrection, setFilterCorrection] = React.useState<string>("all")
   const [groupBy, setGroupBy] = React.useState<string>("none")
 
   const table = useReactTable({
@@ -126,6 +129,12 @@ export function DataTable<TData, TValue>({
     if (!selectedRow) return
     
     try {
+      // Optimistic update for the sheet display
+      setSelectedRow(prev => prev ? { ...prev, allapot: 'Elfogadva' } : null);
+      
+      // Apply optimistic update to parent data
+      onOptimisticUpdate?.(selectedRow.id, 'Elfogadva');
+      
       // First update teacher comment if provided
       if (teacherNote.trim()) {
         await apiClient.updateTeacherComment(parseInt(selectedRow.id), { 
@@ -138,10 +147,15 @@ export function DataTable<TData, TValue>({
       
       toast.success('Igazolás jóváhagyva')
       setIsSheetOpen(false)
-      onDataChange?.()
+      
+      // No need to refetch - optimistic update already applied
     } catch (error) {
       console.error('Failed to approve igazolás:', error)
       toast.error('Hiba történt az igazolás jóváhagyásakor')
+      
+      // Revert optimistic update on error
+      setIsSheetOpen(false)
+      onDataChange?.()
     }
   }
 
@@ -149,6 +163,12 @@ export function DataTable<TData, TValue>({
     if (!selectedRow) return
     
     try {
+      // Optimistic update for the sheet display
+      setSelectedRow(prev => prev ? { ...prev, allapot: 'Elutasítva' } : null);
+      
+      // Apply optimistic update to parent data
+      onOptimisticUpdate?.(selectedRow.id, 'Elutasítva');
+      
       // First update teacher comment if provided
       if (teacherNote.trim()) {
         await apiClient.updateTeacherComment(parseInt(selectedRow.id), { 
@@ -161,10 +181,15 @@ export function DataTable<TData, TValue>({
       
       toast.success('Igazolás elutasítva')
       setIsSheetOpen(false)
-      onDataChange?.()
+      
+      // No need to refetch - optimistic update already applied
     } catch (error) {
       console.error('Failed to reject igazolás:', error)
       toast.error('Hiba történt az igazolás elutasításakor')
+      
+      // Revert optimistic update on error
+      setIsSheetOpen(false)
+      onDataChange?.()
     }
   }
 
@@ -172,13 +197,24 @@ export function DataTable<TData, TValue>({
     if (!selectedRow) return
     
     try {
+      // Optimistic update for the sheet display
+      setSelectedRow(prev => prev ? { ...prev, allapot: 'Függőben' } : null);
+      
+      // Apply optimistic update to parent data
+      onOptimisticUpdate?.(selectedRow.id, 'Függőben');
+      
       await apiClient.quickActionIgazolas(parseInt(selectedRow.id), { action: 'Függőben' })
       toast.success('Igazolás státusza visszaállítva függőben állapotra')
       setIsSheetOpen(false)
-      onDataChange?.()
+      
+      // No need to refetch - optimistic update already applied
     } catch (error) {
       console.error('Failed to reset to pending:', error)
       toast.error('Hiba történt a státusz módosításakor')
+      
+      // Revert optimistic update on error
+      setIsSheetOpen(false)
+      onDataChange?.()
     }
   }
 
@@ -192,13 +228,23 @@ export function DataTable<TData, TValue>({
         return
       }
 
+      // Apply optimistic updates
+      ids.forEach(id => {
+        onOptimisticUpdate?.(id.toString(), 'Elfogadva');
+      });
+
       await apiClient.bulkQuickActionIgazolas({ action: 'Elfogadva', ids })
       toast.success(`${ids.length} igazolás jóváhagyva`)
       setRowSelection({})
-      onDataChange?.()
+      
+      // No need to refetch - optimistic updates already applied
     } catch (error) {
       console.error('Failed to bulk approve:', error)
       toast.error('Hiba történt a tömeges jóváhagyás során')
+      
+      // Revert on error by refetching
+      setRowSelection({})
+      onDataChange?.()
     }
   }
 
@@ -212,13 +258,23 @@ export function DataTable<TData, TValue>({
         return
       }
 
+      // Apply optimistic updates
+      ids.forEach(id => {
+        onOptimisticUpdate?.(id.toString(), 'Elutasítva');
+      });
+
       await apiClient.bulkQuickActionIgazolas({ action: 'Elutasítva', ids })
       toast.success(`${ids.length} igazolás elutasítva`)
       setRowSelection({})
-      onDataChange?.()
+      
+      // No need to refetch - optimistic updates already applied
     } catch (error) {
       console.error('Failed to bulk reject:', error)
       toast.error('Hiba történt a tömeges elutasítás során')
+      
+      // Revert on error by refetching
+      setRowSelection({})
+      onDataChange?.()
     }
   }
 
@@ -232,13 +288,23 @@ export function DataTable<TData, TValue>({
         return
       }
 
+      // Apply optimistic updates
+      ids.forEach(id => {
+        onOptimisticUpdate?.(id.toString(), 'Függőben');
+      });
+
       await apiClient.bulkQuickActionIgazolas({ action: 'Függőben', ids })
       toast.success(`${ids.length} igazolás visszaállítva függőben állapotra`)
       setRowSelection({})
-      onDataChange?.()
+      
+      // No need to refetch - optimistic updates already applied
     } catch (error) {
       console.error('Failed to bulk set pending:', error)
       toast.error('Hiba történt a tömeges státusz módosítás során')
+      
+      // Revert on error by refetching
+      setRowSelection({})
+      onDataChange?.()
     }
   }
 
@@ -282,18 +348,10 @@ export function DataTable<TData, TValue>({
       })
     }
 
-    // Correction filter
-    if (filterCorrection !== "all") {
-      filtered = filtered.filter((item) => {
-        const hasCorrection = (item.minutesBefore ?? 0) > 0 || (item.minutesAfter ?? 0) > 0
-        if (filterCorrection === "with") return hasCorrection
-        if (filterCorrection === "without") return !hasCorrection
-        return true
-      })
-    }
+    // Correction filter - removed since not in new UI
 
     return filtered
-  }, [data, filterStatus, filterType, filterFTV, filterCorrection, columnFilters])
+  }, [data, filterStatus, filterType, filterFTV, columnFilters])
 
   // Group data if grouping is enabled
   const groupedData = React.useMemo(() => {
@@ -330,64 +388,66 @@ export function DataTable<TData, TValue>({
 
   const getHoursDisplay = (igazolas: IgazolasTableRow) => {
     const hours = igazolas.hours
+    const correctedHours = igazolas.correctedHours || []
     const allapot = igazolas.allapot
     const fromFTV = igazolas.fromFTV || false
-    const minutesBefore = igazolas.minutesBefore || 0
-    const minutesAfter = igazolas.minutesAfter || 0
-    
-    const correctionHours: number[] = []
-    if (fromFTV && (minutesBefore > 0 || minutesAfter > 0)) {
-      if (minutesBefore >= 45 && hours.length > 0) {
-        const firstHour = Math.min(...hours)
-        if (firstHour > 0) correctionHours.push(firstHour - 1)
-      }
-      if (minutesAfter >= 45 && hours.length > 0) {
-        const lastHour = Math.max(...hours)
-        if (lastHour < 8) correctionHours.push(lastHour + 1)
-      }
-    }
     
     return (
       <TooltipProvider>
         <div className="flex gap-2 flex-wrap">
           {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((h) => {
             const isFTVHour = fromFTV && hours.includes(h)
-            const isCorrectionHour = correctionHours.includes(h)
+            const isCorrectionHour = correctedHours.includes(h)
             const isRegularHour = !fromFTV && hours.includes(h)
             
-            let bgColor = "bg-gray-100 dark:bg-gray-800 text-gray-400"
+            let bgColor = "period-inactive"
+            let glowColor = ""
             let tooltipText = "Nincs hiányzás"
             
             if (isCorrectionHour) {
               if (allapot === 'Elfogadva') {
-                bgColor = "bg-green-500 text-white shadow-md"
-                tooltipText = "Diák korrekció - Osztályfőnök jóváhagyta"
+                bgColor = "period-approved"
+                glowColor = "period-glow-green"
+                tooltipText = `Diák korrekció - Osztályfőnök jóváhagyta\n${getPeriodSchedule(h)}`
+              } else if (allapot === 'Elutasítva') {
+                bgColor = "period-rejected"
+                glowColor = "period-glow-red"
+                tooltipText = `Diák korrekció - Osztályfőnök elutasította\n${getPeriodSchedule(h)}`
               } else {
-                bgColor = "bg-purple-500 text-white shadow-md"
-                tooltipText = "Diák korrekció - Osztályfőnöki jóváhagyásra vár"
+                bgColor = "period-correction"
+                glowColor = "period-glow-purple"
+                tooltipText = `Diák korrekció - Osztályfőnöki jóváhagyásra vár\n${getPeriodSchedule(h)}`
               }
             } else if (isFTVHour) {
               if (allapot === 'Elfogadva') {
-                bgColor = "bg-green-500 text-white shadow-md"
-                tooltipText = "FTV importált - Osztályfőnök jóváhagyta"
+                bgColor = "period-approved"
+                glowColor = "period-glow-green"
+                tooltipText = `FTV importált - Osztályfőnök jóváhagyta\n${getPeriodSchedule(h)}`
               } else if (allapot === 'Elutasítva') {
-                bgColor = "bg-red-500 text-white shadow-md"
-                tooltipText = "FTV importált - Osztályfőnök elutasította"
+                bgColor = "period-rejected"
+                glowColor = "period-glow-red"
+                tooltipText = `FTV importált - Osztályfőnök elutasította\n${getPeriodSchedule(h)}`
               } else {
-                bgColor = "bg-blue-500 text-white shadow-md"
-                tooltipText = "FTV importált - Médiatanár igazolta"
+                bgColor = "period-pending"
+                glowColor = "period-glow-blue"
+                tooltipText = `FTV importált - Médiatanár igazolta\n${getPeriodSchedule(h)}`
               }
             } else if (isRegularHour) {
               if (allapot === 'Függőben') {
-                bgColor = "bg-blue-500 text-white shadow-md" // Blue for pending
-                tooltipText = "Ellenőrzésre vár"
+                bgColor = "period-pending"
+                glowColor = "period-glow-blue"
+                tooltipText = `Ellenőrzésre vár\n${getPeriodSchedule(h)}`
               } else if (allapot === 'Elfogadva') {
-                bgColor = "bg-green-500 text-white shadow-md"
-                tooltipText = "Jóváhagyva"
+                bgColor = "period-approved"
+                glowColor = "period-glow-green"
+                tooltipText = `Jóváhagyva\n${getPeriodSchedule(h)}`
               } else {
-                bgColor = "bg-red-500 text-white shadow-md"
-                tooltipText = "Elutasítva"
+                bgColor = "period-rejected"
+                glowColor = "period-glow-red"
+                tooltipText = `Elutasítva\n${getPeriodSchedule(h)}`
               }
+            } else {
+              tooltipText = `Nincs hiányzás\n${getPeriodSchedule(h)}`
             }
             
             const isActive = isFTVHour || isCorrectionHour || isRegularHour
@@ -396,13 +456,13 @@ export function DataTable<TData, TValue>({
               <Tooltip key={h}>
                 <TooltipTrigger asChild>
                   <span
-                    className={`inline-flex items-center justify-center w-10 h-10 text-sm font-bold rounded-lg transition-all ${bgColor} ${isActive ? 'ring-2 ring-offset-2 ring-gray-200 dark:ring-gray-600' : ''}`}
+                    className={`inline-flex items-center justify-center w-10 h-10 text-sm font-bold rounded-lg cursor-help transition-all duration-500 ease-in-out transform ${bgColor} ${isActive ? glowColor : ''} hover:scale-110`}
                   >
                     {h}
                   </span>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-xs font-medium">{h}. óra: {tooltipText}</p>
+                <TooltipContent className="bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 border-slate-600 dark:border-slate-400 font-medium text-xs whitespace-pre-line max-w-xs shadow-lg">
+                  {tooltipText}
                 </TooltipContent>
               </Tooltip>
             )
@@ -416,118 +476,172 @@ export function DataTable<TData, TValue>({
     <>
       <div className="space-y-4">
         {/* Enhanced Filters */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Szűrők és csoportosítás</CardTitle>
-            <CardDescription>Keress, szűrj és csoportosítsd az igazolásokat</CardDescription>
+        <Card className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-200/50 dark:border-blue-800/50">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-100/50 dark:bg-blue-900/50">
+                  <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+                  </svg>
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">Keresés és szűrés</CardTitle>
+                  <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
+                    Szűrd az igazolásokat és rendezd őket oszlopfejlécre kattintással
+                  </CardDescription>
+                </div>
+              </div>
+              <Badge variant="secondary" className="px-3 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                {table.getFilteredRowModel().rows.length} találat
+              </Badge>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Search and Primary Filters */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Input
-                placeholder="🔍 Keresés diák neve alapján..."
-                value={(table.getColumn("studentName")?.getFilterValue() as string) ?? ""}
-                onChange={(event) =>
-                  table.getColumn("studentName")?.setFilterValue(event.target.value)
-                }
-                className="flex-1"
-              />
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full sm:w-[160px]">
-                  <SelectValue placeholder="Státusz" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Minden státusz</SelectItem>
-                  <SelectItem value="pending">Függőben</SelectItem>
-                  <SelectItem value="approved">Jóváhagyva</SelectItem>
-                  <SelectItem value="rejected">Elutasítva</SelectItem>
-                </SelectContent>
-              </Select>
+          <CardContent className="space-y-6">
+            {/* Primary Search */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Keresés</Label>
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <Input
+                  placeholder="Diák neve alapján..."
+                  value={(table.getColumn("studentName")?.getFilterValue() as string) ?? ""}
+                  onChange={(event) =>
+                    table.getColumn("studentName")?.setFilterValue(event.target.value)
+                  }
+                  className="pl-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
             </div>
 
-            {/* Advanced Filters Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Hiányzás típusa" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Minden típus</SelectItem>
-                  <SelectItem value="studiós távollét">🎬 Studiós</SelectItem>
-                  <SelectItem value="médiás távollét">📺 Médiás</SelectItem>
-                  <SelectItem value="orvosi igazolás">🏥 Orvosi</SelectItem>
-                  <SelectItem value="családi okok">👨‍👩‍👧‍👦 Családi</SelectItem>
-                  <SelectItem value="közlekedés">🚇 Közlekedés</SelectItem>
-                  <SelectItem value="egyéb">📝 Egyéb</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Filter Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Státusz</Label>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500">
+                    <SelectValue placeholder="Válassz státuszt" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                        Minden státusz
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="pending">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                        Függőben
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="approved">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        Jóváhagyva
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="rejected">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                        Elutasítva
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-              <Select value={filterFTV} onValueChange={setFilterFTV}>
-                <SelectTrigger>
-                  <SelectValue placeholder="FTV státusz" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">FTV és nem FTV</SelectItem>
-                  <SelectItem value="ftv">Csak FTV importált</SelectItem>
-                  <SelectItem value="non-ftv">Nem FTV</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Hiányzás típusa</Label>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500">
+                    <SelectValue placeholder="Válassz típust" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Minden típus</SelectItem>
+                    <SelectItem value="studiós távollét">🎬 Studiós</SelectItem>
+                    <SelectItem value="médiás távollét">📺 Médiás</SelectItem>
+                    <SelectItem value="orvosi igazolás">🏥 Orvosi</SelectItem>
+                    <SelectItem value="családi okok">👨‍👩‍👧‍👦 Családi</SelectItem>
+                    <SelectItem value="közlekedés">🚇 Közlekedés</SelectItem>
+                    <SelectItem value="egyéb">📝 Egyéb</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-              <Select value={filterCorrection} onValueChange={setFilterCorrection}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Korrekció" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Minden</SelectItem>
-                  <SelectItem value="with-correction">Korrekció van</SelectItem>
-                  <SelectItem value="no-correction">Nincs korrekció</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">FTV importált</Label>
+                <Select value={filterFTV} onValueChange={setFilterFTV}>
+                  <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500">
+                    <SelectValue placeholder="FTV státusz" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Mind</SelectItem>
+                    <SelectItem value="ftv">
+                      <div className="flex items-center gap-2">
+                        <Clapperboard className="h-3 w-3 text-blue-600" />
+                        Csak FTV
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="non-ftv">Csak manuális</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Csoportosítás</Label>
+                <Select value={groupBy} onValueChange={setGroupBy}>
+                  <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500">
+                    <SelectValue placeholder="Csoportosítás" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nincs csoportosítás</SelectItem>
+                    <SelectItem value="status">Státusz szerint</SelectItem>
+                    <SelectItem value="type">Típus szerint</SelectItem>
+                    <SelectItem value="student">Diák szerint</SelectItem>
+                    <SelectItem value="date">Dátum szerint</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            {/* Grouping Options */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Csoportosítás</label>
-              <Select value={groupBy} onValueChange={setGroupBy}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Csoportosítás módja" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nincs csoportosítás</SelectItem>
-                  <SelectItem value="status">Státusz szerint</SelectItem>
-                  <SelectItem value="type">Típus szerint</SelectItem>
-                  <SelectItem value="student">Diák szerint</SelectItem>
-                  <SelectItem value="date">Dátum szerint</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Active Filters Summary */}
-            {(filterStatus !== "all" || filterType !== "all" || filterFTV !== "all" || filterCorrection !== "all") && (
-              <div className="flex flex-wrap gap-2 items-center pt-2 border-t">
-                <span className="text-sm text-muted-foreground">Aktív szűrők:</span>
+            {/* Active Filters */}
+            {(filterStatus !== "all" || filterType !== "all" || filterFTV !== "all") && (
+              <div className="flex flex-wrap gap-2 items-center pt-4 border-t border-gray-200 dark:border-gray-700">
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Aktív szűrők:</span>
                 {filterStatus !== "all" && (
-                  <Badge variant="secondary" className="gap-1">
+                  <Badge variant="outline" className="gap-2 bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:text-blue-400">
                     Státusz: {filterStatus === "pending" ? "Függőben" : filterStatus === "approved" ? "Jóváhagyva" : "Elutasítva"}
-                    <button onClick={() => setFilterStatus("all")} className="ml-1 hover:bg-muted rounded-full">×</button>
+                    <button 
+                      onClick={() => setFilterStatus("all")} 
+                      className="ml-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </Badge>
                 )}
                 {filterType !== "all" && (
-                  <Badge variant="secondary" className="gap-1">
+                  <Badge variant="outline" className="gap-2 bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-900/20 dark:text-purple-400">
                     Típus: {filterType}
-                    <button onClick={() => setFilterType("all")} className="ml-1 hover:bg-muted rounded-full">×</button>
+                    <button 
+                      onClick={() => setFilterType("all")} 
+                      className="ml-1 hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </Badge>
                 )}
                 {filterFTV !== "all" && (
-                  <Badge variant="secondary" className="gap-1">
+                  <Badge variant="outline" className="gap-2 bg-green-50 text-green-700 border-green-300 dark:bg-green-900/20 dark:text-green-400">
                     FTV: {filterFTV === "ftv" ? "Igen" : "Nem"}
-                    <button onClick={() => setFilterFTV("all")} className="ml-1 hover:bg-muted rounded-full">×</button>
-                  </Badge>
-                )}
-                {filterCorrection !== "all" && (
-                  <Badge variant="secondary" className="gap-1">
-                    Korrekció: {filterCorrection === "with-correction" ? "Van" : "Nincs"}
-                    <button onClick={() => setFilterCorrection("all")} className="ml-1 hover:bg-muted rounded-full">×</button>
+                    <button 
+                      onClick={() => setFilterFTV("all")} 
+                      className="ml-1 hover:bg-green-200 dark:hover:bg-green-800 rounded-full p-0.5 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </Badge>
                 )}
                 <Button
@@ -537,10 +651,10 @@ export function DataTable<TData, TValue>({
                     setFilterStatus("all")
                     setFilterType("all")
                     setFilterFTV("all")
-                    setFilterCorrection("all")
                   }}
-                  className="h-6 px-2 text-xs"
+                  className="h-7 px-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
+                  <RotateCcw className="h-3 w-3 mr-1" />
                   Összes törlése
                 </Button>
               </div>
@@ -563,7 +677,7 @@ export function DataTable<TData, TValue>({
                   <Button
                     onClick={handleBulkApprove}
                     size="sm"
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                   >
                     <CheckCheck className="h-4 w-4 mr-2" />
                     Mind jóváhagy
@@ -571,7 +685,7 @@ export function DataTable<TData, TValue>({
                   <Button
                     onClick={handleBulkReject}
                     size="sm"
-                    variant="destructive"
+                    className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     Mind elutasít
@@ -579,8 +693,7 @@ export function DataTable<TData, TValue>({
                   <Button
                     onClick={handleBulkSetPending}
                     size="sm"
-                    variant="outline"
-                    className="border-blue-300 text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                    className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-300 text-blue-700 hover:from-blue-100 hover:to-blue-200 hover:border-blue-400 dark:from-blue-900/20 dark:to-blue-900/30 dark:text-blue-400 dark:hover:from-blue-900/30 dark:hover:to-blue-900/40 shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                   >
                     <Clock className="h-4 w-4 mr-2" />
                     Mind függőben
@@ -589,6 +702,7 @@ export function DataTable<TData, TValue>({
                     onClick={() => setRowSelection({})}
                     size="sm"
                     variant="outline"
+                    className="shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-200"
                   >
                     Kijelölés törlése
                   </Button>
@@ -599,46 +713,50 @@ export function DataTable<TData, TValue>({
         )}
 
         {/* Legend */}
-        <details className="group rounded-lg border bg-card text-card-foreground shadow-sm">
-          <summary className="flex cursor-pointer items-center justify-between p-4 font-medium hover:bg-muted/50 transition-colors">
-            <div className="flex items-center gap-2">
-              <Info className="h-4 w-4 text-muted-foreground" />
-              <span>Órarend színkódok</span>
-            </div>
-            <svg
-              className="h-5 w-5 transition-transform group-open:rotate-180"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </summary>
-          <div className="px-4 pb-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-blue-500 text-white shadow-sm">0</span>
-                <span className="text-xs">Függőben / FTV importált</span>
+        <Card className="border-amber-200 bg-gradient-to-r from-amber-50/50 to-orange-50/50 dark:from-amber-950/50 dark:to-orange-950/50 dark:border-amber-800/50">
+          <CardContent className="p-4">
+            <details className="group">
+              <summary className="flex cursor-pointer items-center justify-between font-medium hover:text-amber-700 dark:hover:text-amber-300 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <span>Órarend színkódok magyarázata</span>
+                </div>
+                <svg
+                  className="h-4 w-4 transition-transform group-open:rotate-180 text-amber-600 dark:text-amber-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <div className="mt-4 pt-3 border-t border-amber-200 dark:border-amber-800">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-white/50 dark:bg-gray-900/50">
+                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-blue-500 text-white shadow-sm">0</span>
+                    <span className="text-sm font-medium">Függőben / FTV importált</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-white/50 dark:bg-gray-900/50">
+                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-purple-500 text-white shadow-sm">0</span>
+                    <span className="text-sm font-medium">Diák korrekció</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-white/50 dark:bg-gray-900/50">
+                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-green-500 text-white shadow-sm">0</span>
+                    <span className="text-sm font-medium">Jóváhagyva</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-white/50 dark:bg-gray-900/50">
+                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-red-500 text-white shadow-sm">0</span>
+                    <span className="text-sm font-medium">Elutasítva</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-white/50 dark:bg-gray-900/50">
+                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-gray-100 dark:bg-gray-800 text-gray-400 border">0</span>
+                    <span className="text-sm font-medium">Nincs hiányzás</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-purple-500 text-white shadow-sm">0</span>
-                <span className="text-xs">Diák korrekció</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-green-500 text-white shadow-sm">0</span>
-                <span className="text-xs">Jóváhagyva</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-red-500 text-white shadow-sm">0</span>
-                <span className="text-xs">Elutasítva</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-gray-100 dark:bg-gray-800 text-gray-400 border">0</span>
-                <span className="text-xs">Nincs hiányzás</span>
-              </div>
-            </div>
-          </div>
-        </details>
+            </details>
+          </CardContent>
+        </Card>
 
         {/* Table */}
         {groupBy === "none" ? (
@@ -646,36 +764,40 @@ export function DataTable<TData, TValue>({
           <Card>
             <CardContent className="p-0">
               <div className="rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader className="bg-muted/50">
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <TableRow key={headerGroup.id}>
-                        {headerGroup.headers.map((header) => {
-                          return (
-                            <TableHead key={header.id} className="font-bold text-xs uppercase tracking-wide">
-                              {header.isPlaceholder
-                                ? null
-                                : flexRender(
-                                    header.column.columnDef.header,
-                                    header.getContext()
-                                  )}
-                            </TableHead>
-                          )
-                        })}
-                      </TableRow>
-                    ))}
-                  </TableHeader>
+                <div className="overflow-x-auto">
+                  <Table className="min-w-full">
+                    <TableHeader className="bg-muted/50">
+                      {table.getHeaderGroups().map((headerGroup) => (
+                        <TableRow key={headerGroup.id}>
+                          {headerGroup.headers.map((header) => {
+                            return (
+                              <TableHead key={header.id} className="font-bold text-xs uppercase tracking-wide whitespace-nowrap">
+                                {header.isPlaceholder
+                                  ? null
+                                  : flexRender(
+                                      header.column.columnDef.header,
+                                      header.getContext()
+                                    )}
+                              </TableHead>
+                            )
+                          })}
+                        </TableRow>
+                      ))}
+                    </TableHeader>
                   <TableBody>
                     {table.getRowModel().rows?.length ? (
                       table.getRowModel().rows.map((row) => (
                         <TableRow
                           key={row.id}
                           data-state={row.getIsSelected() && "selected"}
-                          className="cursor-pointer hover:bg-muted/50 transition-colors border-b"
-                          onClick={() => handleRowClick(row.original)}
+                          className="hover:bg-muted/50 transition-colors border-b"
                         >
                           {row.getVisibleCells().map((cell) => (
-                            <TableCell key={cell.id} className="py-4">
+                            <TableCell 
+                              key={cell.id} 
+                              className={`py-4 ${cell.column.id !== 'actions' ? 'cursor-pointer hover:bg-muted/30' : ''}`}
+                              onClick={cell.column.id !== 'actions' ? () => handleRowClick(row.original) : undefined}
+                            >
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </TableCell>
                           ))}
@@ -694,6 +816,7 @@ export function DataTable<TData, TValue>({
                     )}
                   </TableBody>
                 </Table>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -713,25 +836,26 @@ export function DataTable<TData, TValue>({
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="rounded-lg overflow-hidden">
-                      <Table>
-                        <TableHeader className="bg-muted/50">
-                          {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
-                              {headerGroup.headers.map((header) => {
-                                return (
-                                  <TableHead key={header.id} className="font-bold text-xs uppercase tracking-wide">
-                                    {header.isPlaceholder
-                                      ? null
-                                      : flexRender(
-                                          header.column.columnDef.header,
-                                          header.getContext()
-                                        )}
-                                  </TableHead>
-                                )
-                              })}
-                            </TableRow>
-                          ))}
-                        </TableHeader>
+                      <div className="overflow-x-auto">
+                        <Table className="min-w-full">
+                          <TableHeader className="bg-muted/50">
+                            {table.getHeaderGroups().map((headerGroup) => (
+                              <TableRow key={headerGroup.id}>
+                                {headerGroup.headers.map((header) => {
+                                  return (
+                                    <TableHead key={header.id} className="font-bold text-xs uppercase tracking-wide whitespace-nowrap">
+                                      {header.isPlaceholder
+                                        ? null
+                                        : flexRender(
+                                            header.column.columnDef.header,
+                                            header.getContext()
+                                          )}
+                                    </TableHead>
+                                  )
+                                })}
+                              </TableRow>
+                            ))}
+                          </TableHeader>
                         <TableBody>
                           {groupRows.map((rowData) => {
                             const row = table.getRowModel().rows.find(r => (r.original as IgazolasTableRow).id === rowData.id)
@@ -741,11 +865,14 @@ export function DataTable<TData, TValue>({
                               <TableRow
                                 key={row.id}
                                 data-state={row.getIsSelected() && "selected"}
-                                className="cursor-pointer hover:bg-muted/50 transition-colors border-b"
-                                onClick={() => handleRowClick(row.original)}
+                                className="hover:bg-muted/50 transition-colors border-b"
                               >
                                 {row.getVisibleCells().map((cell) => (
-                                  <TableCell key={cell.id} className="py-4">
+                                  <TableCell 
+                                    key={cell.id} 
+                                    className={`py-4 ${cell.column.id !== 'actions' ? 'cursor-pointer hover:bg-muted/30' : ''}`}
+                                    onClick={cell.column.id !== 'actions' ? () => handleRowClick(row.original) : undefined}
+                                  >
                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                   </TableCell>
                                 ))}
@@ -754,6 +881,7 @@ export function DataTable<TData, TValue>({
                           })}
                         </TableBody>
                       </Table>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -822,17 +950,17 @@ export function DataTable<TData, TValue>({
                     </SheetDescription>
                   </div>
                   {selectedRow.allapot === 'Függőben' && (
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:text-blue-400">
+                    <Badge variant="pending">
                       Függőben
                     </Badge>
                   )}
                   {selectedRow.allapot === 'Elfogadva' && (
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 dark:bg-green-900/20 dark:text-green-400">
+                    <Badge variant="approved">
                       Elfogadva
                     </Badge>
                   )}
                   {selectedRow.allapot === 'Elutasítva' && (
-                    <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 dark:bg-red-900/20 dark:text-red-400 shrink-0">
+                    <Badge variant="rejected">
                       Elutasítva
                     </Badge>
                   )}
@@ -871,9 +999,18 @@ export function DataTable<TData, TValue>({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2 p-3 rounded-lg bg-muted/30">
                           <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Hiányzás típusa</Label>
-                          <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30">
-                            {selectedRow.type}
-                          </Badge>
+                          {(() => {
+                            const typeInfo = getIgazolasType(selectedRow.type)
+                            return (
+                              <Badge 
+                                variant="outline" 
+                                className={`${typeInfo.color} inline-flex items-center gap-1.5 font-medium`}
+                              >
+                                <span className="text-sm">{typeInfo.emoji}</span>
+                                {typeInfo.name}
+                              </Badge>
+                            )
+                          })()}
                         </div>
                         <div className="space-y-2 p-3 rounded-lg bg-muted/30">
                           <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
@@ -890,19 +1027,21 @@ export function DataTable<TData, TValue>({
                         </div>
 
                         {selectedRow.fromFTV && (
-                          <Alert className="border-blue-300 bg-blue-50 dark:bg-blue-900/20">
-                            <Video className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                            <AlertTitle className="text-blue-900 dark:text-blue-300">FTV Importált Adat</AlertTitle>
+                          <Alert className="border-blue-300 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20">
+                            <AlertTitle className="text-blue-900 dark:text-blue-400 text-lg inline-flex items-center gap-2 mb-2">
+                              <Clapperboard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                              FTV Importált Adat
+                              </AlertTitle>
                             <AlertDescription className="text-blue-800 dark:text-blue-400">
                               <p className="mb-2">Ez az igazolás a Forgatásszervezői Platformról került importálásra, és a médiatanár már igazolta a jelenlétet.</p>
                               {(selectedRow.minutesBefore || selectedRow.minutesAfter) && (
-                                <div className="mt-3 p-3 rounded-md bg-purple-100 dark:bg-purple-900/30 border border-purple-300">
+                                <div className="mt-3 p-3 rounded-md bg-purple-100 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-500">
                                   <p className="font-semibold text-purple-900 dark:text-purple-300 mb-1">Diák korrekciója:</p>
                                   {(selectedRow.minutesBefore ?? 0) > 0 && (
-                                    <p className="text-sm text-purple-800 dark:text-purple-400">• {selectedRow.minutesBefore} perc a forgatás előtt</p>
+                                    <p className="text-sm text-purple-800 dark:text-purple-400">• <span className="text-purple-900 dark:text-purple-300 font-bold">{selectedRow.minutesBefore}</span> perc a forgatás előtt</p>
                                   )}
                                   {(selectedRow.minutesAfter ?? 0) > 0 && (
-                                    <p className="text-sm text-purple-800 dark:text-purple-400">• {selectedRow.minutesAfter} perc a forgatás után</p>
+                                    <p className="text-sm text-purple-800 dark:text-purple-400">• <span className="text-purple-900 dark:text-purple-300 font-bold">{selectedRow.minutesAfter}</span> perc a forgatás után</p>
                                   )}
                                 </div>
                               )}
@@ -911,17 +1050,36 @@ export function DataTable<TData, TValue>({
                         )}
 
                         <div className="space-y-2 p-4 rounded-lg bg-muted/30">
-                          <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Diák megjegyzése</Label>
-                          <p className="text-sm leading-relaxed">{selectedRow.status}</p>
+                          {selectedRow.correctedHours && selectedRow.correctedHours.length > 0 ? (
+                          <>
+                          <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Korrekció indoklása</Label>
+                          <p className="text-sm leading-relaxed">{selectedRow.status || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
+                          </>
+                          ) : !selectedRow.fromFTV ? (
+                          <>
+                          <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Indoklás</Label>
+                          <p className="text-sm leading-relaxed">{selectedRow.status || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
+                          </>
+                          ) : null}
                         </div>
 
-                        {selectedRow.imageUrl && (
+                        {(selectedRow.imageUrl || selectedRow.imgDriveURL) && (
                           <div className="space-y-2">
                             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
                               <GoogleDriveIcon className="h-3 w-3" />
                               Mellékelt kép (Google Drive)
                             </Label>
-                            <Button variant="outline" size="lg" className="w-full h-auto py-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border-emerald-300">
+                            <Button 
+                              variant="outline" 
+                              size="lg" 
+                              className="w-full h-auto py-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border-emerald-300"
+                              onClick={() => {
+                                const imageUrl = selectedRow.imageUrl || selectedRow.imgDriveURL
+                                if (imageUrl) {
+                                  window.open(imageUrl, '_blank', 'noopener,noreferrer')
+                                }
+                              }}
+                            >
                               <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
                                   <GoogleDriveIcon className="h-5 w-5" />
@@ -936,21 +1094,30 @@ export function DataTable<TData, TValue>({
                           </div>
                         )}
 
-                      <div className="space-y-2 p-3 rounded-lg bg-muted/30 border">
+                        <div className="space-y-2 p-3 rounded-lg bg-muted/30 border">
                         <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          Beküldés időpontja
+                          {selectedRow.fromFTV ? (
+                          <>
+                            <RotateCcw className="h-3 w-3" />
+                            Utoljára szinkronizálva
+                          </>
+                          ) : (
+                          <>
+                            <Clock className="h-3 w-3" />
+                            Rögzítés dátuma
+                          </>
+                          )}
                         </Label>
                         <p className="text-sm font-medium">
-                          {new Date(selectedRow.submittedAt).toLocaleString('hu-HU', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
+                          {new Date(
+                          selectedRow.submittedAt
+                          ).toLocaleString('hu-HU', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
                           })}
                         </p>
-                      </div>
+                        </div>
                     </CardContent>
                   </Card>
 
@@ -969,9 +1136,11 @@ export function DataTable<TData, TValue>({
                       </CardHeader>
                       
                       <CardContent className="pt-6 space-y-4">
-                        <Alert className="border-blue-300 bg-blue-50 dark:bg-blue-900/20">
-                          <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          <AlertTitle className="text-blue-900 dark:text-blue-300">Fontos információ</AlertTitle>
+                        <Alert className="border-blue-300 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-500">
+                          <AlertTitle className="text-blue-900 dark:text-blue-300 text-lg inline-flex items-center gap-2 mb-2">
+                            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            Fontos információ
+                          </AlertTitle>
                           <AlertDescription className="text-blue-800 dark:text-blue-400 text-sm">
                             A jóváhagyás vagy elutasítás az <strong>egész igazolásra</strong> vonatkozik. Az egyes tanórák külön-külön nem hagyhatók jóvá vagy utasíthatók el.
                           </AlertDescription>
@@ -1003,19 +1172,19 @@ export function DataTable<TData, TValue>({
                           <Label className="text-sm font-semibold">Jelenlegi státusz</Label>
                           <div className="flex items-center gap-2">
                             {selectedRow.allapot === 'Függőben' && (
-                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/20 text-base px-4 py-2">
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/20 text-base px-4 py-2 dark:border-blue-500 dark:text-blue-400">
                                 <Clock className="h-4 w-4 mr-2" />
                                 Függőben - Döntésre vár
                               </Badge>
                             )}
                             {selectedRow.allapot === 'Elfogadva' && (
-                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 dark:bg-green-900/20 text-base px-4 py-2">
+                              <Badge variant="outline" className="bg-green-50 text-green-700 dark:text-green-400 dark:border-green-500 border-green-300 dark:bg-green-900/20 text-base px-4 py-2">
                                 <Check className="h-4 w-4 mr-2" />
                                 Elfogadva
                               </Badge>
                             )}
                             {selectedRow.allapot === 'Elutasítva' && (
-                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 dark:bg-red-900/20 text-base px-4 py-2">
+                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 dark:bg-red-900/20 text-base px-4 py-2 dark:border-red-500 dark:text-red-400">
                                 <X className="h-4 w-4 mr-2" />
                                 Elutasítva
                               </Badge>
@@ -1028,7 +1197,7 @@ export function DataTable<TData, TValue>({
                             <Button
                               onClick={handleApprove}
                               size="lg"
-                              className="bg-green-600 hover:bg-green-700 text-white font-semibold shadow-md hover:shadow-lg transition-all"
+                              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
                             >
                               <Check className="h-5 w-5 mr-2" />
                               Jóváhagy
@@ -1036,8 +1205,7 @@ export function DataTable<TData, TValue>({
                             <Button
                               onClick={handleReject}
                               size="lg"
-                              variant="destructive"
-                              className="font-semibold shadow-md hover:shadow-lg transition-all"
+                              className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
                             >
                               <X className="h-5 w-5 mr-2" />
                               Elutasít
@@ -1048,7 +1216,7 @@ export function DataTable<TData, TValue>({
                             <Button
                               variant="outline"
                               size="lg"
-                              className="w-full font-semibold"
+                              className="w-full font-semibold border-2 hover:bg-blue-50 hover:border-blue-300 dark:hover:bg-blue-900/20 dark:hover:border-blue-600 transform hover:scale-105 transition-all duration-200"
                               onClick={handleResetToPending}
                             >
                               <RotateCcw className="h-5 w-5 mr-2" />
@@ -1057,7 +1225,7 @@ export function DataTable<TData, TValue>({
                             <Button
                               variant="outline"
                               size="lg"
-                              className="w-full font-semibold"
+                              className="w-full font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transform hover:scale-105 transition-all duration-200"
                               onClick={() => setIsSheetOpen(false)}
                             >
                               Bezár

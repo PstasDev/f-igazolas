@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { CheckCircle2, XCircle, Clock, Calendar, Eye, Inbox, User, Check, X } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { Igazolas } from '@/lib/types';
+import { getIgazolasType } from '@/app/dashboard/types';
 import { toast } from 'sonner';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -55,11 +56,11 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
 
   const getStatusBadge = (allapot: string) => {
     if (allapot === 'Elfogadva') {
-      return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Jóváhagyva</Badge>;
+      return <Badge variant="approved">Jóváhagyva</Badge>;
     } else if (allapot === 'Elutasítva') {
-      return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Elutasítva</Badge>;
+      return <Badge variant="rejected">Elutasítva</Badge>;
     }
-    return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Függőben</Badge>;
+    return <Badge variant="pending">Függőben</Badge>;
   };
 
   const getStatusIcon = (allapot: string) => {
@@ -156,11 +157,21 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
                         {getStatusIcon(igazolas.allapot)}
                       </ItemMedia>
                       <ItemContent>
-                        <ItemTitle>{igazolas.tipus.nev}</ItemTitle>
+                        <ItemTitle>
+                          {(() => {
+                            const typeConfig = getIgazolasType(igazolas.tipus.nev);
+                            return (
+                              <Badge variant="outline" className={`${typeConfig.color} text-sm`}>
+                                <span className="mr-1.5">{typeConfig.emoji}</span>
+                                {typeConfig.name}
+                              </Badge>
+                            );
+                          })()}
+                        </ItemTitle>
                         <ItemDescription className="flex flex-col gap-1 text-xs">
                           <span className="flex items-center gap-1">
                             <User className="h-3 w-3" />
-                            {igazolas.profile.user.first_name} {igazolas.profile.user.last_name} ({igazolas.profile.osztalyom?.nev || 'N/A'})
+                            {igazolas.profile.user.last_name} {igazolas.profile.user.first_name} ({igazolas.profile.osztalyom?.nev || 'N/A'})
                           </span>
                           <span className="flex items-center gap-2">
                             <Calendar className="h-3 w-3" />
@@ -186,11 +197,21 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
             {selectedIgazolas ? (
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">{selectedIgazolas.tipus.nev}</h3>
+                  <div className="flex items-center gap-3 mb-4">
+                    {(() => {
+                      const typeConfig = getIgazolasType(selectedIgazolas.tipus.nev);
+                      return (
+                        <Badge variant="outline" className={`${typeConfig.color} text-base px-3 py-1.5`}>
+                          <span className="mr-2">{typeConfig.emoji}</span>
+                          {typeConfig.name}
+                        </Badge>
+                      );
+                    })()}
+                  </div>
                   <div className="space-y-1 text-sm text-muted-foreground mb-4">
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4" />
-                      {selectedIgazolas.profile.user.first_name} {selectedIgazolas.profile.user.last_name} - {selectedIgazolas.profile.osztalyom?.nev || 'N/A'}
+                      {selectedIgazolas.profile.user.last_name} {selectedIgazolas.profile.user.first_name} - {selectedIgazolas.profile.osztalyom?.nev || 'N/A'}
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4" />
@@ -248,7 +269,7 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
                   <div className="pt-4 grid grid-cols-2 gap-2">
                     <Button 
                       onClick={() => handleApprove(selectedIgazolas.id)}
-                      className="bg-green-600 hover:bg-green-700 text-white"
+                      className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                       disabled={isUpdating}
                     >
                       <Check className="h-4 w-4 mr-2" />
@@ -256,7 +277,7 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
                     </Button>
                     <Button 
                       onClick={() => handleReject(selectedIgazolas.id)}
-                      variant="destructive"
+                      className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                       disabled={isUpdating}
                     >
                       <X className="h-4 w-4 mr-2" />
@@ -308,11 +329,21 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
                   {getStatusIcon(igazolas.allapot)}
                 </ItemMedia>
                 <ItemContent>
-                  <ItemTitle>{igazolas.tipus.nev}</ItemTitle>
+                  <ItemTitle>
+                    {(() => {
+                      const typeConfig = getIgazolasType(igazolas.tipus.nev);
+                      return (
+                        <Badge variant="outline" className={`${typeConfig.color} text-sm`}>
+                          <span className="mr-1.5">{typeConfig.emoji}</span>
+                          {typeConfig.name}
+                        </Badge>
+                      );
+                    })()}
+                  </ItemTitle>
                   <ItemDescription className="flex flex-col gap-1 text-xs">
                     <span className="flex items-center gap-1">
                       <User className="h-3 w-3" />
-                      {igazolas.profile.user.first_name} {igazolas.profile.user.last_name} ({igazolas.profile.osztalyom?.nev || 'N/A'})
+                      {igazolas.profile.user.last_name} {igazolas.profile.user.first_name} ({igazolas.profile.osztalyom?.nev || 'N/A'})
                     </span>
                     <span className="flex items-center gap-2">
                       <Calendar className="h-3 w-3" />

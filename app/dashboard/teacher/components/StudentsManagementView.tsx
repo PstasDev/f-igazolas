@@ -133,7 +133,7 @@ export function StudentsManagementView() {
                   return (
                     <TableRow key={profile.id} className="hover:bg-accent/50">
                       <TableCell className="font-medium">
-                        {profile.user.first_name} {profile.user.last_name}
+                        {profile.user.last_name} {profile.user.first_name}
                       </TableCell>
                       <TableCell>{profile.osztalyom?.nev || 'N/A'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
@@ -144,7 +144,7 @@ export function StudentsManagementView() {
                       </TableCell>
                       <TableCell className="text-center">
                         {stats.pending > 0 ? (
-                          <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                          <Badge variant="warning">
                             {stats.pending}
                           </Badge>
                         ) : (
@@ -153,7 +153,7 @@ export function StudentsManagementView() {
                       </TableCell>
                       <TableCell className="text-center">
                         {stats.approved > 0 ? (
-                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                          <Badge variant="approved">
                             {stats.approved}
                           </Badge>
                         ) : (
@@ -162,7 +162,7 @@ export function StudentsManagementView() {
                       </TableCell>
                       <TableCell className="text-center">
                         {stats.rejected > 0 ? (
-                          <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                          <Badge variant="rejected">
                             {stats.rejected}
                           </Badge>
                         ) : (
@@ -196,7 +196,7 @@ export function StudentsManagementView() {
             <>
               <SheetHeader>
                 <SheetTitle>
-                  {selectedStudent.user.first_name} {selectedStudent.user.last_name}
+                  {selectedStudent.user.last_name} {selectedStudent.user.first_name}
                 </SheetTitle>
                 <SheetDescription>
                   {selectedStudent.osztalyom?.nev || 'N/A'} • {selectedStudent.user.email || 'Nincs email'}

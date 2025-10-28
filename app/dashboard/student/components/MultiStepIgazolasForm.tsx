@@ -29,7 +29,7 @@ import { apiClient } from "@/lib/api"
 import { IgazolasTipus } from "@/lib/types"
 import { useRouter } from "next/navigation"
 
-interface FormData {
+interface IgazolasFormData {
   // Step 1: Basic Info
   selectedTipus: string
   
@@ -82,16 +82,19 @@ const reasonTypes = [
   { value: "egyeb", label: "Egyéb", emoji: "📝" },
 ]
 
+interface MultiStepIgazolasFormProps {
+  onSuccess?: () => void;
+  onCancel?: () => void;
+}
+
 export function MultiStepIgazolasForm() {
   const [currentStep, setCurrentStep] = useState(1)
-  const [formData, setFormData] = useState<FormData>({
-    type: "",
-    reason: "",
-    startDate: undefined,
-    endDate: undefined,
-    description: "",
-    attachment: null,
-    isUrgent: false,
+  const [formData, setFormData] = useState<IgazolasFormData>({
+    selectedTipus: "",
+    startDateTime: "",
+    endDateTime: "",
+    megjegyzesDiak: "",
+    imageURL: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
@@ -101,13 +104,12 @@ export function MultiStepIgazolasForm() {
     
     switch (step) {
       case 1:
-        if (!formData.type) errors.push("Válassza ki a hiányzás típusát")
-        if (!formData.reason.trim()) errors.push("Adja meg a hiányzás okát")
+        if (!formData.selectedTipus) errors.push("Válassza ki a hiányzás típusát")
         break
       case 2:
-        if (!formData.startDate) errors.push("Válassza ki a kezdő dátumot")
-        if (!formData.endDate) errors.push("Válassza ki a befejező dátumot")
-        if (formData.startDate && formData.endDate && formData.startDate >= formData.endDate) {
+        if (!formData.startDateTime) errors.push("Válassza ki a kezdő dátumot")
+        if (!formData.endDateTime) errors.push("Válassza ki a befejező dátumot")
+        if (formData.startDateTime && formData.endDateTime && formData.startDateTime >= formData.endDateTime) {
           errors.push("A befejező dátum későbbi kell legyen a kezdőnél")
         }
         break

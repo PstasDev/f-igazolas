@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Calendar, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { Igazolas } from '@/lib/types';
+import { getIgazolasType } from '@/app/dashboard/types';
 import { toast } from 'sonner';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -57,10 +58,10 @@ export function StudentIgazolasokHistory({ studentId }: StudentIgazolasokHistory
         setStats({
           total: studentIgazolasok.length,
           pending: studentIgazolasok.filter(
-            i => i.allapot === 'fuggohiany' || i.allapot === 'feldolgozas_alatt'
+            i => i.allapot === 'Függőben'
           ).length,
-          approved: studentIgazolasok.filter(i => i.allapot === 'elfogadva').length,
-          rejected: studentIgazolasok.filter(i => i.allapot === 'elutasitva').length,
+          approved: studentIgazolasok.filter(i => i.allapot === 'Elfogadva').length,
+          rejected: studentIgazolasok.filter(i => i.allapot === 'Elutasítva').length,
           totalHours: Math.round(totalHours),
         });
       } catch (error) {
@@ -75,16 +76,16 @@ export function StudentIgazolasokHistory({ studentId }: StudentIgazolasokHistory
   }, [studentId]);
 
   const getStatusBadge = (allapot: string) => {
-    if (allapot === 'elfogadva') {
-      return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 flex items-center gap-1 w-fit">
+    if (allapot === 'Elfogadva') {
+      return <Badge variant="approved" className="flex items-center gap-1 w-fit">
         <CheckCircle2 className="h-3 w-3" /> Jóváhagyva
       </Badge>;
-    } else if (allapot === 'elutasitva') {
-      return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 flex items-center gap-1 w-fit">
+    } else if (allapot === 'Elutasítva') {
+      return <Badge variant="rejected" className="flex items-center gap-1 w-fit">
         <XCircle className="h-3 w-3" /> Elutasítva
       </Badge>;
     }
-    return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 flex items-center gap-1 w-fit">
+    return <Badge variant="warning" className="flex items-center gap-1 w-fit">
       <Clock className="h-3 w-3" /> Függőben
     </Badge>;
   };
@@ -185,13 +186,23 @@ export function StudentIgazolasokHistory({ studentId }: StudentIgazolasokHistory
               <TableBody>
                 {igazolasok.map((igazolas) => (
                   <TableRow key={igazolas.id}>
-                    <TableCell className="font-medium">
+                    <TableCell>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         {new Date(igazolas.eleje).toLocaleDateString('hu-HU')}
                       </div>
                     </TableCell>
-                    <TableCell>{igazolas.tipus.nev}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const typeConfig = getIgazolasType(igazolas.tipus.nev);
+                        return (
+                          <Badge variant="outline" className={typeConfig.color}>
+                            <span className="mr-1.5">{typeConfig.emoji}</span>
+                            {typeConfig.name}
+                          </Badge>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {getHoursDisplay(igazolas.eleje, igazolas.vege)}

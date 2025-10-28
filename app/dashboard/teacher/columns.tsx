@@ -2,11 +2,13 @@
 
 import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Button } from "@/components/ui/button"
 import { IgazolasTableRow, getIgazolasType } from "@/app/dashboard/types"
-import { Calendar, FileText, Video, Check, X, Clock } from "lucide-react"
+import { Calendar, FileText, ArrowUpDown, ArrowUp, ArrowDown, Clapperboard } from "lucide-react"
+import { QuickActionButtons } from "./components/QuickActionButtons"
+import { getPeriodSchedule } from "@/lib/periods"
 
 interface ActionHandlers {
   onApprove?: (id: string) => void;
@@ -48,7 +50,24 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
   },
   {
     accessorKey: "studentName",
-    header: "Diák",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide"
+        >
+          Diák
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      )
+    },
     cell: ({ row }) => {
       const name = row.getValue("studentName") as string
       const studentClass = row.original.studentClass
@@ -60,10 +79,28 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
         </div>
       )
     },
+    enableSorting: true,
   },
   {
     accessorKey: "type",
-    header: "Hiányzás típusa",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide"
+        >
+          Hiányzás típusa
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      )
+    },
     cell: ({ row }) => {
       const type = row.getValue("type") as string
       const fromFTV = row.original.fromFTV || false
@@ -80,12 +117,12 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
           </Badge>
           {fromFTV && (
             <div className="flex flex-wrap gap-1">
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:text-blue-400 text-xs">
-                <Video className="h-3 w-3 mr-1" />
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:text-blue-400 text-xs dark:border-blue-500">
+                <Clapperboard className="h-3 w-3 mr-1" />
                 FTV
               </Badge>
               {hasCorrection && (
-                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-900/20 dark:text-purple-400 text-xs">
+                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-900/20 dark:border-purple-500 dark:text-purple-400 text-xs">
                   <FileText className="h-3 w-3 mr-1" />
                   +Korrekció
                 </Badge>
@@ -95,85 +132,105 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
         </div>
       )
     },
+    enableSorting: true,
   },
   {
     accessorKey: "date",
-    header: "Dátum",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide"
+        >
+          Dátum
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      )
+    },
     cell: ({ row }) => (
       <div className="flex items-center gap-2 whitespace-nowrap">
         <Calendar className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm font-medium">{row.getValue("date")}</span>
       </div>
     ),
+    enableSorting: true,
   },
   {
     accessorKey: "hours",
     header: "Órarend",
-    size: 600, // Prevent column from being squished
+    size: 400, // Reduced from 600 to prevent overflow
     cell: ({ row }) => {
       const hours = row.original.hours
+      const correctedHours = row.original.correctedHours || []
       const allapot = row.original.allapot
       const fromFTV = row.original.fromFTV || false
-      const minutesBefore = row.original.minutesBefore || 0
-      const minutesAfter = row.original.minutesAfter || 0
-      
-      // Calculate student correction hours (purple - unverified by teacher)
-      const correctionHours: number[] = []
-      if (fromFTV && (minutesBefore > 0 || minutesAfter > 0)) {
-        if (minutesBefore >= 45 && hours.length > 0) {
-          const firstHour = Math.min(...hours)
-          if (firstHour > 0) correctionHours.push(firstHour - 1)
-        }
-        if (minutesAfter >= 45 && hours.length > 0) {
-          const lastHour = Math.max(...hours)
-          if (lastHour < 8) correctionHours.push(lastHour + 1)
-        }
-      }
       
       return (
         <TooltipProvider>
-          <div className="flex gap-1 flex-nowrap min-w-[480px]">
+          <div className="flex gap-1 flex-nowrap min-w-[360px]">
             {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((h) => {
               const isFTVHour = fromFTV && hours.includes(h) // Media teacher verified
-              const isCorrectionHour = correctionHours.includes(h) // Student correction
+              const isCorrectionHour = correctedHours.includes(h) // Student correction
               const isRegularHour = !fromFTV && hours.includes(h) // Regular submission
               
-              let bgColor = "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600"
+              let bgColor = "period-inactive"
+              let glowColor = ""
               let tooltipText = "Nincs hiányzás"
               
               if (isCorrectionHour) {
                 // Purple: Student correction (unverified by class teacher)
                 if (allapot === 'Elfogadva') {
-                  bgColor = "bg-green-500 hover:bg-green-600 text-white shadow-sm" // Approved by class teacher
-                  tooltipText = "Diák korrekció - Osztályfőnök jóváhagyta"
+                  bgColor = "period-approved"
+                  glowColor = "period-glow-green"
+                  tooltipText = `Diák korrekció - Osztályfőnök jóváhagyta\n${getPeriodSchedule(h)}`
+                } else if (allapot === 'Elutasítva') {
+                  bgColor = "period-rejected"
+                  glowColor = "period-glow-red"
+                  tooltipText = `Diák korrekció - Osztályfőnök elutasította\n${getPeriodSchedule(h)}`
                 } else {
-                  bgColor = "bg-purple-500 hover:bg-purple-600 text-white shadow-sm" // Waiting for class teacher approval
-                  tooltipText = "Diák korrekció - Osztályfőnöki jóváhagyásra vár"
+                  bgColor = "period-correction"
+                  glowColor = "period-glow-purple"
+                  tooltipText = `Diák korrekció - Osztályfőnöki jóváhagyásra vár\n${getPeriodSchedule(h)}`
                 }
               } else if (isFTVHour) {
                 // Blue: Media teacher verified, waiting for class teacher approval
                 if (allapot === 'Elfogadva') {
-                  bgColor = "bg-green-500 hover:bg-green-600 text-white shadow-sm" // Approved by class teacher
-                  tooltipText = "FTV importált - Osztályfőnök jóváhagyta"
+                  bgColor = "period-approved"
+                  glowColor = "period-glow-green"
+                  tooltipText = `FTV importált - Osztályfőnök jóváhagyta\n${getPeriodSchedule(h)}`
                 } else if (allapot === 'Elutasítva') {
-                  bgColor = "bg-red-500 hover:bg-red-600 text-white shadow-sm" // Rejected by class teacher
-                  tooltipText = "FTV importált - Osztályfőnök elutasította"
+                  bgColor = "period-rejected"
+                  glowColor = "period-glow-red"
+                  tooltipText = `FTV importált - Osztályfőnök elutasította\n${getPeriodSchedule(h)}`
                 } else {
-                  bgColor = "bg-blue-500 hover:bg-blue-600 text-white shadow-sm" // Verified by media teacher, pending class teacher
-                  tooltipText = "FTV importált - Médiatanár igazolta, osztályfőnöki jóváhagyásra vár"
+                  bgColor = "period-pending"
+                  glowColor = "period-glow-blue"
+                  tooltipText = `FTV importált - Médiatanár igazolta, osztályfőnöki jóváhagyásra vár\n${getPeriodSchedule(h)}`
                 }
               } else if (isRegularHour) {
                 // Regular submission - follows normal approval flow
                 if (allapot === 'Függőben') {
-                  bgColor = "bg-blue-500 hover:bg-blue-600 text-white shadow-sm" // Pending - BLUE not yellow
-                  tooltipText = "Ellenőrzésre vár"
+                  bgColor = "period-pending"
+                  glowColor = "period-glow-blue"
+                  tooltipText = `Ellenőrzésre vár\n${getPeriodSchedule(h)}`
                 } else if (allapot === 'Elfogadva') {
-                  bgColor = "bg-green-500 hover:bg-green-600 text-white shadow-sm" // Approved
-                  tooltipText = "Jóváhagyva"
+                  bgColor = "period-approved"
+                  glowColor = "period-glow-green"
+                  tooltipText = `Jóváhagyva\n${getPeriodSchedule(h)}`
                 } else if (allapot === 'Elutasítva') {
-                  bgColor = "bg-red-500 hover:bg-red-600 text-white shadow-sm" // Rejected
-                  tooltipText = "Elutasítva"
+                  bgColor = "period-rejected"
+                  glowColor = "period-glow-red"
+                  tooltipText = `Elutasítva\n${getPeriodSchedule(h)}`
                 }
+              } else {
+                tooltipText = `Nincs hiányzás\n${getPeriodSchedule(h)}`
               }
               
               const isActive = isFTVHour || isCorrectionHour || isRegularHour
@@ -182,13 +239,13 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
                 <Tooltip key={h}>
                   <TooltipTrigger asChild>
                     <span
-                      className={`inline-flex items-center justify-center w-8 h-8 text-xs font-semibold rounded-md transition-all cursor-help ${bgColor} ${isActive ? 'ring-1 ring-offset-1 ring-gray-200 dark:ring-gray-700' : ''}`}
+                      className={`inline-flex items-center justify-center w-7 h-7 text-xs font-semibold rounded-md cursor-help transform ${bgColor} ${isActive ? glowColor : ''} hover:scale-110`}
                     >
                       {h}
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs font-medium">{h}. óra: {tooltipText}</p>
+                  <TooltipContent className="bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 border-slate-600 dark:border-slate-400 font-medium text-xs whitespace-pre-line max-w-xs shadow-lg">
+                    {tooltipText}
                   </TooltipContent>
                 </Tooltip>
               )
@@ -203,13 +260,24 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
     header: "Indoklás",
     cell: ({ row }) => {
       const reason = row.getValue("status") as string
-      const imageUrl = row.original.imageUrl
+      const imageUrl = row.original.imageUrl || row.original.imgDriveURL
+      
+      const handleImageClick = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (imageUrl) {
+          window.open(imageUrl, '_blank', 'noopener,noreferrer')
+        }
+      }
       
       return (
         <div className="flex flex-col gap-2">
           <span className="text-sm">{reason}</span>
           {imageUrl && (
-            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-900/20 dark:text-emerald-400 w-fit">
+            <Badge 
+              variant="emerald" 
+              className="w-fit cursor-pointer hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors"
+              onClick={handleImageClick}
+            >
               <GoogleDriveIcon className="h-3 w-3 mr-1" />
               Kép csatolva
             </Badge>
@@ -225,41 +293,12 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
       const allapot = row.original.allapot
       
       return (
-        <div className="flex gap-1">
-          <Button
-            size="sm"
-            variant={allapot === 'Elfogadva' ? "default" : "outline"}
-            className={allapot === 'Elfogadva' ? "bg-green-600 hover:bg-green-700 text-white" : "hover:bg-green-50"}
-            onClick={(e) => {
-              e.stopPropagation()
-              actionHandlers?.onApprove?.(row.original.id)
-            }}
-          >
-            <Check className="h-4 w-4" />
-          </Button>
-          <Button
-            size="sm"
-            variant={allapot === 'Elutasítva' ? "destructive" : "outline"}
-            className={allapot === 'Elutasítva' ? "" : "hover:bg-red-50"}
-            onClick={(e) => {
-              e.stopPropagation()
-              actionHandlers?.onReject?.(row.original.id)
-            }}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-          <Button
-            size="sm"
-            variant={allapot === 'Függőben' ? "default" : "outline"}
-            className={allapot === 'Függőben' ? "bg-blue-600 hover:bg-blue-700 text-white" : "hover:bg-blue-50"}
-            onClick={(e) => {
-              e.stopPropagation()
-              actionHandlers?.onSetPending?.(row.original.id)
-            }}
-          >
-            <Clock className="h-4 w-4" />
-          </Button>
-        </div>
+        <QuickActionButtons
+          allapot={allapot}
+          onApprove={() => actionHandlers?.onApprove?.(row.original.id)}
+          onReject={() => actionHandlers?.onReject?.(row.original.id)}
+          onSetPending={() => actionHandlers?.onSetPending?.(row.original.id)}
+        />
       )
     },
   },

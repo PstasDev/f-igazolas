@@ -8,6 +8,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyMedia, EmptyTitle } from '@
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText, Clock, CheckCircle2, XCircle, Calendar, Eye, Inbox } from 'lucide-react';
+import { getIgazolasType } from '../../types';
 
 interface Igazolas {
   id: string;
@@ -148,7 +149,18 @@ export function IgazolasokList({ variant }: IgazolasokListProps) {
 
                 <div>
                   <h4 className="text-sm font-medium mb-2">Típus</h4>
-                  <p className="text-sm text-muted-foreground capitalize">{selectedIgazolas.type}</p>
+                  {(() => {
+                    const typeInfo = getIgazolasType(selectedIgazolas.type)
+                    return (
+                      <Badge 
+                        variant="outline" 
+                        className={`${typeInfo.color} inline-flex items-center gap-1.5 font-medium`}
+                      >
+                        <span className="text-sm">{typeInfo.emoji}</span>
+                        {typeInfo.name}
+                      </Badge>
+                    )
+                  })()}
                 </div>
 
                 <div className="pt-4">

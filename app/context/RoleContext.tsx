@@ -66,13 +66,17 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         ? await checkIfTeacher(profile.user.id, profile.osztalyom.id)
         : false;
 
+      const lastInitial = profile.user.last_name?.trim().charAt(0) || '';
+      const firstInitial = profile.user.first_name?.trim().charAt(0) || '';
+      const avatarSeed = lastInitial && firstInitial ? `${lastInitial}${firstInitial}` : profile.user.username;
+
       const userData: User = {
         id: profile.user.id,
-        name: `${profile.user.first_name || ''} ${profile.user.last_name || ''}`.trim() || profile.user.username,
+        name: `${profile.user.last_name || ''} ${profile.user.first_name || ''}`.trim() || profile.user.username,
         email: profile.user.email || '',
         username: profile.user.username,
         role: isTeacher ? 'teacher' : 'student',
-        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${profile.user.username}`,
+        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(avatarSeed)}`,
         class: profile.osztalyom?.nev,
         profile,
       };

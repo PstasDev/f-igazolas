@@ -3,13 +3,26 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { IgazolasTableRow } from "@/app/dashboard/types"
+import { IgazolasTableRow, getIgazolasType } from "@/app/dashboard/types"
 
 export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
   {
     accessorKey: "type",
     header: "Hiányzás oka",
-    cell: ({ row }) => <div className="max-w-[140px]">{row.getValue("type")}</div>,
+    cell: ({ row }) => {
+      const typeInfo = getIgazolasType(row.getValue("type") as string)
+      return (
+        <div className="max-w-[140px]">
+          <Badge 
+            variant="outline" 
+            className={`${typeInfo.color} inline-flex items-center gap-1.5 font-medium text-xs`}
+          >
+            <span className="text-xs">{typeInfo.emoji}</span>
+            {typeInfo.name}
+          </Badge>
+        </div>
+      )
+    },
   },
   {
     accessorKey: "date",
@@ -101,26 +114,26 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
       
       if (allapot === 'Függőben') {
         return (
-          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+          <Badge variant="pending">
             Függőben
           </Badge>
         )
       } else if (allapot === 'Elfogadva') {
         return (
-          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+          <Badge variant="approved">
             Elfogadva
           </Badge>
         )
       } else if (allapot === 'Elutasítva') {
         return (
-          <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+          <Badge variant="rejected">
             Elutasítva
           </Badge>
         )
       }
       
       return (
-        <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+        <Badge variant="secondary">
           Ismeretlen
         </Badge>
       )
