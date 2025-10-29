@@ -426,7 +426,7 @@ export function MultiStepIgazolasForm() {
                                   Forgalmi Információk (opcionális)
                               </h5>
                               <p className="text-sm text-purple-800 dark:text-purple-200 mb-3">
-                                Amennyiben a BKK rendszerében forgalmi zavar vagy késés <strong>lett regisztrálva</strong>, az alábbi gombra kattintva csaolhatod a hitelesített adatokat az igazolásodhoz.
+                                Amennyiben a BKK rendszerében forgalmi zavar vagy késés <strong>lett regisztrálva</strong>, az alábbi gombra kattintva csatolhatod a hitelesített adatokat az igazolásodhoz.
                               </p>
                               
                               {!formData.bkkDisruption ? (
