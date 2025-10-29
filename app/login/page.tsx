@@ -49,7 +49,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-svh lg:grid-cols-2 overflow-hidden">
+    <div className="grid min-h-svh lg:grid-cols-2 overflow-hidden h-screen">
       <div className="flex flex-col gap-4 p-6 md:p-10">
         <div className="flex justify-center gap-2 md:justify-start">
           <Link href="/" className="flex items-center gap-2 font-medium">
@@ -79,15 +79,15 @@ export default function LoginPage() {
             </Link>
           </div> */}
       </div>
-      <div className="bg-black relative hidden lg:block overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden">
+      <div className="bg-black relative hidden lg:block overflow-hidden h-full">
+        <div className="absolute inset-0 w-full h-full overflow-hidden">
           <Hyperspeed 
             effectOptions={
               isSpecialMode ? {
                 colors: specialModeColors
               } : {}
             }/>
-          <div className="absolute inset-0 flex h-full items-center justify-center p-10 bg-black/30">
+          <div className="absolute inset-0 flex h-full items-center justify-center p-10 bg-black/30 z-10">
             <div className="max-w-md text-white">
               <h2 className="text-3xl font-bold mb-4 font-serif">Szent László Gimnázium</h2>
               <p className="text-lg mb-4">F Tagozat - Igazoláskezelő Rendszer</p>

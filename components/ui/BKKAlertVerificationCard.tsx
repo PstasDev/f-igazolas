@@ -53,20 +53,22 @@ export const BKKAlertVerificationCard: React.FC<BKKAlertVerificationCardProps> =
   const isDisruption = bkkVerification.type === 'disruption';
   const timestamp = new Date(bkkVerification.timestamp);
 
-  // Helper function to get route short name from route ID
+  // Helper function to get route short name from route ID (for GTFS route IDs)
   const getRouteShortName = (routeId: string): string => {
     const gtfsRoute = BKKDataProcessor.getRouteDetails(routeId);
     return gtfsRoute ? gtfsRoute.route_short_name : routeId;
   };
 
   // Render route badges using the RouteBadge component
-  const renderRouteBadges = (routes: string[], vehicleType: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat') => {
+  // For disruptions: converts GTFS route IDs to short names
+  // For vehicles: uses the route numbers directly (already converted)
+  const renderRouteBadges = (routes: string[], vehicleType: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat', convertRouteIds: boolean = true) => {
     const limitedRoutes = routes.slice(0, 8);
     
     return (
       <div className="flex items-center gap-2 flex-wrap">
         {limitedRoutes.map((routeId) => {
-          const routeNumber = getRouteShortName(routeId);
+          const routeNumber = convertRouteIds ? getRouteShortName(routeId) : routeId;
           return (
             <RouteBadge 
               key={routeId} 
@@ -181,7 +183,12 @@ export const BKKAlertVerificationCard: React.FC<BKKAlertVerificationCardProps> =
     // Vehicle verification
     const vehicle = bkkVerification as BKKVehicleVerification;
     const colors = getBKKColors(vehicle.vehicle_data.route.type);
-    const routeShortName = getRouteShortName(vehicle.vehicle_data.route.id);
+    
+    // Handle both old and new format:
+    // Old format: route.id contains GTFS ID (like "3040"), route.name contains short name (like "4")
+    // New format: route.id contains short name (like "4"), route.name also contains short name
+    // If route.id and route.name differ significantly, use route.name (it's the display name)
+    const routeShortName = vehicle.vehicle_data.route.name || vehicle.vehicle_data.route.id;
     
     return (
       <Card className={`overflow-hidden border-0 ${className}`}>
@@ -195,7 +202,7 @@ export const BKKAlertVerificationCard: React.FC<BKKAlertVerificationCardProps> =
             <div className="bg-blue-800 text-white p-4">
               {/* Route Badge */}
               <div className="flex items-center gap-3 mb-3">
-                {renderRouteBadges([vehicle.vehicle_data.route.id], vehicle.vehicle_data.route.type)}
+                {renderRouteBadges([routeShortName], vehicle.vehicle_data.route.type, false)}
               </div>
               
               {/* Vehicle Title */}
@@ -221,27 +228,44 @@ export const BKKAlertVerificationCard: React.FC<BKKAlertVerificationCardProps> =
             {/* Body - White background */}
             <div className="bg-white dark:bg-gray-800 p-4 space-y-4">
               {/* Delay Information */}
-              {vehicle.vehicle_data.trip_modifications.has_delays && vehicle.vehicle_data.trip_modifications.schedule_comparison && (
+              {vehicle.vehicle_data.trip_modifications.has_delays && (
                 <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg p-3">
                   <Label className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">
                     Késési információ
                   </Label>
                   <div className="mt-2 space-y-1">
-                    {Object.entries(vehicle.vehicle_data.trip_modifications.schedule_comparison.delays).map(([stop, delaySeconds]) => {
-                      const delayMinutes = Math.round(delaySeconds / 60);
-                      return (
-                        <div key={stop} className="text-sm text-gray-900 dark:text-gray-100">
-                          <span className="font-medium">
-                            {delayMinutes > 0 ? `+${delayMinutes}` : delayMinutes} perc
-                          </span>
-                          {Object.keys(vehicle.vehicle_data.trip_modifications.schedule_comparison!.delays).length > 1 && (
-                            <span className="text-gray-600 dark:text-gray-400 ml-1">
-                              ({stop})
+                    {vehicle.vehicle_data.trip_modifications.schedule_comparison ? (
+                      // Show detailed delay information if available
+                      Object.entries(vehicle.vehicle_data.trip_modifications.schedule_comparison.delays).map(([stop, delaySeconds]) => {
+                        const delayMinutes = Math.round(delaySeconds / 60);
+                        return (
+                          <div key={stop} className="text-sm text-gray-900 dark:text-gray-100">
+                            <span className="font-medium">
+                              {delayMinutes > 0 ? `+${delayMinutes}` : delayMinutes} perc
                             </span>
-                          )}
-                        </div>
-                      );
-                    })}
+                            {Object.keys(vehicle.vehicle_data.trip_modifications.schedule_comparison!.delays).length > 1 && (
+                              <span className="text-gray-600 dark:text-gray-400 ml-1">
+                                ({stop})
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : vehicle.vehicle_data.trip_modifications.delay_minutes !== undefined ? (
+                      // Show simple delay information
+                      <div className="text-sm text-gray-900 dark:text-gray-100">
+                        <span className="font-medium">
+                          {vehicle.vehicle_data.trip_modifications.delay_minutes > 0 
+                            ? `+${vehicle.vehicle_data.trip_modifications.delay_minutes}` 
+                            : vehicle.vehicle_data.trip_modifications.delay_minutes} perc
+                        </span>
+                      </div>
+                    ) : (
+                      // Fallback if no delay details available
+                      <div className="text-sm text-gray-900 dark:text-gray-100">
+                        <span className="font-medium">Késés észlelve</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

@@ -818,6 +818,7 @@ class Road {
     this.leftRoadWay = this.createPlane(-1, this.options.roadWidth, true);
     this.rightRoadWay = this.createPlane(1, this.options.roadWidth, true);
     this.island = this.createPlane(0, this.options.islandWidth, false);
+    console.log('Road meshes created and added to scene');
   }
 
   update(time: number) {
@@ -948,27 +949,43 @@ class App {
 
     this.renderer = new THREE.WebGLRenderer({
       antialias: false,
-      alpha: true
+      alpha: false
     });
-    this.renderer.setSize(container.offsetWidth, container.offsetHeight, false);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
+    
+    const width = container.offsetWidth || container.clientWidth || 800;
+    const height = container.offsetHeight || container.clientHeight || 600;
+    
+    this.renderer.setSize(width, height, false);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.domElement.style.width = '100%';
     this.renderer.domElement.style.height = '100%';
     this.renderer.domElement.style.display = 'block';
+    this.renderer.domElement.style.position = 'absolute';
+    this.renderer.domElement.style.top = '0';
+    this.renderer.domElement.style.left = '0';
+
+    console.log('HyperSpeed: Renderer created', { width, height });
 
     this.composer = new EffectComposer(this.renderer);
     container.appendChild(this.renderer.domElement);
 
-    this.camera = new THREE.PerspectiveCamera(options.fov, container.offsetWidth / container.offsetHeight, 0.1, 10000);
+    this.camera = new THREE.PerspectiveCamera(options.fov, width / height, 0.1, 10000);
     this.camera.position.z = -5;
     this.camera.position.y = 8;
     this.camera.position.x = 0;
 
     this.scene = new THREE.Scene();
-    this.scene.background = null;
+    this.scene.background = new THREE.Color(options.colors.background);
 
-    const fog = new THREE.Fog(options.colors.background, options.length * 0.2, options.length * 500);
+    const fog = new THREE.Fog(options.colors.background, options.length * 0.2, options.length * 2.5);
     this.scene.fog = fog;
+    
+    console.log('HyperSpeed: Scene and fog created', { 
+      background: options.colors.background, 
+      fogNear: fog.near, 
+      fogFar: fog.far,
+      length: options.length
+    });
 
     this.fogUniforms = {
       fogColor: { value: fog.color },
@@ -1079,34 +1096,40 @@ class App {
   }
 
   init() {
-    this.initPasses();
-    const options = this.options;
-    this.road.init();
-    this.leftCarLights.init();
-    this.leftCarLights.mesh.position.setX(-options.roadWidth / 2 - options.islandWidth / 2);
+    try {
+      this.initPasses();
+      const options = this.options;
+      
+      this.road.init();
+      this.leftCarLights.init();
+      this.leftCarLights.mesh.position.setX(-options.roadWidth / 2 - options.islandWidth / 2);
 
-    this.rightCarLights.init();
-    this.rightCarLights.mesh.position.setX(options.roadWidth / 2 + options.islandWidth / 2);
+      this.rightCarLights.init();
+      this.rightCarLights.mesh.position.setX(options.roadWidth / 2 + options.islandWidth / 2);
 
-    this.leftSticks.init();
-    this.leftSticks.mesh.position.setX(-(options.roadWidth + options.islandWidth / 2));
+      this.leftSticks.init();
+      this.leftSticks.mesh.position.setX(-(options.roadWidth + options.islandWidth / 2));
 
-    this.container.addEventListener('mousedown', this.onMouseDown);
-    this.container.addEventListener('mouseup', this.onMouseUp);
-    this.container.addEventListener('mouseout', this.onMouseUp);
+      this.container.addEventListener('mousedown', this.onMouseDown);
+      this.container.addEventListener('mouseup', this.onMouseUp);
+      this.container.addEventListener('mouseout', this.onMouseUp);
 
-    this.container.addEventListener('touchstart', this.onTouchStart, {
-      passive: true
-    });
-    this.container.addEventListener('touchend', this.onTouchEnd, {
-      passive: true
-    });
-    this.container.addEventListener('touchcancel', this.onTouchEnd, {
-      passive: true
-    });
-    this.container.addEventListener('contextmenu', this.onContextMenu);
+      this.container.addEventListener('touchstart', this.onTouchStart, {
+        passive: true
+      });
+      this.container.addEventListener('touchend', this.onTouchEnd, {
+        passive: true
+      });
+      this.container.addEventListener('touchcancel', this.onTouchEnd, {
+        passive: true
+      });
+      this.container.addEventListener('contextmenu', this.onContextMenu);
 
-    this.tick();
+      console.log('HyperSpeed: Scene initialized, starting tick');
+      this.tick();
+    } catch (error) {
+      console.error('HyperSpeed: Error during init', error);
+    }
   }
 
   onMouseDown(ev: MouseEvent) {
@@ -1179,6 +1202,11 @@ class App {
   dispose() {
     this.disposed = true;
 
+    // Remove canvas from container
+    if (this.renderer && this.renderer.domElement && this.container) {
+      this.container.removeChild(this.renderer.domElement);
+    }
+
     if (this.renderer) {
       this.renderer.dispose();
     }
@@ -1200,6 +1228,8 @@ class App {
       this.container.removeEventListener('touchcancel', this.onTouchEnd);
       this.container.removeEventListener('contextmenu', this.onContextMenu);
     }
+    
+    console.log('HyperSpeed: Disposed');
   }
 
   setSize(width: number, height: number, updateStyles: boolean) {
@@ -1244,6 +1274,11 @@ class App {
       if (this.scene.fog) {
         this.animateColorChange(this.scene.fog.color, new THREE.Color(newColors.background));
         this.animateColorChange(this.fogUniforms.fogColor.value, new THREE.Color(newColors.background));
+      }
+      
+      // Update scene background color
+      if (this.scene.background) {
+        this.animateColorChange(this.scene.background as THREE.Color, new THREE.Color(newColors.background));
       }
 
       // Update car lights colors (this is more complex as they use instanced attributes)
@@ -1385,20 +1420,41 @@ const Hyperspeed: FC<HyperspeedProps> = ({ effectOptions = {} }) => {
     if (initializedRef.current || !hyperspeed.current) return;
 
     const container = hyperspeed.current;
+    
+    // Ensure container has dimensions
+    if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+      console.warn('HyperSpeed: Container has zero dimensions');
+      return;
+    }
+    
+    // Prevent double initialization - check if canvas already exists
+    if (container.querySelector('canvas')) {
+      console.warn('HyperSpeed: Canvas already exists, skipping initialization');
+      return;
+    }
+    
     const options = { ...mergedOptions };
     if (typeof options.distortion === 'string') {
       options.distortion = distortions[options.distortion];
     }
 
-    const myApp = new App(container, options);
-    appRef.current = myApp;
-    currentOptionsRef.current = options;
-    myApp.loadAssets().then(myApp.init);
-    initializedRef.current = true;
+    try {
+      const myApp = new App(container, options);
+      appRef.current = myApp;
+      currentOptionsRef.current = options;
+      myApp.loadAssets().then(() => {
+        myApp.init();
+        console.log('HyperSpeed: Initialized successfully');
+      });
+      initializedRef.current = true;
+    } catch (error) {
+      console.error('HyperSpeed: Failed to initialize', error);
+    }
 
     return () => {
       if (appRef.current) {
         appRef.current.dispose();
+        appRef.current = null;
         initializedRef.current = false;
       }
     };
@@ -1419,7 +1475,7 @@ const Hyperspeed: FC<HyperspeedProps> = ({ effectOptions = {} }) => {
     }
   }, [mergedOptions.colors]);
 
-  return <div id="lights" className="w-full h-full" ref={hyperspeed}></div>;
+  return <div id="lights" className="w-full h-full" ref={hyperspeed} style={{ minHeight: '100%', minWidth: '100%' }}></div>;
 };
 
 export default Hyperspeed;

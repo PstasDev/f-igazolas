@@ -65,7 +65,7 @@ export interface BKKDisruptionVerification extends BKKVerificationBase {
     priority: number;
     
     /** Alert category (busz, villamos, metro, etc.) */
-    category: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo';
+    category: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat';
     
     /** Alert effect type */
     effect: string;
@@ -95,12 +95,12 @@ export interface BKKVehicleVerification extends BKKVerificationBase {
     
     /** Route information */
     route: {
-      /** Route ID (e.g., "1", "M3", "5") */
+      /** Route display number/short name (e.g., "1", "M3", "4", "110") - NOT the GTFS route ID */
       id: string;
       /** Route display name */
       name: string;
       /** Vehicle type */
-      type: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo';
+      type: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat';
     };
     
     /** Vehicle position at time of verification */
@@ -127,6 +127,9 @@ export interface BKKVehicleVerification extends BKKVerificationBase {
     trip_modifications: {
       /** Whether any delays were detected */
       has_delays: boolean;
+      
+      /** Average delay in minutes (if available) */
+      delay_minutes?: number;
       
       /** Planned vs actual schedule comparison */
       schedule_comparison?: {
@@ -234,7 +237,7 @@ export function createVehicleVerification(
     vehicle_data: {
       vehicle_id: vehicle.vehicleId,
       route: {
-        id: vehicle.routeId,
+        id: vehicle.routeName, // Store the short name (already converted from GTFS)
         name: vehicle.routeName,
         type: vehicle.vehicleType
       },
@@ -250,6 +253,7 @@ export function createVehicleVerification(
       },
       trip_modifications: {
         has_delays: hasDelays,
+        delay_minutes: vehicle.delayMinutes,
         related_alerts: relatedAlerts
       },
       distance_from_user: userLocation ? calculateDistance(
