@@ -24,7 +24,7 @@ export const BKKAlertCardHeader: React.FC<BKKAlertCardHeaderProps> = ({
   // Group consecutive routes of the same vehicle type
   const renderGroupedRouteBadges = () => {
     const routes = alert.affectedRoutes.slice(0, 5);
-    const groups: { vehicleType: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo'; routes: string[] }[] = [];
+    const groups: { vehicleType: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat'; routes: string[] }[] = [];
     
     // Group consecutive routes by vehicle type
     routes.forEach((route) => {
@@ -111,7 +111,7 @@ export const BKKAlertCardHeader: React.FC<BKKAlertCardHeaderProps> = ({
   };
 
   // Helper function to get vehicle styling config
-  const getVehicleConfig = (vehicleType: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo') => {
+  const getVehicleConfig = (vehicleType: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat') => {
     switch (vehicleType) {
       case 'villamos':
         return {
@@ -131,6 +131,11 @@ export const BKKAlertCardHeader: React.FC<BKKAlertCardHeaderProps> = ({
       case 'ejszakai':
         return {
           backgroundColor: '#000000',
+          textColor: '#FFFFFF'
+        };
+      case 'vonat':
+        return {
+          backgroundColor: '#666666',
           textColor: '#FFFFFF'
         };
       default:
