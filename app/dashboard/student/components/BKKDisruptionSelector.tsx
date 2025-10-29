@@ -448,7 +448,7 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className={`overflow-hidden p-0 ${
         isMobile 
-          ? 'fixed inset-0 max-w-full h-full w-full m-0 rounded-none flex flex-col' 
+          ? 'fixed inset-0 max-w-full h-full w-full m-0 rounded-none flex flex-col !translate-x-0 !translate-y-0 !left-0 !top-0' 
           : 'max-w-5xl h-[85vh] grid grid-rows-[auto_1fr_auto]'
       }`} style={isMobile ? { height: '100dvh', maxHeight: '100dvh' } : {}}>
         {/* Compact Header - Fixed on mobile with safe area padding */}
