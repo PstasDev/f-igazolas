@@ -49,10 +49,14 @@ export function StudentIgazolasokHistory({ studentId }: StudentIgazolasokHistory
 
         // Calculate stats
         const totalHours = studentIgazolasok.reduce((sum, i) => {
-          const start = new Date(i.eleje);
-          const end = new Date(i.vege);
-          const hours = Math.abs(end.getTime() - start.getTime()) / 36e5;
-          return sum + hours;
+          // Only count hours from igazolások where beleszamit is true (hivatalos mulasztás)
+          if (i.tipus.beleszamit) {
+            const start = new Date(i.eleje);
+            const end = new Date(i.vege);
+            const hours = Math.abs(end.getTime() - start.getTime()) / 36e5;
+            return sum + hours;
+          }
+          return sum;
         }, 0);
 
         setStats({

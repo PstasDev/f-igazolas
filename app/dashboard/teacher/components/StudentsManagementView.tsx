@@ -165,10 +165,14 @@ export function StudentsManagementView() {
     const igazolasok = student.igazolasok;
     
     const totalHours = igazolasok.reduce((sum, i) => {
-      const start = new Date(i.eleje);
-      const end = new Date(i.vege);
-      const hours = Math.abs(end.getTime() - start.getTime()) / 36e5;
-      return sum + hours;
+      // Only count hours from igazolások where beleszamit is true (hivatalos mulasztás)
+      if (i.tipus.beleszamit) {
+        const start = new Date(i.eleje);
+        const end = new Date(i.vege);
+        const hours = Math.abs(end.getTime() - start.getTime()) / 36e5;
+        return sum + hours;
+      }
+      return sum;
     }, 0);
 
     return {
@@ -267,7 +271,7 @@ export function StudentsManagementView() {
         'Függőben': stats.pending,
         'Jóváhagyva': stats.approved,
         'Elutasítva': stats.rejected,
-        'Órák összesen': stats.totalHours
+        'Hivatalos Mulasztás (óra)': stats.totalHours
       };
     });
 
@@ -569,7 +573,7 @@ export function StudentsManagementView() {
                       <TableHead className="w-[100px]">Függőben</TableHead>
                       <TableHead className="w-[100px]">Jóváhagyva</TableHead>
                       <TableHead className="w-[100px]">Elutasítva</TableHead>
-                      <TableHead className="w-[100px]">Órák összesen</TableHead>
+                      <TableHead className="w-[100px]">Hivatalos Mulasztás (óra)</TableHead>
                       <TableHead className="w-[80px]">Műveletek</TableHead>
                     </TableRow>
                   </TableHeader>
