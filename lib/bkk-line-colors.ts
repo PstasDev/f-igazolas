@@ -35,6 +35,11 @@ export function getMetroLineColor(routeId: string): string {
     '5200': 'M2',
     '5300': 'M3',
     '5400': 'M4',
+    // Also support direct MX format
+    'M1': 'M1',
+    'M2': 'M2',
+    'M3': 'M3',
+    'M4': 'M4',
   };
   
   const lineKey = metroMapping[routeId];
@@ -48,6 +53,12 @@ export function getHevLineColor(routeId: string): string {
     '5700': 'H7',
     '5800': 'H8',
     '5900': 'H9',
+    // Also support direct HX format
+    'H5': 'H5',
+    'H6': 'H6',
+    'H7': 'H7',
+    'H8': 'H8',
+    'H9': 'H9',
   };
   
   const lineKey = hevMapping[routeId];

@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Calendar, Clock, FileText, Check, HelpCircle, ExternalLink, Folder, Share, Copy, Paperclip } from 'lucide-react';
 import BKKLogo from '@/components/icons/BKKLogo';
+import MavLogo from '@/components/icons/MavLogo';
 import { apiClient } from '@/lib/api';
 import { IgazolasTipus, IgazolasCreateRequest } from '@/lib/types';
 import { getIgazolasType } from '../../types';
@@ -428,6 +429,18 @@ export function MultiStepIgazolasForm() {
                               <p className="text-sm text-purple-800 dark:text-purple-200 mb-3">
                                 Amennyiben a BKK rendszerében forgalmi zavar vagy késés <strong>lett regisztrálva</strong>, az alábbi gombra kattintva csatolhatod a hitelesített adatokat az igazolásodhoz.
                               </p>
+                              
+                              {/* Info about MÁV train support */}
+                              <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-md p-3 mb-3">
+                                <div className="flex items-start gap-2">
+                                  <div className="flex-shrink-0 mt-0.5">
+                                    <MavLogo size={20} />
+                                  </div>
+                                  <p className="text-xs text-blue-800 dark:text-blue-200">
+                                    <strong>MÁV vonatok:</strong> Egyes vonatok valós idejű helyzete is elérhető a rendszerben, amelyek szintén csatolhatók az igazoláshoz.
+                                  </p>
+                                </div>
+                              </div>
                               
                               {!formData.bkkDisruption ? (
                                 <Button

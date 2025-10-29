@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import BKKLogo from '@/components/icons/BKKLogo';
 import VehicleIcon from '@/components/ui/VehicleIcon';
+import { RouteBadge } from '@/components/ui/RouteBadge';
+import { HungarianLicensePlate } from '@/components/ui/HungarianLicensePlate';
+import { BKKDataProcessor } from '@/lib/bkk-processor';
 import { 
   BKKVerification, 
   BKKDisruptionVerification, 
@@ -12,15 +15,6 @@ import {
 } from '@/lib/bkk-verification-schema';
 import { getBKKColors, getVehicleTypeName } from '@/lib/bkk-types';
 import { formatHungarianRoutes } from '@/lib/hungarian-grammar';
-import { 
-  BKK_LINE_COLORS, 
-  getMetroLineColor, 
-  getHevLineColor, 
-  getHajoLineColor,
-  getMetroLineNumber,
-  getHevLineNumber,
-  getHajoLineNumber
-} from '@/lib/bkk-line-colors';
 import { ExternalLink, Clock } from 'lucide-react';
 
 interface BKKAlertVerificationCardProps {
@@ -59,123 +53,35 @@ export const BKKAlertVerificationCard: React.FC<BKKAlertVerificationCardProps> =
   const isDisruption = bkkVerification.type === 'disruption';
   const timestamp = new Date(bkkVerification.timestamp);
 
-  // Helper function to get vehicle styling config
-  const getVehicleConfig = (vehicleType: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo') => {
-    switch (vehicleType) {
-      case 'villamos':
-        return {
-          backgroundColor: BKK_LINE_COLORS.villamos,
-          textColor: '#2B2929'
-        };
-      case 'busz':
-        return {
-          backgroundColor: BKK_LINE_COLORS.busz,
-          textColor: '#FFFFFF'
-        };
-      case 'troli':
-        return {
-          backgroundColor: BKK_LINE_COLORS.troli,
-          textColor: '#FFFFFF'
-        };
-      case 'ejszakai':
-        return {
-          backgroundColor: '#000000',
-          textColor: '#FFFFFF'
-        };
-      default:
-        return {
-          backgroundColor: '#666666',
-          textColor: '#FFFFFF'
-        };
-    }
+  // Helper function to get route short name from route ID
+  const getRouteShortName = (routeId: string): string => {
+    const gtfsRoute = BKKDataProcessor.getRouteDetails(routeId);
+    return gtfsRoute ? gtfsRoute.route_short_name : routeId;
   };
 
-  // Group consecutive routes of the same vehicle type
-  const renderGroupedRouteBadges = (routes: string[], vehicleType: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo') => {
+  // Render route badges using the RouteBadge component
+  const renderRouteBadges = (routes: string[], vehicleType: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat') => {
     const limitedRoutes = routes.slice(0, 8);
-    const groups: { vehicleType: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo'; routes: string[] }[] = [];
     
-    // Group consecutive routes by vehicle type
-    limitedRoutes.forEach((route) => {
-      const lastGroup = groups[groups.length - 1];
-      if (lastGroup && lastGroup.vehicleType === vehicleType) {
-        lastGroup.routes.push(route);
-      } else {
-        groups.push({
-          vehicleType: vehicleType,
-          routes: [route]
-        });
-      }
-    });
-    
-    return groups.map((group, groupIndex) => (
-      <div key={groupIndex} className="flex items-center gap-1">
-        {/* Vehicle icon only at the start of each group */}
-        <div className="flex-shrink-0">
-          <VehicleIcon vehicleType={group.vehicleType} size={24} />
-        </div>
-        
-        {/* Route rectangles/circles without individual icons */}
-        {group.routes.map((route) => {
-          // Use special circular badges for metro, hev, hajo
-          if (group.vehicleType === 'metro' || group.vehicleType === 'hev' || group.vehicleType === 'hajo') {
-            // Get the route number and line color
-            let routeNumber = '';
-            let lineColor = '';
-            
-            if (group.vehicleType === 'metro') {
-              routeNumber = getMetroLineNumber(route);
-              lineColor = getMetroLineColor(route);
-            } else if (group.vehicleType === 'hev') {
-              routeNumber = getHevLineNumber(route);
-              lineColor = getHevLineColor(route);
-            } else if (group.vehicleType === 'hajo') {
-              routeNumber = getHajoLineNumber(route);
-              lineColor = getHajoLineColor(route);
-            }
-            
-            return (
-              <div
-                key={route}
-                className="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs"
-                style={{
-                  backgroundColor: lineColor,
-                  fontSize: `${24 / 1.428}px`, // Back to 24px size
-                  lineHeight: '1'
-                }}
-              >
-                {routeNumber}
-              </div>
-            );
-          }
-          
-          // Use regular rectangles for other vehicle types
-          const config = getVehicleConfig(group.vehicleType);
+    return (
+      <div className="flex items-center gap-2 flex-wrap">
+        {limitedRoutes.map((routeId) => {
+          const routeNumber = getRouteShortName(routeId);
           return (
-            <div 
-              key={route}
-              className="px-4 py-3 font-bold leading-none"
-              style={{
-                backgroundColor: config.backgroundColor,
-                color: config.textColor,
-                borderRadius: `${24 * (5/24)}px`, // Scaled up border radius
-                fontFamily: 'Open Sans, sans-serif',
-                fontWeight: '700',
-                width: `${24 * 2}px`,
-                height: '24px', // Scaled up height
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: `${24 / 1.578}px`, // Scaled up font size
-                lineHeight: '1'
-              }}
-            >
-              {route}
-            </div>
+            <RouteBadge 
+              key={routeId} 
+              routeNumber={routeNumber} 
+              vehicleType={vehicleType} 
+            />
           );
         })}
+        {routes.length > 8 && (
+          <span className="text-xs text-purple-200 bg-purple-700 px-2 py-1 rounded">
+            +{routes.length - 8}
+          </span>
+        )}
       </div>
-    ));
+    );
   };
 
   if (isDisruption) {
@@ -193,12 +99,7 @@ export const BKKAlertVerificationCard: React.FC<BKKAlertVerificationCardProps> =
             <div className="bg-purple-800 text-white p-4">
               {/* Route Badges */}
               <div className="flex items-center gap-3 mb-3 flex-wrap">
-                {renderGroupedRouteBadges(disruption.alert_data.affected_routes, disruption.alert_data.category)}
-                {disruption.alert_data.affected_routes.length > 8 && (
-                  <span className="text-xs text-purple-200 bg-purple-700 px-2 py-1 rounded">
-                    +{disruption.alert_data.affected_routes.length - 8}
-                  </span>
-                )}
+                {renderRouteBadges(disruption.alert_data.affected_routes, disruption.alert_data.category)}
               </div>
               
               {/* Alert Title */}
@@ -280,6 +181,7 @@ export const BKKAlertVerificationCard: React.FC<BKKAlertVerificationCardProps> =
     // Vehicle verification
     const vehicle = bkkVerification as BKKVehicleVerification;
     const colors = getBKKColors(vehicle.vehicle_data.route.type);
+    const routeShortName = getRouteShortName(vehicle.vehicle_data.route.id);
     
     return (
       <Card className={`overflow-hidden border-0 ${className}`}>
@@ -293,7 +195,7 @@ export const BKKAlertVerificationCard: React.FC<BKKAlertVerificationCardProps> =
             <div className="bg-blue-800 text-white p-4">
               {/* Route Badge */}
               <div className="flex items-center gap-3 mb-3">
-                {renderGroupedRouteBadges([vehicle.vehicle_data.route.id], vehicle.vehicle_data.route.type)}
+                {renderRouteBadges([vehicle.vehicle_data.route.id], vehicle.vehicle_data.route.type)}
               </div>
               
               {/* Vehicle Title */}
@@ -304,7 +206,7 @@ export const BKKAlertVerificationCard: React.FC<BKKAlertVerificationCardProps> =
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-white leading-tight">
                     <span className="text-sm font-normal text-blue-200">
-                      {vehicle.vehicle_data.route.id} - {getVehicleTypeName(vehicle.vehicle_data.route.type)}:{' '}
+                      {routeShortName} - {getVehicleTypeName(vehicle.vehicle_data.route.type)}:{' '}
                     </span>
                     {vehicle.vehicle_data.route.name}
                   </h3>
@@ -318,6 +220,32 @@ export const BKKAlertVerificationCard: React.FC<BKKAlertVerificationCardProps> =
             
             {/* Body - White background */}
             <div className="bg-white dark:bg-gray-800 p-4 space-y-4">
+              {/* Delay Information */}
+              {vehicle.vehicle_data.trip_modifications.has_delays && vehicle.vehicle_data.trip_modifications.schedule_comparison && (
+                <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg p-3">
+                  <Label className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">
+                    Késési információ
+                  </Label>
+                  <div className="mt-2 space-y-1">
+                    {Object.entries(vehicle.vehicle_data.trip_modifications.schedule_comparison.delays).map(([stop, delaySeconds]) => {
+                      const delayMinutes = Math.round(delaySeconds / 60);
+                      return (
+                        <div key={stop} className="text-sm text-gray-900 dark:text-gray-100">
+                          <span className="font-medium">
+                            {delayMinutes > 0 ? `+${delayMinutes}` : delayMinutes} perc
+                          </span>
+                          {Object.keys(vehicle.vehicle_data.trip_modifications.schedule_comparison!.delays).length > 1 && (
+                            <span className="text-gray-600 dark:text-gray-400 ml-1">
+                              ({stop})
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              
               {/* Vehicle Details */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -330,13 +258,13 @@ export const BKKAlertVerificationCard: React.FC<BKKAlertVerificationCardProps> =
                 </div>
                 
                 {vehicle.vehicle_data.vehicle_info.license_plate && (
-                  <div>
+                  <div className="col-span-2">
                     <Label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
                       Rendszám
                     </Label>
-                    <p className="text-gray-900 dark:text-gray-100 mt-1 font-mono">
-                      {vehicle.vehicle_data.vehicle_info.license_plate}
-                    </p>
+                    <div className="mt-2">
+                      <HungarianLicensePlate licensePlate={vehicle.vehicle_data.vehicle_info.license_plate} />
+                    </div>
                   </div>
                 )}
                 

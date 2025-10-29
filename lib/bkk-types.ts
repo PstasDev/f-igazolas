@@ -107,7 +107,7 @@ export interface ProcessedBKKAlert {
   startTime?: Date;
   endTime?: Date;
   url?: string;
-  category: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo';
+  category: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat';
   priority: number;
   effect: string;
   cause: string;
@@ -120,17 +120,22 @@ export interface ProcessedVehiclePosition {
   position: {
     lat: number;
     lng: number;
+    bearing?: number;
+    speed?: number;
   };
   timestamp: Date;
   licensePlate?: string;
-  vehicleType: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo';
+  vehicleType: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat';
   currentStop?: string;
   status: string;
   hasDelay?: boolean;
+  delayMinutes?: number; // Delay in minutes from trip updates
+  label?: string;
+  tripId?: string;
 }
 
 // Vehicle type mappings
-export const ROUTE_TYPE_MAPPING: Record<string, 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo'> = {
+export const ROUTE_TYPE_MAPPING: Record<string, 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat'> = {
   // Metro lines
   '5100': 'metro', // M1
   '5200': 'metro', // M2  
@@ -148,7 +153,7 @@ export const ROUTE_TYPE_MAPPING: Record<string, 'busz' | 'villamos' | 'metro' | 
   // Will be detected by route_id starting with '9'
 };
 
-export function getVehicleType(routeId: string): 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' {
+export function getVehicleType(routeId: string): 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat' {
   // Check explicit mappings first
   if (ROUTE_TYPE_MAPPING[routeId]) {
     return ROUTE_TYPE_MAPPING[routeId];
@@ -179,7 +184,7 @@ export function getVehicleType(routeId: string): 'busz' | 'villamos' | 'metro' |
   return 'busz';
 }
 
-export function getVehicleTypeEmoji(type: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo'): string {
+export function getVehicleTypeEmoji(type: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat'): string {
   switch (type) {
     case 'busz': return '🚌';
     case 'villamos': return '🚋';
@@ -188,12 +193,13 @@ export function getVehicleTypeEmoji(type: 'busz' | 'villamos' | 'metro' | 'hev' 
     case 'hev': return '🚆';
     case 'hajo': return '🚢';
     case 'ejszakai': return '🌙';
+    case 'vonat': return '🚄';
     default: return '🚐';
   }
 }
 
 // BKK hivatalos színek az arculati útmutató alapján
-export function getBKKColors(type: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'general'): {
+export function getBKKColors(type: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat' | 'general'): {
   background: string;
   text: string;
   border: string;
@@ -249,6 +255,13 @@ export function getBKKColors(type: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejsz
         border: 'border-cyan-500',
         hover: 'hover:bg-cyan-600'
       };
+    case 'vonat':
+      return {
+        background: 'bg-gray-700', // MÁV trains
+        text: 'text-white',
+        border: 'border-gray-700',
+        hover: 'hover:bg-gray-800'
+      };
     case 'general':
     default:
       return {
@@ -300,7 +313,7 @@ export function getMetroLineColor(lineId: string): {
   }
 }
 
-export function getVehicleTypeName(type: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo'): string {
+export function getVehicleTypeName(type: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat'): string {
   switch (type) {
     case 'busz': return 'Autóbusz';
     case 'villamos': return 'Villamos';
@@ -309,6 +322,7 @@ export function getVehicleTypeName(type: 'busz' | 'villamos' | 'metro' | 'hev' |
     case 'hev': return 'HÉV';
     case 'hajo': return 'Hajó';
     case 'ejszakai': return 'Éjszakai járat';
+    case 'vonat': return 'Vonat';
     default: return 'Jármű';
   }
 }

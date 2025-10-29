@@ -1,7 +1,6 @@
 import { 
   ProcessedBKKAlert, 
   ProcessedVehiclePosition,
-  getVehicleType,
   calculateDistance
 } from './bkk-types';
 
@@ -208,7 +207,31 @@ export class BKKDataProcessor {
       
       const positionsText = await response.text();
       console.log(`Received vehicle positions data from backend: ${(positionsText.length / 1024).toFixed(1)}KB`);
-      return await this.parseVehiclePositionsFromText(positionsText);
+      
+      // Parse vehicle positions
+      const vehicles = await this.parseVehiclePositionsFromText(positionsText);
+      
+      // Fetch trip updates to enrich with delay information
+      try {
+        const tripUpdatesText = await this.fetchRealTimeTripUpdates();
+        if (tripUpdatesText) {
+          const delayMap = this.parseTripUpdatesForDelays(tripUpdatesText);
+          console.log(`Parsed ${delayMap.size} trip delays from updates`);
+          
+          // Enrich vehicles with delay information
+          vehicles.forEach(vehicle => {
+            if (vehicle.tripId && delayMap.has(vehicle.tripId)) {
+              const delaySeconds = delayMap.get(vehicle.tripId)!;
+              vehicle.delayMinutes = Math.round(delaySeconds / 60);
+              vehicle.hasDelay = Math.abs(vehicle.delayMinutes) > 2; // Consider it delayed if >2 minutes
+            }
+          });
+        }
+      } catch (error) {
+        console.warn('Failed to enrich with trip updates, continuing without delay data:', error);
+      }
+      
+      return vehicles;
     } catch (error) {
       console.error('Failed to fetch real-time vehicle positions from backend:', error);
       
@@ -566,44 +589,65 @@ export class BKKDataProcessor {
     }
   }
   
-  private static determineCategoryFromGTFSRoutes(routeIds: string[]): 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' {
+  private static determineCategoryFromGTFSRoutes(routeIds: string[]): 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat' {
     // Determine category based on GTFS route types
     for (const routeId of routeIds) {
       const gtfsRoute = this.getRouteDetails(routeId);
       if (gtfsRoute) {
-        switch (gtfsRoute.route_type) {
-          case '0': // Tram, Streetcar, Light rail
-          case '900': // Tram
-            return 'villamos';
-          case '1': // Subway, Metro
-            return 'metro';
-          case '3': // Bus
-          case '700': // Bus
-          case '800': // Trolleybus
-            // Check if it's a night bus
-            if (gtfsRoute.route_short_name.includes('9') && gtfsRoute.route_short_name.length === 3) {
-              return 'ejszakai';
-            }
-            return 'busz';
-          case '2': // Rail
-          case '100': // Railway
-            return 'hev';
-          default:
-            // If we can't determine from route type, use route name patterns
-            if (gtfsRoute.route_short_name.match(/^M[0-9]$/)) {
-              return 'metro';
-            } else if (gtfsRoute.route_short_name.match(/^9[0-9]{2}$/)) {
-              return 'ejszakai';
-            } else if (gtfsRoute.route_short_name.match(/^[0-9]+$/)) {
-              return 'busz';
-            } else if (gtfsRoute.route_short_name.match(/^[0-9]+[A-Z]?$/)) {
-              return 'villamos';
-            }
+        // First check route_short_name patterns for special cases
+        const shortName = gtfsRoute.route_short_name;
+        
+        // MÁV trains: GXX, ZXX, SXX, IC patterns (not BKK)
+        if (shortName.match(/^(G|Z|S)\d+$/) || shortName.match(/^IC\d*$/i)) {
+          return 'vonat';
+        }
+        
+        // HÉV lines: route_type 109 or short name starts with H
+        if (gtfsRoute.route_type === '109' || shortName.startsWith('H')) {
+          return 'hev';
+        }
+        
+        // Boat lines: route_type 4 or short name starts with D
+        if (gtfsRoute.route_type === '4' || shortName.startsWith('D')) {
+          return 'hajo';
+        }
+        
+        // Metro lines: route_type 1 or short name is M1-M4
+        if (gtfsRoute.route_type === '1' || shortName.match(/^M[1-4]$/)) {
+          return 'metro';
+        }
+        
+        // Night lines: route_short_name starts with 9 and is 3 digits
+        if (shortName.match(/^9[0-9]{2}$/)) {
+          return 'ejszakai';
+        }
+        
+        // Tram: route_type 0
+        if (gtfsRoute.route_type === '0') {
+          return 'villamos';
+        }
+        
+        // Trolleybus: route_type 11
+        if (gtfsRoute.route_type === '11') {
+          return 'troli';
+        }
+        
+        // Bus: route_type 3
+        if (gtfsRoute.route_type === '3') {
+          return 'busz';
+        }
+        
+        // Fallback patterns based on short name
+        if (shortName.match(/^[0-9]{1,2}[A-Z]?$/)) {
+          return 'villamos';
+        }
+        if (shortName.match(/^7[0-9]$/) || shortName.match(/^8[0-3]$/)) {
+          return 'troli';
         }
       }
     }
     
-    // Fallback: if no GTFS data available, use the old method
+    // Final fallback: use pattern matching on route short names
     return this.determineCategoryFromRoutes(routeIds.map(id => {
       const route = this.getRouteDetails(id);
       return route ? route.route_short_name : id;
@@ -654,10 +698,15 @@ export class BKKDataProcessor {
       const routeMatch = entityText.match(/route_id: "([^"]+)"/);
       let routeId = '';
       let routeName = '';
+      let vehicleType: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat' = 'busz';
+      
       if (routeMatch) {
         routeId = routeMatch[1];
         const gtfsRoute = this.getRouteDetails(routeId);
         routeName = gtfsRoute ? gtfsRoute.route_short_name : routeId;
+        
+        // Determine vehicle type from GTFS route data (same logic as alerts)
+        vehicleType = this.determineCategoryFromGTFSRoutes([routeId]);
       }
       
       // Extract position
@@ -666,9 +715,37 @@ export class BKKDataProcessor {
       const lat = latMatch ? parseFloat(latMatch[1]) : 0;
       const lng = lonMatch ? parseFloat(lonMatch[1]) : 0;
       
+      // Extract additional position data
+      const bearingMatch = entityText.match(/bearing: ([0-9.-]+)/);
+      const bearing = bearingMatch ? parseFloat(bearingMatch[1]) : undefined;
+      
+      const speedMatch = entityText.match(/speed: ([0-9.-]+)/);
+      const speed = speedMatch ? parseFloat(speedMatch[1]) : undefined;
+      
       // Extract timestamp
       const timestampMatch = entityText.match(/timestamp: (\d+)/);
       const timestamp = timestampMatch ? new Date(parseInt(timestampMatch[1]) * 1000) : new Date();
+      
+      // Extract current status
+      const statusMatch = entityText.match(/current_status: ([A-Z_]+)/);
+      const status = statusMatch ? statusMatch[1] : 'UNKNOWN';
+      
+      // Extract stop information and get stop name from GTFS
+      const stopIdMatch = entityText.match(/stop_id: "([^"]+)"/);
+      const stopId = stopIdMatch ? stopIdMatch[1] : undefined;
+      const stopName = stopId ? this.getStopDetails(stopId)?.stop_name : undefined;
+      
+      // Extract license plate if available
+      const licensePlateMatch = entityText.match(/license_plate: "([^"]+)"/);
+      const licensePlate = licensePlateMatch ? licensePlateMatch[1] : undefined;
+      
+      // Extract vehicle label
+      const labelMatch = entityText.match(/label: "([^"]+)"/);
+      const label = labelMatch ? labelMatch[1] : undefined;
+      
+      // Extract trip ID for reference
+      const tripIdMatch = entityText.match(/trip_id: "([^"]+)"/);
+      const tripId = tripIdMatch ? tripIdMatch[1] : undefined;
       
       return {
         vehicleId: id,
@@ -676,11 +753,17 @@ export class BKKDataProcessor {
         routeName,
         position: {
           lat,
-          lng
+          lng,
+          bearing,
+          speed
         },
         timestamp,
-        vehicleType: getVehicleType(routeName),
-        status: 'UNKNOWN'
+        vehicleType,
+        status,
+        currentStop: stopName || stopId,
+        licensePlate,
+        label,
+        tripId
       };
     } catch (error) {
       console.warn('Failed to parse vehicle entity:', error);
@@ -720,25 +803,93 @@ export class BKKDataProcessor {
     });
   }
   
-  private static determineCategoryFromRoutes(routes: string[]): 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' {
+  private static determineCategoryFromRoutes(routes: string[]): 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat' {
     if (routes.length === 0) return 'busz';
     
-    const types = routes.map(route => getVehicleType(route));
-    const uniqueTypes = [...new Set(types)];
-    
-    if (uniqueTypes.length === 1) {
-      return uniqueTypes[0];
+    // Simple pattern-based detection for route short names
+    for (const route of routes) {
+      // MÁV trains: GXX, ZXX, SXX, IC patterns
+      if (route.match(/^(G|Z|S)\d+$/) || route.match(/^IC\d*$/i)) return 'vonat';
+      // HÉV lines start with H
+      if (route.startsWith('H')) return 'hev';
+      // Metro lines are M1-M4
+      if (route.match(/^M[1-4]$/)) return 'metro';
+      // Boat lines start with D
+      if (route.startsWith('D')) return 'hajo';
+      // Night lines start with 9
+      if (route.startsWith('9') && route.length === 3) return 'ejszakai';
+      // Tram lines are single/double digit numbers
+      if (route.match(/^[0-9]{1,2}[A-Z]?$/)) return 'villamos';
+      // Trolleybus lines are 70-83
+      if (route.match(/^7[0-9]$/) || route.match(/^8[0-3]$/)) return 'troli';
     }
     
-    const typeCounts = types.reduce((acc, type) => {
-      acc[type] = (acc[type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    // Default to bus
+    return 'busz';
+  }
+  
+  /**
+   * Parse trip updates to extract delay information
+   * Returns a Map of tripId -> delay in seconds
+   */
+  private static parseTripUpdatesForDelays(tripUpdatesText: string): Map<string, number> {
+    const delayMap = new Map<string, number>();
     
-    const mostCommon = Object.entries(typeCounts)
-      .sort(([,a], [,b]) => b - a)[0][0] as 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo';
+    try {
+      // Use regex to find complete entity blocks
+      const entityPattern = /entity \{[\s\S]*?\n\}/g;
+      const entityMatches = [...tripUpdatesText.matchAll(entityPattern)];
+      
+      for (const match of entityMatches) {
+        try {
+          const entityText = match[0];
+          
+          // Extract trip ID
+          const tripIdMatch = entityText.match(/trip_id: "([^"]+)"/);
+          if (!tripIdMatch) continue;
+          const tripId = tripIdMatch[1];
+          
+          // Find all stop_time_update blocks
+          const stopTimeUpdatePattern = /stop_time_update \{[\s\S]*?\n    \}/g;
+          const stopTimeUpdates = [...entityText.matchAll(stopTimeUpdatePattern)];
+          
+          let totalDelay = 0;
+          let delayCount = 0;
+          
+          for (const stopMatch of stopTimeUpdates) {
+            const stopText = stopMatch[0];
+            
+            // Extract actual arrival time
+            const arrivalTimeMatch = stopText.match(/arrival \{[^}]*time: (\d+)/);
+            // Extract scheduled arrival time (inside [realcity.stop_time_update])
+            const scheduledArrivalMatch = stopText.match(/scheduled_arrival \{[^}]*time: (\d+)/);
+            
+            if (arrivalTimeMatch && scheduledArrivalMatch) {
+              const actualTime = parseInt(arrivalTimeMatch[1]);
+              const scheduledTime = parseInt(scheduledArrivalMatch[1]);
+              const delay = actualTime - scheduledTime; // Positive = late, negative = early
+              
+              totalDelay += delay;
+              delayCount++;
+            }
+          }
+          
+          // Use average delay across all stops for this trip
+          if (delayCount > 0) {
+            const avgDelay = Math.round(totalDelay / delayCount);
+            delayMap.set(tripId, avgDelay);
+          }
+        } catch {
+          // Skip problematic entries
+        }
+      }
+      
+      console.log(`Parsed delays for ${delayMap.size} trips`);
+    } catch (error) {
+      console.error('Failed to parse trip updates:', error);
+    }
     
-    return mostCommon;
+    return delayMap;
   }
   
   private static decodeHtml(text: string): string {

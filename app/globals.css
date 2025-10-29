@@ -2,6 +2,15 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* HuLI-Regular font for Hungarian license plates */
+@font-face {
+  font-family: 'HuLI-Regular';
+  src: url('/HuLi-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {

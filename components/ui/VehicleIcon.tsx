@@ -5,9 +5,10 @@ import { TroliIcon } from '../icons/TroliIcon';
 import { MetroLogo } from '../icons/MetroLogo';
 import { HevLogo } from '../icons/HevLogo';
 import { HajoLogo } from '../icons/HajoLogo';
+import { VonatIcon } from '../icons/VonatIcon';
 
 interface VehicleIconProps {
-  vehicleType: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo';
+  vehicleType: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat';
   size?: number;
   className?: string;
 }
@@ -33,6 +34,8 @@ export const VehicleIcon: React.FC<VehicleIconProps> = ({
         return <HajoLogo size={size} />;
       case 'ejszakai':
         return <BuszIcon size={size} color="#000000" />;
+      case 'vonat':
+        return <VonatIcon size={size} />;
       default:
         return <span style={{ fontSize: size }}>🚐</span>;
     }
