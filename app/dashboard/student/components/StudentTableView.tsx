@@ -7,7 +7,7 @@ import { studentColumns } from '../columns';
 import { apiClient } from '@/lib/api';
 import { Igazolas } from '@/lib/types';
 import { toast } from 'sonner';
-import { Spinner } from '@/components/ui/spinner';
+import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
 import { mapApiResponseToPeriods } from '@/lib/periods';
 
 interface StudentTableViewProps {
@@ -108,8 +108,12 @@ export function StudentTableView({ studentId, filter = 'all' }: StudentTableView
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <Spinner />
+          <div className="py-4">
+            <FTVLoadingState 
+              variant="default"
+              title="Igazolásaid betöltése"
+              description="Adatok betöltése az FTV rendszerből. Kérjük, várjon..."
+            />
           </div>
         ) : (
           <DataTable columns={studentColumns} data={tableData} />

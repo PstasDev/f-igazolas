@@ -6,6 +6,7 @@ import {
   ColumnFiltersState,
   SortingState,
   VisibilityState,
+  PaginationState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -57,6 +58,10 @@ export function DataTable<TData, TValue>({
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
   const [filterStatus, setFilterStatus] = React.useState<string>("all")
   const [filterType, setFilterType] = React.useState<string>("all")
   const [dateFrom, setDateFrom] = React.useState<string>("")
@@ -129,10 +134,13 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: setPagination,
+    autoResetPageIndex: false, // Prevent automatic page reset
     state: {
       sorting,
       columnFilters,
       columnVisibility,
+      pagination,
     },
   })
 

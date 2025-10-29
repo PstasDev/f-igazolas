@@ -7,7 +7,7 @@ import { createColumns } from '../columns';
 import { apiClient } from '@/lib/api';
 import { Igazolas } from '@/lib/types';
 import { toast } from 'sonner';
-import { Spinner } from '@/components/ui/spinner';
+import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
 import { mapApiResponseToPeriods } from '@/lib/periods';
 
 interface TeacherTableViewProps {
@@ -201,8 +201,12 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <Spinner />
+          <div className="py-4">
+            <FTVLoadingState 
+              variant="sync"
+              title="Igazolások betöltése"
+              description="Szinkronizálás az FTV Sync-el. Ez eltarthat egy darabig, kérjük ne frissítse az oldalt."
+            />
           </div>
         ) : (
           <DataTable 

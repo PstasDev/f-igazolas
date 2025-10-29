@@ -48,6 +48,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { StudentIgazolasokHistory } from './StudentIgazolasokHistory';
+import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
 import { apiClient } from '@/lib/api';
 import { DiakjaSignle, DiakjaCreateRequest } from '@/lib/types';
 import { toast } from 'sonner';
@@ -330,8 +331,12 @@ export function StudentsManagementView() {
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="flex justify-center items-center py-8">
-          <Spinner />
+        <CardContent className="flex justify-center items-center py-12">
+          <FTVLoadingState 
+            variant="sync"
+            title="Diákok betöltése"
+            description="Szinkronizálás az FTV Sync-el. Ez eltarthat egy darabig, kérjük ne frissítse az oldalt."
+          />
         </CardContent>
       </Card>
     );
@@ -561,85 +566,131 @@ export function StudentsManagementView() {
                 Összesen: {filteredStudents.length} diák {searchTerm || statusFilter !== 'all' || dateFrom || dateTo ? `(${students.length} diákból szűrve)` : ''}
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
+            <CardContent className="p-0 sm:p-6">
+              <div className="w-full overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[180px]">Név</TableHead>
-                      <TableHead className="w-[120px]">Felhasználónév</TableHead>
-                      <TableHead className="w-[220px]">Email</TableHead>
-                      <TableHead className="w-[100px]">Összes igazolás</TableHead>
-                      <TableHead className="w-[100px]">Függőben</TableHead>
-                      <TableHead className="w-[100px]">Jóváhagyva</TableHead>
-                      <TableHead className="w-[100px]">Elutasítva</TableHead>
-                      <TableHead className="w-[100px]">Hivatalos Mulasztás (óra)</TableHead>
-                      <TableHead className="w-[80px]">Műveletek</TableHead>
+                      <TableHead className="sticky left-0 z-10 bg-background min-w-[140px] max-w-[180px]">Név</TableHead>
+                      <TableHead className="hidden lg:table-cell min-w-[120px]">Felhasználónév</TableHead>
+                      <TableHead className="hidden xl:table-cell min-w-[180px] max-w-[220px]">Email</TableHead>
+                      <TableHead className="text-center min-w-[80px]">
+                        <span className="hidden sm:inline">Összes</span>
+                        <span className="sm:hidden">Σ</span>
+                      </TableHead>
+                      <TableHead className="text-center min-w-[80px]">
+                        <span className="hidden sm:inline">Függő</span>
+                        <span className="sm:hidden">⏳</span>
+                      </TableHead>
+                      <TableHead className="text-center hidden md:table-cell min-w-[90px]">
+                        <span className="hidden sm:inline">Jóváhagyva</span>
+                        <span className="sm:hidden">✓</span>
+                      </TableHead>
+                      <TableHead className="text-center hidden md:table-cell min-w-[90px]">
+                        <span className="hidden sm:inline">Elutasítva</span>
+                        <span className="sm:hidden">✗</span>
+                      </TableHead>
+                      <TableHead className="text-center hidden lg:table-cell min-w-[100px]">
+                        <span className="hidden xl:inline">Hivatalos (óra)</span>
+                        <span className="xl:hidden">Óra</span>
+                      </TableHead>
+                      <TableHead className="sticky right-0 z-10 bg-background text-center min-w-[70px]">
+                        <span className="sr-only">Műveletek</span>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredStudents.map((student) => {
-                      const stats = calculateStudentStats(student);
-                      
-                      return (
-                        <TableRow key={student.id} className="hover:bg-accent/50">
-                          <TableCell className="font-medium">
-                            {student.last_name} {student.first_name}
-                          </TableCell>
-                          <TableCell className="font-mono text-sm">
-                            {student.username}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {student.email || 'Nincs email'}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="outline">{stats.total}</Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {stats.pending > 0 ? (
-                              <Badge variant="warning">
-                                {stats.pending}
-                              </Badge>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">0</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {stats.approved > 0 ? (
-                              <Badge variant="approved">
-                                {stats.approved}
-                              </Badge>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">0</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {stats.rejected > 0 ? (
-                              <Badge variant="rejected">
-                                {stats.rejected}
-                              </Badge>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">0</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="secondary">{stats.totalHours}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleViewStudent(student)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                    {filteredStudents.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                          Nincs megjeleníthető diák
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredStudents.map((student) => {
+                        const stats = calculateStudentStats(student);
+                        
+                        return (
+                          <TableRow key={student.id} className="hover:bg-accent/50">
+                            <TableCell className="sticky left-0 z-10 bg-background font-medium">
+                              <div className="flex flex-col">
+                                <span className="truncate max-w-[160px]">
+                                  {student.last_name} {student.first_name}
+                                </span>
+                                <span className="text-xs text-muted-foreground lg:hidden truncate max-w-[160px]">
+                                  @{student.username}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="hidden lg:table-cell font-mono text-sm">
+                              <span className="truncate block max-w-[120px]">
+                                {student.username}
+                              </span>
+                            </TableCell>
+                            <TableCell className="hidden xl:table-cell text-sm text-muted-foreground">
+                              <span className="truncate block max-w-[200px]" title={student.email || 'Nincs email'}>
+                                {student.email || 'Nincs email'}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="outline" className="tabular-nums">{stats.total}</Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {stats.pending > 0 ? (
+                                <Badge variant="warning" className="tabular-nums">
+                                  {stats.pending}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground tabular-nums">0</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center hidden md:table-cell">
+                              {stats.approved > 0 ? (
+                                <Badge variant="approved" className="tabular-nums">
+                                  {stats.approved}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground tabular-nums">0</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center hidden md:table-cell">
+                              {stats.rejected > 0 ? (
+                                <Badge variant="rejected" className="tabular-nums">
+                                  {stats.rejected}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground tabular-nums">0</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center hidden lg:table-cell">
+                              <Badge variant="secondary" className="tabular-nums">{stats.totalHours}</Badge>
+                            </TableCell>
+                            <TableCell className="sticky right-0 z-10 bg-background">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleViewStudent(student)}
+                                className="h-8 w-8 p-0"
+                                title="Diák megtekintése"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
                   </TableBody>
                 </Table>
               </div>
+              
+              {/* Mobile-friendly info card for hidden columns */}
+              {filteredStudents.length > 0 && (
+                <div className="lg:hidden mt-4 px-4 py-3 bg-muted/50 rounded-lg text-xs text-muted-foreground">
+                  <p className="font-medium mb-1">💡 Tipp:</p>
+                  <p>További részletekért koppints a <Eye className="inline h-3 w-3" /> ikonra, vagy forgasd el az eszközöd.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -9,7 +9,7 @@ import { apiClient } from '@/lib/api';
 import { Igazolas } from '@/lib/types';
 import { getIgazolasType } from '@/app/dashboard/types';
 import { toast } from 'sonner';
-import { Spinner } from '@/components/ui/spinner';
+import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
 
 interface StudentIgazolasokHistoryProps {
   studentId: string;
@@ -123,8 +123,12 @@ export function StudentIgazolasokHistory({ studentId }: StudentIgazolasokHistory
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <Spinner />
+      <div className="py-4">
+        <FTVLoadingState 
+          variant="details"
+          title="Diák adatainak betöltése"
+          description="Igazolások és statisztikák betöltése az FTV rendszerből. Kérjük, várjon..."
+        />
       </div>
     );
   }

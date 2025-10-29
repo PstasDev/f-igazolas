@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Clock, CheckCircle2, Users } from 'lucide-react';
 import { apiClient } from '@/lib/api';
-import { Spinner } from '@/components/ui/spinner';
+import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
 
 interface TeacherStats {
   total: number;
@@ -98,8 +98,12 @@ export function TeacherStatsCards() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
           <Card key={i}>
-            <CardContent className="flex justify-center items-center py-8">
-              <Spinner />
+            <CardContent className="flex justify-center items-center py-6">
+              <FTVLoadingState 
+                variant="default"
+                title="Statisztikák betöltése"
+                description="Adatok betöltése az FTV rendszerből..."
+              />
             </CardContent>
           </Card>
         ))}
