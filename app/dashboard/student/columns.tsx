@@ -196,10 +196,10 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
     },
   },
   {
-    accessorKey: "status",
+    accessorKey: "reason",
     header: "Indoklás",
     cell: ({ row }) => {
-      const reason = row.getValue("status") as string
+      const reason = row.getValue("reason") as string
       const imageUrl = row.original.imageUrl || row.original.imgDriveURL
       
       const handleImageClick = (e: React.MouseEvent) => {

@@ -1,0 +1,81 @@
+import React from 'react';
+
+interface HevIconProps {
+  className?: string;
+  size?: number;
+  routeNumber?: string;
+  lineColor?: string;
+}
+
+export const HevIcon: React.FC<HevIconProps> = ({ 
+  className = '', 
+  size = 24, 
+  routeNumber = 'H',
+  lineColor = '#821066' // Default H5 purple
+}) => {
+  const logoWidth = size;
+  const circleWidth = size;
+  const gap = size * 0.1; // 0.1x gap instead of 0.25x
+  const fontSize = size / 1.428; // height/1.428 for font size
+  
+  return (
+    <div 
+      className={`inline-flex items-center ${className}`}
+      style={{ gap: `${gap}px` }}
+    >
+      {/* HÉV Logo */}
+      <svg
+        width={logoWidth}
+        height={logoWidth}
+        viewBox="0 0 283.46 283.46"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <g>
+          <path 
+            fill="#FFFFFF" 
+            d="M269.295,141.73c0,70.451-57.116,127.562-127.565,127.562c-70.448,0-127.56-57.111-127.56-127.562
+              c0-70.447,57.112-127.559,127.56-127.559C212.179,14.172,269.295,71.283,269.295,141.73z"
+          />
+          <path 
+            fill="#1E1E1E" 
+            d="M141.731,0C63.454,0,0,63.455,0,141.734c0,78.275,63.454,141.73,141.731,141.73
+              c78.275,0,141.733-63.455,141.733-141.73C283.465,63.455,220.007,0,141.731,0z M141.731,259.76
+              c-65.081,0-118.026-52.948-118.026-118.025c0-65.081,52.946-118.029,118.026-118.029c65.08,0,118.028,52.948,118.028,118.029
+              C259.76,206.812,206.812,259.76,141.731,259.76z"
+          />
+          <polygon 
+            fill="#1E1E1E" 
+            points="177.499,114.854 105.965,114.854 105.965,71.002 82.567,71.002 82.567,137.086 177.499,137.086 
+              177.499,212.733 200.897,212.733 200.897,71.002 177.499,71.002"
+          />
+          <polygon 
+            fill="#1E1E1E" 
+            points="82.567,212.726 105.965,212.726 105.965,168.866 168.542,168.866 168.542,146.635 82.567,146.635"
+          />
+        </g>
+      </svg>
+      
+      {/* Route Number Circle */}
+      <div 
+        style={{
+          width: circleWidth,
+          height: circleWidth,
+          borderRadius: '50%',
+          backgroundColor: lineColor,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#FFFFFF',
+          fontSize: `${fontSize}px`,
+          fontWeight: 'bold',
+          fontFamily: 'Open Sans, sans-serif',
+          lineHeight: '1'
+        }}
+      >
+        {routeNumber}
+      </div>
+    </div>
+  );
+};
+
+export default HevIcon;

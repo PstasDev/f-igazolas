@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRole } from '@/app/context/RoleContext';
 import {
   SidebarInset,
@@ -8,16 +8,52 @@ import {
 } from '@/components/ui/sidebar';
 import { StudentSidebar } from '@/app/dashboard/student/components/StudentSidebar';
 import { DashboardHeader } from '@/app/dashboard/student/components/DashboardHeader';
-import { StatsCards } from '@/app/dashboard/student/components/StatsCards';
+import { StatsCards } from './components/StatsCards';
+import BKKGTFSTest from './components/BKKGTFSTest';
 import { StudentTableView } from '@/app/dashboard/student/components/StudentTableView';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { apiClient } from '@/lib/api';
+
+interface StudentStats {
+  total: number;
+  approved: number;
+  pending: number;
+  rejected: number;
+}
 
 export default function StudentDashboard() {
   const { user } = useRole();
-  const [selectedView, setSelectedView] = useState<'overview' | 'igazolasok'>('overview');
+  const [selectedView, setSelectedView] = useState<'overview' | 'pending' | 'approved' | 'rejected' | 'all' | 'bkk-test'>('overview');
+  const [stats, setStats] = useState<StudentStats>({
+    total: 0,
+    approved: 0,
+    pending: 0,
+    rejected: 0,
+  });
   
   // For demo purposes, use a fixed student ID (in real app, this would come from auth)
   const studentId = '1';
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const igazolasok = await apiClient.getMyIgazolas();
+        
+        const newStats: StudentStats = {
+          total: igazolasok.length,
+          approved: igazolasok.filter(i => i.allapot === 'Elfogadva').length,
+          pending: igazolasok.filter(i => i.allapot === 'Függőben').length,
+          rejected: igazolasok.filter(i => i.allapot === 'Elutasítva').length,
+        };
+
+        setStats(newStats);
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+      }
+    };
+
+    fetchStats();
+  }, [studentId]);
 
   return (
     <SidebarProvider
@@ -28,7 +64,7 @@ export default function StudentDashboard() {
         } as React.CSSProperties
       }
     >
-      <StudentSidebar onViewChange={setSelectedView} currentView={selectedView} />
+      <StudentSidebar onViewChange={setSelectedView} currentView={selectedView} stats={stats} />
       <SidebarInset>
         <DashboardHeader userName={user?.name || ''} userRole="Diák" />
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -44,16 +80,30 @@ export default function StudentDashboard() {
                   <div className="text-sm text-muted-foreground">
                     <p className="mb-2">Mit tehetsz itt:</p>
                     <ul className="list-disc list-inside space-y-1">
-                      <li>Igazolásaim - Megtekintheted az összes beküldött igazolást</li>
-                      <li>Státusz követés - Lásd, hogy az osztályfőnök jóváhagyta-e az igazolásaidat</li>
+                      <li>Függőben - Ellenőrzésre váró igazolások</li>
+                      <li>Jóváhagyott - Elfogadott igazolások</li>
+                      <li>Elutasított - Elutasított igazolások</li>
+                      <li>Összes igazolás - Teljes lista és státusz követés</li>
                     </ul>
                   </div>
                 </CardContent>
               </Card>
             </div>
           )}
-          {selectedView === 'igazolasok' && (
-            <StudentTableView studentId={studentId} />
+          {selectedView === 'pending' && (
+            <StudentTableView studentId={studentId} filter="pending" />
+          )}
+          {selectedView === 'approved' && (
+            <StudentTableView studentId={studentId} filter="approved" />
+          )}
+          {selectedView === 'rejected' && (
+            <StudentTableView studentId={studentId} filter="rejected" />
+          )}
+          {selectedView === 'all' && (
+            <StudentTableView studentId={studentId} filter="all" />
+          )}
+          {selectedView === 'bkk-test' && (
+            <BKKGTFSTest />
           )}
         </div>
       </SidebarInset>

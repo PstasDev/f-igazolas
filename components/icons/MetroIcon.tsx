@@ -1,0 +1,82 @@
+import React from 'react';
+
+interface MetroIconProps {
+  className?: string;
+  size?: number;
+  routeNumber?: string;
+  lineColor?: string;
+}
+
+export const MetroIcon: React.FC<MetroIconProps> = ({ 
+  className = '', 
+  size = 24, 
+  routeNumber = 'M',
+  lineColor = '#005CA5' // Default M3 blue
+}) => {
+  const logoWidth = size;
+  const circleWidth = size;
+  const gap = size * 0.1; // 0.1x gap instead of 0.25x
+  const fontSize = size / 1.428; // height/1.428 for font size
+  
+  return (
+    <div 
+      className={`inline-flex items-center ${className}`}
+      style={{ gap: `${gap}px` }}
+    >
+      {/* Metro Logo */}
+      <svg
+        width={logoWidth}
+        height={logoWidth}
+        viewBox="0 0 283.46 283.46"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <g>
+          <path 
+            fill="#FFFFFF" 
+            d="M269.292,141.73c0,70.449-57.112,127.562-127.562,127.562c-70.449,0-127.559-57.113-127.559-127.562
+              c0-70.446,57.11-127.559,127.559-127.559C212.18,14.172,269.292,71.284,269.292,141.73z"
+          />
+          <path 
+            fill="#1E1E1E" 
+            d="M141.73,0C63.456,0,0,63.457,0,141.73c0,78.277,63.456,141.734,141.73,141.734
+              c78.278,0,141.734-63.457,141.734-141.734C283.464,63.457,220.008,0,141.73,0z M141.73,259.76
+              c-65.076,0-118.024-52.949-118.024-118.027c0-65.08,52.948-118.024,118.024-118.024c65.079,0,118.027,52.944,118.027,118.024
+              C259.757,206.811,206.809,259.76,141.73,259.76z"
+          />
+          <polygon 
+            fill="#1E1E1E" 
+            points="212.598,86.583 212.598,86.583 212.598,70.864 196.878,70.864 141.73,126.012 86.585,70.867 
+              70.867,70.867 70.867,212.598 94.265,212.598 94.265,109.982 141.73,157.449"
+          />
+          <polygon 
+            fill="#13171B" 
+            points="103.224,133.23 103.224,164.664 141.73,203.175 189.198,155.707 189.198,212.553 212.599,212.553 
+              212.599,100.87 141.73,171.737"
+          />
+        </g>
+      </svg>
+      
+      {/* Route Number Circle */}
+      <div 
+        style={{
+          width: circleWidth,
+          height: circleWidth,
+          borderRadius: '50%',
+          backgroundColor: lineColor,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#FFFFFF',
+          fontSize: `${fontSize}px`,
+          fontWeight: 'bold',
+          fontFamily: 'Open Sans, sans-serif',
+          lineHeight: '1'
+        }}
+      >
+        {routeNumber}
+      </div>
+    </div>
+  );
+};
+
+export default MetroIcon;

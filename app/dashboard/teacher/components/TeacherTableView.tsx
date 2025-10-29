@@ -195,7 +195,7 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{getTitle()}</CardTitle>
+        <CardTitle><h1 className="text-xl">{getTitle()}</h1></CardTitle>
         <CardDescription>{getDescription()}</CardDescription>
       </CardHeader>
       <CardContent>

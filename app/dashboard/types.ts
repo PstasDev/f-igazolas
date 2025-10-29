@@ -10,6 +10,7 @@ export interface IgazolasTableRow {
   hours: number[];
   correctedHours?: number[]; // Added for student corrections
   status: string;
+  reason?: string; // Student's reason/note - separate from status
   imageUrl?: string;
   imgDriveURL?: string; // Added to match API response
   teacherNote?: string;

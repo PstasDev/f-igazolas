@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, FileText, Settings, Calendar } from 'lucide-react';
+import { Home, FileText, Settings, Calendar, Clock, CheckCircle2, XCircle, Zap } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -19,21 +19,31 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Image from 'next/image';
 
 interface StudentSidebarProps {
-  onViewChange: (view: 'overview' | 'igazolasok') => void;
+  onViewChange: (view: 'overview' | 'pending' | 'approved' | 'rejected' | 'all' | 'bkk-test') => void;
   currentView: string;
+  stats?: {
+    pending: number;
+    approved: number;
+    rejected: number;
+    total: number;
+  };
 }
 
-export function StudentSidebar({ onViewChange, currentView }: StudentSidebarProps) {
+export function StudentSidebar({ onViewChange, currentView, stats }: StudentSidebarProps) {
   const { user } = useRole();
 
   const mainNav = [
     { title: 'Áttekintés', icon: Home, view: 'overview' as const },
-    { title: 'Igazolásaim', icon: FileText, view: 'igazolasok' as const },
+    { title: 'Függőben', icon: Clock, view: 'pending' as const, badge: stats?.pending?.toString() },
+    { title: 'Jóváhagyott', icon: CheckCircle2, view: 'approved' as const, badge: stats?.approved?.toString() },
+    { title: 'Elutasított', icon: XCircle, view: 'rejected' as const, badge: stats?.rejected?.toString() },
+    { title: 'Összes igazolás', icon: FileText, view: 'all' as const, badge: stats?.total?.toString() },
   ];
 
   const secondaryNav = [
-    { title: 'Beállítások', icon: Settings, view: 'overview' as 'overview' | 'igazolasok' },
-    { title: 'Órarend', icon: Calendar, view: 'overview' as 'overview' | 'igazolasok' },
+    { title: 'Beállítások', icon: Settings, view: 'overview' as 'overview' | 'pending' | 'approved' | 'rejected' | 'all' | 'bkk-test' },
+    { title: 'Órarend', icon: Calendar, view: 'overview' as 'overview' | 'pending' | 'approved' | 'rejected' | 'all' | 'bkk-test' },
+    { title: 'BKK Test', icon: Zap, view: 'bkk-test' as 'overview' | 'pending' | 'approved' | 'rejected' | 'all' | 'bkk-test' },
   ];
 
   return (
@@ -77,6 +87,11 @@ export function StudentSidebar({ onViewChange, currentView }: StudentSidebarProp
                     >
                       <Icon className="h-4 w-4" />
                       <span>{item.title}</span>
+                      {item.badge && (
+                        <span className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                          {item.badge}
+                        </span>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );

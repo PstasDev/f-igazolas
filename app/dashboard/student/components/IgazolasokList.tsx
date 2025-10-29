@@ -83,7 +83,7 @@ export function IgazolasokList({ variant }: IgazolasokListProps) {
         {/* List View */}
         <Card>
           <CardHeader>
-            <CardTitle>Igazolásaim</CardTitle>
+            <CardTitle><h1 className='text-xl'>Igazolásaim</h1></CardTitle>
             <CardDescription>Kattints egy igazolásra a részletek megtekintéséhez</CardDescription>
           </CardHeader>
           <CardContent>

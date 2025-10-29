@@ -12,6 +12,7 @@ import { mapApiResponseToPeriods } from '@/lib/periods';
 
 interface StudentTableViewProps {
   studentId: string;
+  filter?: 'all' | 'pending' | 'approved' | 'rejected';
 }
 
 // Helper function to map Igazolas to the format expected by columns
@@ -33,7 +34,8 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
     date: new Date(igazolas.eleje).toLocaleDateString('hu-HU'),
     hours: originalPeriods,
     correctedHours: correctedPeriods,
-    status: igazolas.megjegyzes_diak || igazolas.megjegyzes || 'Nincs megjegyzés',
+    status: igazolas.allapot,
+    reason: igazolas.megjegyzes_diak || igazolas.megjegyzes || 'Nincs megjegyzés',
     imageUrl: igazolas.imgDriveURL || '',
     imgDriveURL: igazolas.imgDriveURL || undefined,
     teacherNote: igazolas.megjegyzes_tanar || '',
@@ -45,7 +47,7 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
   };
 }
 
-export function StudentTableView({ studentId }: StudentTableViewProps) {
+export function StudentTableView({ studentId, filter = 'all' }: StudentTableViewProps) {
   const [igazolasok, setIgazolasok] = useState<Igazolas[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -66,14 +68,42 @@ export function StudentTableView({ studentId }: StudentTableViewProps) {
     fetchIgazolasok();
   }, [studentId]);
 
+  // Filter data based on the filter prop
+  const filteredIgazolasok = igazolasok.filter(igazolas => {
+    if (filter === 'all') return true;
+    if (filter === 'pending') return igazolas.allapot === 'Függőben';
+    if (filter === 'approved') return igazolas.allapot === 'Elfogadva';
+    if (filter === 'rejected') return igazolas.allapot === 'Elutasítva';
+    return true;
+  });
+
   // Map data to table format
-  const tableData = igazolasok.map(mapIgazolasToTableData);
+  const tableData = filteredIgazolasok.map(mapIgazolasToTableData);
+
+  // Get filter-specific title and description
+  const getFilterTitle = () => {
+    switch (filter) {
+      case 'pending': return 'Függőben lévő igazolások';
+      case 'approved': return 'Jóváhagyott igazolások';
+      case 'rejected': return 'Elutasított igazolások';
+      default: return 'Igazolásaim';
+    }
+  };
+
+  const getFilterDescription = () => {
+    switch (filter) {
+      case 'pending': return 'Ellenőrzésre váró igazolások';
+      case 'approved': return 'Osztályfőnök által elfogadott igazolások';
+      case 'rejected': return 'Osztályfőnök által elutasított igazolások';
+      default: return 'Az összes beküldött igazolásod';
+    }
+  };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Igazolásaim</CardTitle>
-        <CardDescription>Az összes beküldött igazolásod</CardDescription>
+        <CardTitle><h1 className='text-xl'>{getFilterTitle()}</h1></CardTitle>
+        <CardDescription>{getFilterDescription()}</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
