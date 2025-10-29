@@ -14,12 +14,15 @@ import BKKAlertCard from '@/components/ui/BKKAlertCard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cleanBKKText } from '@/lib/text-cleanup';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   MapPin, 
   Navigation, 
   AlertTriangle, 
   Search,
-  CheckCircle
+  CheckCircle,
+  X,
+  ChevronLeft
 } from 'lucide-react';
 import { BKKDataProcessor } from '@/lib/bkk-processor';
 import { 
@@ -205,6 +208,8 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
     onClose?.();
   };
 
+  const isMobile = useIsMobile();
+
   if (isLoadingData) {
     return (
       <Card className="w-full max-w-4xl mx-auto">
@@ -220,63 +225,81 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl overflow-hidden p-0 bg-white dark:bg-gray-900" style={{ height: 'calc(90vh)', maxHeight: 'calc(90vh)', display: 'grid', gridTemplateRows: 'auto 1fr auto' }}>
-        <DialogHeader className="border-b border-blue-200 dark:border-blue-800 p-6 pb-4" style={{ gridRow: '1' }}>
-          <DialogTitle className="flex items-center gap-3 text-xl font-bold">
-            <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+      <DialogContent className={`overflow-hidden p-0 bg-white dark:bg-gray-900 ${
+        isMobile 
+          ? 'max-w-full h-screen w-full m-0 rounded-none' 
+          : 'max-w-6xl h-[90vh]'
+      }`} style={isMobile ? {} : { display: 'grid', gridTemplateRows: 'auto 1fr auto', height: 'calc(90vh)', maxHeight: 'calc(90vh)' }}>
+        <DialogHeader className={`border-b border-blue-200 dark:border-blue-800 ${isMobile ? 'p-4 relative' : 'p-6 pb-4'}`} style={isMobile ? {} : { gridRow: '1' }}>
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="absolute right-4 top-4 w-8 h-8 rounded-full p-0 hover:bg-blue-100 dark:hover:bg-blue-900"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          )}
+          <DialogTitle className={`flex items-center gap-3 ${isMobile ? 'text-lg pr-12' : 'text-xl'} font-bold`}>
+            <div className={`${isMobile ? 'w-10 h-10' : 'w-10 h-10'} rounded-full bg-blue-600 flex items-center justify-center`}>
               <span className="text-white font-bold text-lg">Ⓜ️</span>
             </div>
             <span className="text-blue-900 dark:text-blue-100">BKK Forgalmi Információk</span>
           </DialogTitle>
-          <DialogDescription className="text-blue-700 dark:text-blue-300 mt-2">
-            Válassz ki egy forgalmi zavart vagy járművet a késés igazolásához. 
-            A kiválasztott információ automatikusan hozzáadódik az igazoláshoz.
+          <DialogDescription className={`text-blue-700 dark:text-blue-300 mt-2 ${isMobile ? 'text-sm' : ''}`}>
+            {isMobile 
+              ? 'Válassz ki egy forgalmi zavart vagy járművet' 
+              : 'Válassz ki egy forgalmi zavart vagy járművet a késés igazolásához. A kiválasztott információ automatikusan hozzáadódik az igazoláshoz.'
+            }
           </DialogDescription>
         </DialogHeader>
         
-        <div className="bg-gray-50 dark:bg-gray-800 overflow-hidden" style={{ gridRow: '2', minHeight: '0' }}>
-          <Tabs defaultValue="alerts" className="h-full" style={{ display: 'grid', gridTemplateRows: 'auto auto 1fr' }}>
-            <TabsList className="grid w-full grid-cols-2 bg-blue-100 dark:bg-blue-900 border-b-2 border-blue-200 dark:border-blue-700 mx-0 rounded-none h-auto p-1" style={{ gridRow: '1' }}>
+        <div className="bg-gray-50 dark:bg-gray-800 overflow-hidden" style={isMobile ? { flex: '1', display: 'flex', flexDirection: 'column' } : { gridRow: '2', minHeight: '0' }}>
+          <Tabs defaultValue="alerts" className={`h-full ${isMobile ? 'flex flex-col' : ''}`} style={isMobile ? {} : { display: 'grid', gridTemplateRows: 'auto auto 1fr' }}>
+            <TabsList className={`grid w-full grid-cols-2 bg-blue-100 dark:bg-blue-900 border-b-2 border-blue-200 dark:border-blue-700 mx-0 rounded-none ${isMobile ? 'h-14' : 'h-auto p-1'}`} style={isMobile ? {} : { gridRow: '1' }}>
               <TabsTrigger 
                 value="alerts" 
-                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-blue-700 dark:text-blue-200 font-medium"
+                className={`flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-blue-700 dark:text-blue-200 font-medium ${isMobile ? 'text-sm px-2' : ''}`}
               >
                 <AlertTriangle className="w-4 h-4" />
-                Forgalmi Zavarok ({filteredAlerts.length})
+                <span className={isMobile ? 'hidden sm:inline' : ''}>Forgalmi Zavarok</span>
+                <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>({filteredAlerts.length})</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="vehicles" 
-                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-blue-700 dark:text-blue-200 font-medium"
+                className={`flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-blue-700 dark:text-blue-200 font-medium ${isMobile ? 'text-sm px-2' : ''}`}
               >
                 <MapPin className="w-4 h-4" />
-                Közeli Járművek ({filteredVehicles.length})
+                <span className={isMobile ? 'hidden sm:inline' : ''}>Közeli Járművek</span>
+                <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>({filteredVehicles.length})</span>
               </TabsTrigger>
             </TabsList>
             
             {/* Filters and Search */}
-            <div className="p-4 border-b space-y-4" style={{ gridRow: '2' }}>
-              <div className="flex flex-col sm:flex-row gap-4">
+            <div className={`border-b space-y-4 ${isMobile ? 'p-3 space-y-3' : 'p-4'}`} style={isMobile ? {} : { gridRow: '2' }}>
+              <div className={`${isMobile ? 'space-y-3' : 'flex flex-col sm:flex-row gap-4'}`}>
                 <div className="flex-1">
                   <Label htmlFor="search" className="sr-only">Keresés</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                     <Input
                       id="search"
-                      placeholder="Keresés járat száma, útvonal szerint..."
+                      placeholder={isMobile ? "Keresés járat, útvonal..." : "Keresés járat száma, útvonal szerint..."}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
+                      className={`pl-10 ${isMobile ? 'h-12 text-base' : ''}`}
                     />
                   </div>
                 </div>
                 
-                <div className="w-full sm:w-48">
+                <div className={`${isMobile ? 'w-full' : 'w-full sm:w-48'}`}>
                   <Label htmlFor="vehicle-filter" className="sr-only">Jármű típus</Label>
                   <Select 
                     value={vehicleTypeFilter} 
                     onValueChange={(value: 'all' | 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo') => setVehicleTypeFilter(value)}
                   >
-                    <SelectTrigger className="border-blue-300 focus:border-blue-500">
+                    <SelectTrigger className={`border-blue-300 focus:border-blue-500 ${isMobile ? 'h-12 text-base' : ''}`}>
                       <SelectValue placeholder="Jármű típus" />
                     </SelectTrigger>
                     <SelectContent>
@@ -326,21 +349,21 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
               </div>
             </div>
             
-            <TabsContent value="alerts" className="overflow-hidden m-0 p-0" style={{ gridRow: '3', minHeight: '0' }}>
-              <div className="h-full overflow-y-auto overflow-x-hidden">
-                <div className="space-y-4 p-4">
+            <TabsContent value="alerts" className={`overflow-hidden m-0 p-0 ${isMobile ? 'flex-1' : ''}`} style={isMobile ? {} : { gridRow: '3', minHeight: '0' }}>
+              <div className={`h-full overflow-y-auto overflow-x-hidden ${isMobile ? 'flex-1' : ''}`}>
+                <div className={`space-y-4 ${isMobile ? 'p-3' : 'p-4'}`}>
                   {filteredAlerts.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="w-20 h-20 mx-auto mb-4 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                        <AlertTriangle className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+                    <div className={`text-center ${isMobile ? 'py-8' : 'py-12'}`}>
+                      <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} mx-auto mb-4 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center`}>
+                        <AlertTriangle className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} text-blue-600 dark:text-blue-400`} />
                       </div>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                      <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium text-gray-900 dark:text-gray-100 mb-2`}>
                         {searchTerm || vehicleTypeFilter !== 'all' 
                           ? 'Nincs találat' 
                           : 'Nincsenek aktív forgalmi zavarok'
                         }
                       </h3>
-                      <p className="text-gray-500 dark:text-gray-400">
+                      <p className={`text-gray-500 dark:text-gray-400 ${isMobile ? 'text-sm px-4' : ''}`}>
                         {searchTerm || vehicleTypeFilter !== 'all' 
                           ? 'Próbálj meg másik keresési feltételt vagy szűrőt'
                           : 'Jelenleg minden BKK jármű a menetrend szerint közlekedik'
@@ -361,20 +384,20 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
               </div>
             </TabsContent>
             
-            <TabsContent value="vehicles" className="overflow-hidden m-0 p-0" style={{ gridRow: '3', minHeight: '0', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
-              <div className="p-4 border-b bg-blue-50 dark:bg-blue-950" style={{ gridRow: '1' }}>
+            <TabsContent value="vehicles" className={`overflow-hidden m-0 p-0 ${isMobile ? 'flex-1 flex flex-col' : ''}`} style={isMobile ? {} : { gridRow: '3', minHeight: '0', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
+              <div className={`border-b bg-blue-50 dark:bg-blue-950 ${isMobile ? 'p-3' : 'p-4'}`} style={isMobile ? {} : { gridRow: '1' }}>
                 {!userLocation ? (
                   <Alert className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
-                    <div className="flex items-center gap-3">
+                    <div className={`flex items-center gap-3 ${isMobile ? 'flex-col text-center' : ''}`}>
                       <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
                         <Navigation className="h-4 w-4 text-white" />
                       </div>
-                      <AlertDescription className="flex items-center justify-between flex-1">
-                        <div>
-                          <p className="font-medium text-blue-900 dark:text-blue-100 mb-1">
+                      <AlertDescription className={`${isMobile ? 'w-full' : 'flex items-center justify-between flex-1'}`}>
+                        <div className={isMobile ? 'mb-3' : ''}>
+                          <p className={`font-medium text-blue-900 dark:text-blue-100 mb-1 ${isMobile ? 'text-sm' : ''}`}>
                             Helymeghatározás szükséges
                           </p>
-                          <p className="text-sm text-blue-700 dark:text-blue-300">
+                          <p className={`text-blue-700 dark:text-blue-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                             A közeli BKK járművek megtekintéséhez engedélyezd a helymeghatározást
                           </p>
                         </div>
@@ -591,46 +614,48 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
           </Tabs>
         </div>
         
-        <div className="border-t border-blue-200 dark:border-blue-800 p-4 bg-blue-50 dark:bg-blue-950" style={{ gridRow: '3' }}>
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
+        <div className={`border-t border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 ${isMobile ? 'p-4 space-y-4' : 'p-4'}`} style={isMobile ? {} : { gridRow: '3' }}>
+          <div className={`${isMobile ? 'space-y-4' : 'flex justify-between items-center'}`}>
+            <div className={`${isMobile ? 'w-full' : 'flex items-center gap-2'}`}>
               {selectedAlert && (
-                <div className="flex items-center gap-2 text-sm">
+                <div className={`flex items-center gap-2 text-sm ${isMobile ? 'w-full p-3 bg-white dark:bg-gray-800 rounded-lg' : ''}`}>
                   <div className={`w-6 h-6 rounded-full ${getBKKColors(selectedAlert.category).background} flex items-center justify-center`}>
                     <VehicleIcon vehicleType={selectedAlert.category} size={14} />
                   </div>
                   <span className="text-blue-700 dark:text-blue-300 font-medium">
-                    Forgalmi zavar kiválasztva: {selectedAlert.title}
+                    {isMobile ? `${selectedAlert.title}` : `Forgalmi zavar kiválasztva: ${selectedAlert.title}`}
                   </span>
                 </div>
               )}
               {selectedVehicle && (
-                <div className="flex items-center gap-2 text-sm">
+                <div className={`flex items-center gap-2 text-sm ${isMobile ? 'w-full p-3 bg-white dark:bg-gray-800 rounded-lg' : ''}`}>
                   <div className={`w-6 h-6 rounded-full ${getBKKColors(selectedVehicle.vehicleType).background} flex items-center justify-center`}>
                     <VehicleIcon vehicleType={selectedVehicle.vehicleType} size={14} />
                   </div>
                   <span className="text-blue-700 dark:text-blue-300 font-medium">
-                    Jármű kiválasztva: {selectedVehicle.routeId} - {selectedVehicle.routeName}
+                    {isMobile ? `${selectedVehicle.routeId} - ${selectedVehicle.routeName}` : `Jármű kiválasztva: ${selectedVehicle.routeId} - ${selectedVehicle.routeName}`}
                   </span>
                 </div>
               )}
               {!selectedAlert && !selectedVehicle && (
-                <span className="text-gray-500 dark:text-gray-400 text-sm">
+                <span className={`text-gray-500 dark:text-gray-400 ${isMobile ? 'text-center block py-2' : 'text-sm'}`}>
                   Válassz ki egy elemet az igazoláshoz
                 </span>
               )}
             </div>
             
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={onClose} className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-600 dark:text-blue-300 dark:hover:bg-blue-900">
-                Mégse
-              </Button>
+            <div className={`${isMobile ? 'w-full' : 'flex gap-3'}`}>
+              {!isMobile && (
+                <Button variant="outline" onClick={onClose} className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-600 dark:text-blue-300 dark:hover:bg-blue-900">
+                  Mégse
+                </Button>
+              )}
               <Button 
                 disabled={!selectedAlert && !selectedVehicle}
                 onClick={handleConfirmSelection}
-                className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px] font-medium"
+                className={`bg-blue-600 hover:bg-blue-700 text-white font-medium ${isMobile ? 'w-full h-14 text-lg' : 'min-w-[120px]'}`}
               >
-                ✓ Kiválasztás
+                {isMobile ? '✓ Kiválasztás és Bezárás' : '✓ Kiválasztás'}
               </Button>
             </div>
           </div>

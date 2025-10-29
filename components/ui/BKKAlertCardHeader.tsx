@@ -1,8 +1,16 @@
 import React from 'react';
 import VehicleIcon from './VehicleIcon';
-import SpecialRouteBadge from './SpecialRouteBadge';
 import { ProcessedBKKAlert } from '@/lib/bkk-types';
 import { formatHungarianRoutes } from '@/lib/hungarian-grammar';
+import { 
+  BKK_LINE_COLORS, 
+  getMetroLineColor, 
+  getHevLineColor, 
+  getHajoLineColor,
+  getMetroLineNumber,
+  getHevLineNumber,
+  getHajoLineNumber
+} from '@/lib/bkk-line-colors';
 
 interface BKKAlertCardHeaderProps {
   alert: ProcessedBKKAlert;
@@ -42,14 +50,33 @@ export const BKKAlertCardHeader: React.FC<BKKAlertCardHeaderProps> = ({
         {group.routes.map((route) => {
           // Use special circular badges for metro, hev, hajo
           if (group.vehicleType === 'metro' || group.vehicleType === 'hev' || group.vehicleType === 'hajo') {
+            // Get the route number and line color
+            let routeNumber = '';
+            let lineColor = '';
+            
+            if (group.vehicleType === 'metro') {
+              routeNumber = getMetroLineNumber(route);
+              lineColor = getMetroLineColor(route);
+            } else if (group.vehicleType === 'hev') {
+              routeNumber = getHevLineNumber(route);
+              lineColor = getHevLineColor(route);
+            } else if (group.vehicleType === 'hajo') {
+              routeNumber = getHajoLineNumber(route);
+              lineColor = getHajoLineColor(route);
+            }
+            
             return (
-              <SpecialRouteBadge
+              <div
                 key={route}
-                routeNumber={route}
-                vehicleType={group.vehicleType}
-                size={24}
-                className=""
-              />
+                className="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs"
+                style={{
+                  backgroundColor: lineColor,
+                  fontSize: `${24 / 1.428}px`, // Circle height / 1.428
+                  lineHeight: '1'
+                }}
+              >
+                {routeNumber}
+              </div>
             );
           }
           
@@ -88,17 +115,17 @@ export const BKKAlertCardHeader: React.FC<BKKAlertCardHeaderProps> = ({
     switch (vehicleType) {
       case 'villamos':
         return {
-          backgroundColor: '#FFD900',
+          backgroundColor: BKK_LINE_COLORS.villamos,
           textColor: '#2B2929'
         };
       case 'busz':
         return {
-          backgroundColor: '#009EE3',
+          backgroundColor: BKK_LINE_COLORS.busz,
           textColor: '#FFFFFF'
         };
       case 'troli':
         return {
-          backgroundColor: '#E31F24',
+          backgroundColor: BKK_LINE_COLORS.troli,
           textColor: '#FFFFFF'
         };
       case 'ejszakai':

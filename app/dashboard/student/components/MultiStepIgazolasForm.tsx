@@ -358,91 +358,107 @@ export function MultiStepIgazolasForm() {
 
         {/* Step 4: BKK Disruption Selection */}
         <Separator />
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
-              <span className="text-white font-bold text-lg">Ⓜ️</span>
+        {/* Mobile-first design for BKK Section */}
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-600 flex items-center justify-center">
+              <span className="text-white text-xl md:text-2xl">🚇</span>
             </div>
-            <Label className="text-lg font-medium text-blue-900 dark:text-blue-100">BKK Forgalmi Információk</Label>
+            <div>
+              <h3 className="text-lg md:text-xl font-semibold text-blue-900 dark:text-blue-100">
+                BKK Forgalmi Információk
+              </h3>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                Közlekedési késés igazolása
+              </p>
+            </div>
           </div>
           
-          <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-l-4 border-blue-500 rounded-md">
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center mt-0.5">
-                <span className="text-white text-sm">ℹ️</span>
+          {/* Info Card */}
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/50 border border-blue-200 dark:border-blue-800 rounded-xl p-4 md:p-6">
+            <div className="flex items-start gap-3 md:gap-4">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-500 flex items-center justify-center mt-1">
+                <span className="text-white text-lg md:text-xl">ℹ️</span>
               </div>
-              <div>
-                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Közlekedési késés igazolása</h4>
-                <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
-                  Ha olyan késés vagy forgalmi zavar miatt hiányoztál vagy késtél, mely szerepel a BKK rendszerében, azt az alábbi gombra kattintva kiválaszthatod.
-                  <br />
-                  Ez egy BKK által hitelesített adat lesz, melyet az osztályfőnököd is látni fog az igazolásodban.
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 text-base md:text-lg">
+                  Közlekedési késés igazolása
+                </h4>
+                <p className="text-sm md:text-base text-blue-800 dark:text-blue-200 mb-6 leading-relaxed">
+                  Ha olyan késés vagy forgalmi zavar miatt hiányoztál vagy késtél, mely szerepel a BKK rendszerében, 
+                  azt az alábbi gombra kattintva kiválaszthatod.
+                </p>
+                <p className="text-xs md:text-sm text-blue-700 dark:text-blue-300 mb-6 bg-blue-100 dark:bg-blue-900/50 p-3 rounded-lg">
+                  💡 Ez egy BKK által hitelesített adat lesz, melyet az osztályfőnököd is látni fog az igazolásodban.
                 </p>
                 
                 {!formData.bkkDisruption ? (
                   <Button
                     type="button"
                     onClick={() => setShowBKKSelector(true)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-all duration-200 hover:shadow-lg"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 md:py-3 rounded-xl transition-all duration-200 hover:shadow-lg text-base md:text-sm"
                   >
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="text-lg">🚇</span>
+                    <div className="flex items-center justify-center gap-3">
+                      <span className="text-xl md:text-lg">🚇</span>
                       <span>BKK Forgalmi Információk Megnyitása</span>
                     </div>
                   </Button>
                 ) : (
-                  <div className="space-y-3">
-                    <div className="p-4 bg-white dark:bg-gray-800 border-2 border-blue-200 dark:border-blue-700 rounded-lg">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            formData.bkkDisruption.type === 'alert' 
-                              ? 'bg-orange-500'
-                              : getBKKColors((formData.bkkDisruption.data as ProcessedVehiclePosition).vehicleType).background
-                          }`}>
-                            <span className="text-white text-lg">
-                              {formData.bkkDisruption.type === 'alert' 
-                                ? '⚠️' 
-                                : getVehicleTypeEmoji((formData.bkkDisruption.data as ProcessedVehiclePosition).vehicleType)
-                              }
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-blue-900 dark:text-blue-100 text-sm">
-                              {formData.bkkDisruption.type === 'alert' 
-                                ? '🚨 Forgalmi Zavar Kiválasztva' 
-                                : '🚍 Jármű Kiválasztva'
-                              }
-                            </p>
-                            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">
-                              {formData.bkkDisruption.description}
-                            </p>
-                            <Badge variant="outline" className="mt-2 bg-blue-100 text-blue-700 border-blue-300">
-                              ✅ Hivatalos BKK adat
-                            </Badge>
-                          </div>
+                  <div className="space-y-4">
+                    {/* Selected BKK Item - Mobile Optimized */}
+                    <div className="bg-white dark:bg-gray-800 border-2 border-blue-200 dark:border-blue-700 rounded-xl p-4 md:p-5">
+                      <div className="flex items-start gap-3 md:gap-4">
+                        <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          formData.bkkDisruption.type === 'alert' 
+                            ? 'bg-orange-500'
+                            : getBKKColors((formData.bkkDisruption.data as ProcessedVehiclePosition).vehicleType).background
+                        }`}>
+                          <span className="text-white text-xl md:text-2xl">
+                            {formData.bkkDisruption.type === 'alert' 
+                              ? '⚠️' 
+                              : getVehicleTypeEmoji((formData.bkkDisruption.data as ProcessedVehiclePosition).vehicleType)
+                            }
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-blue-900 dark:text-blue-100 text-base md:text-lg mb-2">
+                            {formData.bkkDisruption.type === 'alert' 
+                              ? '🚨 Forgalmi Zavar Kiválasztva' 
+                              : '🚍 Jármű Kiválasztva'
+                            }
+                          </p>
+                          <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 mb-3 leading-relaxed">
+                            {formData.bkkDisruption.description}
+                          </p>
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-500 text-xs md:text-sm px-3 py-1">
+                            ✅ Hivatalos BKK adat
+                          </Badge>
                         </div>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           onClick={removeBKKDisruption}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950 w-10 h-10 md:w-8 md:h-8 rounded-lg flex-shrink-0"
                         >
                           <span className="sr-only">Eltávolítás</span>
-                          ✕
+                          <span className="text-lg md:text-base">✕</span>
                         </Button>
                       </div>
                     </div>
                     
+                    {/* Change Button */}
                     <Button
                       type="button"
                       variant="outline"
-                      size="sm"
                       onClick={() => setShowBKKSelector(true)}
-                      className="w-full border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-600 dark:text-blue-300 dark:hover:bg-blue-950"
+                      className="w-full border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-600 dark:text-blue-300 dark:hover:bg-blue-950 py-3 md:py-2 rounded-xl text-base md:text-sm font-medium"
                     >
-                      🔄 Másik zavar kiválasztása
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-lg md:text-base">🔄</span>
+                        <span>Másik zavar kiválasztása</span>
+                      </div>
                     </Button>
                   </div>
                 )}

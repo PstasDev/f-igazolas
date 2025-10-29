@@ -3,6 +3,7 @@ import { BuszIcon } from '../icons/BuszIcon';
 import VillamosIcon from '../icons/VillamosIcon';
 import { TroliIcon } from '../icons/TroliIcon';
 import SpecialRouteBadge from './SpecialRouteBadge';
+import { BKK_LINE_COLORS } from '@/lib/bkk-line-colors';
 
 interface RouteBadgeProps {
   routeNumber: string;
@@ -27,21 +28,21 @@ export const RouteBadge: React.FC<RouteBadgeProps> = ({ routeNumber, vehicleType
     switch (type) {
       case 'villamos':
         return {
-          backgroundColor: '#FFD900',
+          backgroundColor: BKK_LINE_COLORS.villamos,
           textColor: '#2B2929',
           icon: <VillamosIcon size={16} className="flex-shrink-0" />
         };
       case 'busz':
         return {
-          backgroundColor: '#009EE3',
+          backgroundColor: BKK_LINE_COLORS.busz,
           textColor: '#FFFFFF',
-          icon: <BuszIcon size={16} color="#009EE3" />
+          icon: <BuszIcon size={16} color={BKK_LINE_COLORS.busz} />
         };
       case 'troli':
         return {
-          backgroundColor: '#E31F24',
+          backgroundColor: BKK_LINE_COLORS.troli,
           textColor: '#FFFFFF',
-          icon: <TroliIcon size={16} color="#E31F24" />
+          icon: <TroliIcon size={16} color={BKK_LINE_COLORS.troli} />
         };
       case 'ejszakai':
         return {

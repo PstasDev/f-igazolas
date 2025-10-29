@@ -1,4 +1,5 @@
 import React from 'react';
+import { BKK_LINE_COLORS } from '@/lib/bkk-line-colors';
 
 interface VillamosIconProps {
   className?: string;
@@ -15,7 +16,7 @@ export const VillamosIcon: React.FC<VillamosIconProps> = ({ className = '', size
       xmlns="http://www.w3.org/2000/svg"
     >
       <path 
-        fill="#FFD900" 
+        fill={BKK_LINE_COLORS.villamos} 
         d="M275.564,0C123.646,0,0,123.665,0,275.584c0,151.937,123.646,275.545,275.564,275.545c151.937,0,275.545-123.608,275.545-275.545C551.109,123.665,427.501,0,275.564,0"
       />
       <polygon 

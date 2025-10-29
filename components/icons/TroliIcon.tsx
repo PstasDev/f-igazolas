@@ -1,4 +1,5 @@
 import React from 'react';
+import { BKK_LINE_COLORS } from '@/lib/bkk-line-colors';
 
 interface TroliIconProps {
   className?: string;
@@ -9,7 +10,7 @@ interface TroliIconProps {
 export const TroliIcon: React.FC<TroliIconProps> = ({ 
   className = '', 
   size = 24, 
-  color = '#E31F24' 
+  color = BKK_LINE_COLORS.troli 
 }) => {
   return (
     <svg
