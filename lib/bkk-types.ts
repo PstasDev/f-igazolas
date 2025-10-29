@@ -252,10 +252,10 @@ export function getBKKColors(type: 'busz' | 'villamos' | 'metro' | 'hev' | 'ejsz
     case 'general':
     default:
       return {
-        background: 'bg-blue-600', // BKK alap kék
+        background: 'bg-purple-600', // BKK purple for general/disruptions
         text: 'text-white',
-        border: 'border-blue-600',
-        hover: 'hover:bg-blue-700'
+        border: 'border-purple-600',
+        hover: 'hover:bg-purple-700'
       };
   }
 }

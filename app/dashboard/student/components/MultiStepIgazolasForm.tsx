@@ -14,7 +14,7 @@ import { Slider } from '@/components/ui/slider';
 import { Field, FieldDescription, FieldTitle } from '@/components/ui/field';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Calendar, Clock, FileText, Check, HelpCircle, ExternalLink, Folder, Share, Copy } from 'lucide-react';
+import { Calendar, Clock, FileText, Check, HelpCircle, ExternalLink, Folder, Share, Copy, Paperclip } from 'lucide-react';
 import BKKLogo from '@/components/icons/BKKLogo';
 import { apiClient } from '@/lib/api';
 import { IgazolasTipus, IgazolasCreateRequest } from '@/lib/types';
@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { BKKDisruptionSelector } from './BKKDisruptionSelector';
 import { ProcessedBKKAlert, ProcessedVehiclePosition, getVehicleTypeEmoji, getVehicleTypeName, getBKKColors } from '@/lib/bkk-types';
+import { createDisruptionVerification, createVehicleVerification, BKKVerification } from '@/lib/bkk-verification-schema';
 
 interface FormData {
   date: string;
@@ -122,15 +123,55 @@ export function MultiStepIgazolasForm() {
     try {
       setIsSubmitting(true);
       
+      const selectedTipus = igazolasTipusok.find(t => t.id === formData.tipus);
+      const isKozlekedesType = selectedTipus?.nev?.toLowerCase() === 'közlekedés' || 
+                               selectedTipus?.nev?.toLowerCase() === 'közlekedési probléma';
+      
+      // Create BKK verification if this is a transport-related request and BKK data exists
+      let bkkVerification: BKKVerification | undefined;
+      
+      if (isKozlekedesType && formData.bkkDisruption) {
+        if (formData.bkkDisruption.type === 'alert') {
+          const alert = formData.bkkDisruption.data as ProcessedBKKAlert;
+          bkkVerification = createDisruptionVerification(
+            alert,
+            undefined, // We don't have user location stored in current implementation
+            'bkk_real_time_api'
+          );
+        } else {
+          const vehicle = formData.bkkDisruption.data as ProcessedVehiclePosition;
+          bkkVerification = createVehicleVerification(
+            vehicle,
+            undefined, // We don't have user location stored in current implementation  
+            vehicle.hasDelay || false,
+            [], // We don't have related alerts in current implementation
+            'bkk_real_time_api'
+          );
+        }
+      }
+      
       const requestData: IgazolasCreateRequest = {
         eleje: startDateTime,
         vege: endDateTime,
         tipus: formData.tipus,
-        megjegyzes_diak: formData.megjegyzes_diak || undefined,
         diak: true,
         korrigalt: false,
-        imgDriveURL: formData.imgDriveURL || undefined,
       };
+
+      // Only add optional fields if they have meaningful values
+      if (formData.megjegyzes_diak && formData.megjegyzes_diak.trim() !== '') {
+        requestData.megjegyzes_diak = formData.megjegyzes_diak.trim();
+      }
+
+      if (formData.imgDriveURL && formData.imgDriveURL.trim() !== '') {
+        requestData.imgDriveURL = formData.imgDriveURL.trim();
+      }
+
+      if (bkkVerification) {
+        requestData.bkk_verification = bkkVerification;
+      }
+
+      console.log('Sending request data:', JSON.stringify(requestData, null, 2));
 
       await apiClient.createIgazolas(requestData);
       toast.success('Igazolás sikeresen beküldve!');
@@ -140,7 +181,28 @@ export function MultiStepIgazolasForm() {
       router.refresh();
     } catch (error) {
       console.error('Failed to create igazolás:', error);
-      toast.error('Hiba történt az igazolás beküldésekor');
+      
+      // Enhanced error logging to help debug the issue
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        
+        // Check if it's an API error with additional details
+        const apiError = error as Error & { detail?: string; status?: number };
+        if (apiError.detail) {
+          console.error('API error detail:', apiError.detail);
+        }
+        if (apiError.status) {
+          console.error('HTTP status:', apiError.status);
+        }
+      }
+      
+      let errorMessage = 'Hiba történt az igazolás beküldésekor';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -354,15 +416,17 @@ export function MultiStepIgazolasForm() {
                       <div className="mt-4 space-y-3"
                         data-debug={`BKK section shown for type: ${selectedTipus?.nev}`}
                       >
-                        <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 border border-orange-200 dark:border-orange-800 rounded-lg p-3">
-                          <div className="flex items-start gap-3">
-                            <BKKLogo size={24} className="text-orange-700 dark:text-orange-300 mt-0.5" />
+                        <div className="bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                          <div className="flex items-start gap-4">
                             <div className="flex-1 min-w-0">
-                              <h5 className="font-medium text-orange-900 dark:text-orange-100 mb-2">
-                                BKK Forgalmi Információk
+                              <h5 className="font-medium text-purple-900 dark:text-purple-100 mb-2 inline-flex items-center gap-2">
+                                <div className="flex-shrink-0 mt-1">
+                                  <BKKLogo size={60} />
+                                </div>
+                                  Forgalmi Információk (opcionális)
                               </h5>
-                              <p className="text-sm text-orange-800 dark:text-orange-200 mb-3">
-                                Hitelesített BKK adatok csatolásával erősítheted meg az igazolásodat.
+                              <p className="text-sm text-purple-800 dark:text-purple-200 mb-3">
+                                Amennyiben a BKK rendszerében forgalmi zavar vagy késés <strong>lett regisztrálva</strong>, az alábbi gombra kattintva csaolhatod a hitelesített adatokat az igazolásodhoz.
                               </p>
                               
                               {!formData.bkkDisruption ? (
@@ -370,17 +434,18 @@ export function MultiStepIgazolasForm() {
                                   type="button"
                                   onClick={() => setShowBKKSelector(true)}
                                   variant="outline"
-                                  className="w-full border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-600 dark:text-orange-300 dark:hover:bg-orange-950"
+                                  className="w-full border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-600 dark:text-purple-300 dark:hover:bg-purple-950"
                                 >
-                                  <div className="flex items-center justify-center gap-2">
-                                    <BKKLogo size={16} className="text-orange-700 dark:text-orange-300" />
-                                    <span>BKK Forgalmi Információk Hozzáadása</span>
+                                  <div className="flex items-center justify-center gap-3">
+                                    <Paperclip />
+                                    
+                                    <span>Csatolás</span>
                                   </div>
                                 </Button>
                               ) : (
                                 <div className="space-y-3">
                                   {/* Selected BKK Item - Compact Display */}
-                                  <div className="bg-white dark:bg-gray-800 border border-orange-200 dark:border-orange-700 rounded-lg p-3">
+                                  <div className="bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
                                     <div className="flex items-start gap-3">
                                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                                         formData.bkkDisruption.type === 'alert' 
@@ -395,7 +460,7 @@ export function MultiStepIgazolasForm() {
                                         </span>
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                        <p className="font-medium text-orange-900 dark:text-orange-100 text-sm mb-1">
+                                        <p className="font-medium text-purple-900 dark:text-purple-100 text-sm mb-1">
                                           {formData.bkkDisruption.type === 'alert' 
                                             ? 'Forgalmi Zavar' 
                                             : 'Jármű Információ'
@@ -426,7 +491,7 @@ export function MultiStepIgazolasForm() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setShowBKKSelector(true)}
-                                    className="w-full border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-600 dark:text-orange-300 dark:hover:bg-orange-950 text-sm"
+                                    className="w-full border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-600 dark:text-purple-300 dark:hover:bg-purple-950 text-sm"
                                   >
                                     🔄 Másik adat kiválasztása
                                   </Button>
@@ -667,6 +732,34 @@ export function MultiStepIgazolasForm() {
                       >
                         Támogató dokumentum megtekintése
                       </a>
+                    </div>
+                  )}
+                  
+                  {formData.bkkDisruption && (
+                    <div className="md:col-span-2">
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">BKK Igazolás</Label>
+                      <div className="flex items-start gap-3 mt-2">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          formData.bkkDisruption.type === 'alert' 
+                            ? 'bg-red-500'
+                            : getBKKColors((formData.bkkDisruption.data as ProcessedVehiclePosition).vehicleType).background
+                        }`}>
+                          <span className="text-white text-sm">
+                            {formData.bkkDisruption.type === 'alert' 
+                              ? '⚠️' 
+                              : getVehicleTypeEmoji((formData.bkkDisruption.data as ProcessedVehiclePosition).vehicleType)
+                            }
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                            {formData.bkkDisruption.description}
+                          </p>
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-500 text-xs">
+                            ✅ Hivatalos BKK adat
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

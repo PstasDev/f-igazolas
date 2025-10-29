@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Spinner } from '@/components/ui/spinner';
 import VehicleIcon from '@/components/ui/VehicleIcon';
 import BKKAlertCard from '@/components/ui/BKKAlertCard';
+import BKKLogo from '@/components/icons/BKKLogo';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cleanBKKText } from '@/lib/text-cleanup';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,10 +20,10 @@ import {
   Navigation, 
   AlertTriangle, 
   Search,
-  CheckCircle,
-  X
+  CheckCircle
 } from 'lucide-react';
 import { BKKDataProcessor } from '@/lib/bkk-processor';
+import { bkkDataManager } from '@/lib/bkk-data-manager';
 import { 
   ProcessedBKKAlert, 
   ProcessedVehiclePosition, 
@@ -57,16 +58,16 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
   const [vehicleTypeFilter, setVehicleTypeFilter] = useState<'all' | 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Load BKK data from example files
+  // Load BKK data using the singleton data manager to prevent multiple network requests
   useEffect(() => {
     const loadBKKData = async () => {
       try {
         setIsLoadingData(true);
         
-        // Load alerts from example file
-        const alertsResponse = await fetch('/BKK Examples/Alerts.txt');
-        const alertsText = await alertsResponse.text();
-        const processedAlerts = await BKKDataProcessor.parseAlertsFromText(alertsText);
+        // Use the singleton data manager which handles caching and prevents duplicate requests
+        const { alerts: processedAlerts, vehicles: processedVehicles } = await bkkDataManager.initializeData();
+        
+        // Process alerts
         const activeAlerts = BKKDataProcessor.getActiveAlerts(processedAlerts);
         
         // Clean up text encoding issues in all alerts
@@ -77,15 +78,38 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
         }));
         
         setAlerts(cleanedAlerts);
-        
-        // Load vehicle positions from example file
-        const vehiclesResponse = await fetch('/BKK Examples/VehiclePositions.txt');
-        const vehiclesText = await vehiclesResponse.text();
-        const processedVehicles = await BKKDataProcessor.parseVehiclePositionsFromText(vehiclesText);
         setVehicles(processedVehicles);
         
+        console.log(`BKKDisruptionSelector: Loaded ${cleanedAlerts.length} alerts and ${processedVehicles.length} vehicles`);
+        
       } catch (error) {
-        console.error('Failed to load BKK data:', error);
+        console.error('BKKDisruptionSelector: Failed to load BKK data:', error);
+        
+        // Final fallback: try to load example data directly
+        try {
+          console.log('BKKDisruptionSelector: Attempting fallback to example data...');
+          const alertsResponse = await fetch('/BKK Examples/Alerts.txt');
+          const alertsText = await alertsResponse.text();
+          const processedAlerts = await BKKDataProcessor.parseAlertsFromText(alertsText);
+          const activeAlerts = BKKDataProcessor.getActiveAlerts(processedAlerts);
+          
+          const cleanedAlerts = activeAlerts.map(alert => ({
+            ...alert,
+            title: cleanBKKText(alert.title),
+            description: cleanBKKText(alert.description)
+          }));
+          
+          setAlerts(cleanedAlerts);
+          
+          const vehiclesResponse = await fetch('/BKK Examples/VehiclePositions.txt');
+          const vehiclesText = await vehiclesResponse.text();
+          const processedVehicles = await BKKDataProcessor.parseVehiclePositionsFromText(vehiclesText);
+          setVehicles(processedVehicles);
+          
+          console.log('BKKDisruptionSelector: Successfully loaded fallback example data');
+        } catch (fallbackError) {
+          console.error('BKKDisruptionSelector: Failed to load fallback data:', fallbackError);
+        }
       } finally {
         setIsLoadingData(false);
       }
@@ -123,7 +147,7 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
       setUserLocation(location);
       
       // Find nearby vehicles
-      const nearby = BKKDataProcessor.findNearbyVehicles(vehicles, location, 5000);
+      const nearby = BKKDataProcessor.findNearbyVehicles(vehicles, location, 500); // 500 meters
       setNearbyVehicles(nearby);
       
     } catch (error: unknown) {
@@ -150,6 +174,117 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
     }
   };
 
+  // Enhanced search function to handle various search patterns
+  const matchesSearch = (searchTerm: string, routeId: string, routeName: string, vehicleType: string, licensePlate?: string) => {
+    if (!searchTerm) return true;
+    
+    const search = searchTerm.toLowerCase().trim();
+    const route = routeId.toLowerCase();
+    const name = routeName.toLowerCase();
+    const type = vehicleType.toLowerCase();
+    const plate = licensePlate?.toLowerCase() || '';
+    
+    // Direct matches
+    if (route.includes(search) || name.includes(search) || plate.includes(search)) {
+      return true;
+    }
+    
+    // Vehicle type mappings for Hungarian
+    const typeAliases: { [key: string]: string[] } = {
+      'villamos': ['villamos', 'vil', 'v', 'tram'],
+      'busz': ['busz', 'bus', 'autóbusz', 'autobus', 'b'],
+      'metro': ['metro', 'metró', 'm', 'subway'],
+      'hev': ['hev', 'h', 'helyiérdekű', 'helyierdeку'],
+      'troli': ['troli', 'trolibusz', 'trolley', 't'],
+      'ejszakai': ['ejszakai', 'éjszakai', 'night', 'n'],
+      'hajo': ['hajó', 'hajo', 'boat', 'ship']
+    };
+    
+    // Get aliases for current vehicle type
+    const currentTypeAliases = typeAliases[type] || [type];
+    
+    // Split search term to handle patterns like "3 villamos", "villamos 3", etc.
+    const searchParts = search.split(/\s+/);
+    const searchNumbers = search.match(/\d+/g) || [];
+    const searchLetters = search.replace(/\d+/g, '').replace(/\s+/g, '');
+    
+    // Check if search contains route number
+    for (const num of searchNumbers) {
+      if (route.includes(num)) {
+        // If we have letters/type words, check if they match the vehicle type
+        if (searchLetters) {
+          const matchesType = currentTypeAliases.some(alias => 
+            alias.includes(searchLetters) || searchLetters.includes(alias)
+          );
+          if (matchesType) return true;
+        } else {
+          // Just number matches route
+          return true;
+        }
+      }
+    }
+    
+    // Check for pattern matching (e.g., "3V" for "3 villamos")
+    if (search.match(/^\d+[a-z]$/)) {
+      const num = search.match(/\d+/)?.[0];
+      const letter = search.match(/[a-z]+$/)?.[0];
+      
+      if (num && letter && route.includes(num)) {
+        const matchesType = currentTypeAliases.some(alias => 
+          alias.startsWith(letter) || letter === alias.charAt(0)
+        );
+        if (matchesType) return true;
+      }
+    }
+    
+    // Check for metro patterns (M1, M2, M3, M4)
+    if (search.match(/^m\d+$/)) {
+      const metroNum = search.replace('m', '');
+      if (type === 'metro' && route.includes(metroNum)) {
+        return true;
+      }
+    }
+    
+    // Check for HÉV patterns (H5, H6, H7, H8, H9)
+    if (search.match(/^h\d+$/)) {
+      const hevNum = search.replace('h', '');
+      if (type === 'hev' && route.includes(hevNum)) {
+        return true;
+      }
+    }
+    
+    // Check each part of multi-word search
+    if (searchParts.length > 1) {
+      let hasRouteMatch = false;
+      let hasTypeMatch = false;
+      
+      for (const part of searchParts) {
+        // Check if part matches route
+        if (route.includes(part) || name.includes(part)) {
+          hasRouteMatch = true;
+        }
+        
+        // Check if part matches vehicle type
+        const matchesType = currentTypeAliases.some(alias => 
+          alias.includes(part) || part.includes(alias)
+        );
+        if (matchesType) {
+          hasTypeMatch = true;
+        }
+      }
+      
+      // Return true if we have both route and type match, or just route match
+      return hasRouteMatch && (hasTypeMatch || searchParts.length === 1);
+    }
+    
+    // Check if search term is a vehicle type alias
+    const matchesType = currentTypeAliases.some(alias => 
+      alias.includes(search) || search.includes(alias)
+    );
+    
+    return matchesType;
+  };
+
   // Filter alerts by type and search term
   const filteredAlerts = alerts
     .filter(alert => {
@@ -158,12 +293,17 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
       }
       
       if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        return (
-          alert.title.toLowerCase().includes(searchLower) ||
-          alert.description.toLowerCase().includes(searchLower) ||
-          alert.affectedRoutes.some(route => route.toLowerCase().includes(searchLower))
+        // Use enhanced search for affected routes
+        const matchesRoutes = alert.affectedRoutes.some(route => 
+          matchesSearch(searchTerm, route, route, alert.category)
         );
+        
+        // Also check title and description for basic text search
+        const searchLower = searchTerm.toLowerCase();
+        const matchesText = alert.title.toLowerCase().includes(searchLower) || 
+                           alert.description.toLowerCase().includes(searchLower);
+        
+        return matchesRoutes || matchesText;
       }
       
       return true;
@@ -178,11 +318,12 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
       }
       
       if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        return (
-          vehicle.routeId.toLowerCase().includes(searchLower) ||
-          vehicle.routeName.toLowerCase().includes(searchLower) ||
-          (vehicle.licensePlate && vehicle.licensePlate.toLowerCase().includes(searchLower))
+        return matchesSearch(
+          searchTerm, 
+          vehicle.routeId, 
+          vehicle.routeName, 
+          vehicle.vehicleType, 
+          vehicle.licensePlate
         );
       }
       
@@ -214,7 +355,7 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
         <DialogContent className={`${isMobile ? 'max-w-full h-screen w-full m-0 rounded-none' : 'max-w-4xl'}`}>
           <div className="flex flex-col items-center justify-center py-8 gap-4">
             <Spinner className="w-8 h-8" />
-            <p className="text-sm text-muted-foreground">BKK adatok betöltése...</p>
+            <p className="text-sm text-muted-foreground">BKK adatok betöltése... <br />Ez eltarthat egy darabig.</p>
           </div>
         </DialogContent>
       </Dialog>
@@ -230,30 +371,20 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
       }`}>
         {/* Compact Header */}
         <DialogHeader className={`border-b ${isMobile ? 'p-3 pb-2' : 'p-4'}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gray-600 flex items-center justify-center">
-                <span className="text-white text-sm">🚇</span>
-              </div>
-              <div>
-                <DialogTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold`}>
-                  BKK Forgalmi Információk
-                </DialogTitle>
-                {!isMobile && (
-                  <DialogDescription className="text-sm text-muted-foreground">
-                    Válassz ki egy forgalmi zavart vagy járművet a késés igazolásához
-                  </DialogDescription>
-                )}
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 flex items-center justify-center p-1.5">
+              <BKKLogo size={60} />
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="w-8 h-8 rounded-lg p-0 hover:bg-gray-100"
-            >
-              <X className="w-4 h-4" />
-            </Button>
+            <div>
+              <DialogTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold`}>
+                BKK Forgalmi Információk
+              </DialogTitle>
+              {!isMobile && (
+                <DialogDescription className="text-sm text-muted-foreground">
+                  Válassz ki egy forgalmi zavart vagy járművet a késés igazolásához
+                </DialogDescription>
+              )}
+            </div>
           </div>
         </DialogHeader>
         
@@ -293,7 +424,7 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
-                      placeholder={isMobile ? "Keresés..." : "Keresés járat vagy útvonal szerint..."}
+                      placeholder={isMobile ? "pl. 3V, M2, H5..." : "Keresés: 3 villamos, M2, H5, 3V, vil 3..."}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className={`pl-10 ${isMobile ? 'h-9' : 'h-8'}`}

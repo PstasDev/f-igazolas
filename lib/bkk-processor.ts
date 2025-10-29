@@ -27,8 +27,30 @@ export class BKKDataProcessor {
   private static gtfsStops: Map<string, GTFSStop> = new Map();
   private static gtfsLoaded = false;
 
+  // Cache for real-time data with timestamps
+  private static alertsCache: {
+    data: ProcessedBKKAlert[] | null;
+    timestamp: number;
+    loading: Promise<ProcessedBKKAlert[]> | null;
+  } = { data: null, timestamp: 0, loading: null };
+
+  private static vehiclesCache: {
+    data: ProcessedVehiclePosition[] | null;
+    timestamp: number;
+    loading: Promise<ProcessedVehiclePosition[]> | null;
+  } = { data: null, timestamp: 0, loading: null };
+
+  private static tripUpdatesCache: {
+    data: string | null;
+    timestamp: number;
+    loading: Promise<string> | null;
+  } = { data: null, timestamp: 0, loading: null };
+
+  // Cache duration: 2 minutes (120000ms) - BKK data updates every ~30 seconds but we don't need it that fresh
+  private static readonly CACHE_DURATION = 120000;
+
   /**
-   * Load GTFS data from CSV files
+   * Load GTFS data from CSV files (static data, rarely changes)
    */
   static async loadGTFSData(): Promise<void> {
     if (this.gtfsLoaded) return;
@@ -48,6 +70,277 @@ export class BKKDataProcessor {
       console.log(`Loaded ${this.gtfsRoutes.size} routes and ${this.gtfsStops.size} stops from GTFS data`);
     } catch (error) {
       console.error('Failed to load GTFS data:', error);
+    }
+  }
+
+  /**
+   * Check if cached data is still valid
+   */
+  private static isCacheValid(timestamp: number): boolean {
+    return Date.now() - timestamp < this.CACHE_DURATION;
+  }
+
+  /**
+   * Fetch real-time BKK Alerts with caching and singleton pattern
+   */
+  static async fetchRealTimeAlerts(): Promise<ProcessedBKKAlert[]> {
+    // Return cached data if still valid
+    if (this.alertsCache.data && this.isCacheValid(this.alertsCache.timestamp)) {
+      console.log('Returning cached alerts data');
+      return this.alertsCache.data;
+    }
+
+    // If already loading, wait for that request
+    if (this.alertsCache.loading) {
+      console.log('Waiting for ongoing alerts request...');
+      return await this.alertsCache.loading;
+    }
+
+    // Start new request
+    console.log('Fetching fresh alerts data from backend...');
+    this.alertsCache.loading = this.performAlertsRequest();
+
+    try {
+      const result = await this.alertsCache.loading;
+      this.alertsCache.data = result;
+      this.alertsCache.timestamp = Date.now();
+      return result;
+    } finally {
+      this.alertsCache.loading = null;
+    }
+  }
+
+  private static async performAlertsRequest(): Promise<ProcessedBKKAlert[]> {
+    try {
+      // Ensure GTFS data is loaded
+      await this.loadGTFSData();
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      // Fetch from backend API (Django)
+      const backendUrl = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:8000/api/bkk/Alerts'
+        : 'https://ikapi.szlg.info/api/bkk/Alerts';
+      
+      const response = await fetch(backendUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/plain',
+        },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const alertsText = await response.text();
+      console.log(`Received alerts data from backend: ${(alertsText.length / 1024).toFixed(1)}KB`);
+      return await this.parseAlertsFromText(alertsText);
+    } catch (error) {
+      console.error('Failed to fetch real-time alerts from backend:', error);
+      
+      // Fallback to example data
+      console.log('Falling back to example alerts data...');
+      return await this.fetchExampleAlerts();
+    }
+  }
+
+  /**
+   * Fetch real-time BKK Vehicle Positions with caching and singleton pattern
+   */
+  static async fetchRealTimeVehiclePositions(): Promise<ProcessedVehiclePosition[]> {
+    // Return cached data if still valid
+    if (this.vehiclesCache.data && this.isCacheValid(this.vehiclesCache.timestamp)) {
+      console.log('Returning cached vehicle positions data');
+      return this.vehiclesCache.data;
+    }
+
+    // If already loading, wait for that request
+    if (this.vehiclesCache.loading) {
+      console.log('Waiting for ongoing vehicle positions request...');
+      return await this.vehiclesCache.loading;
+    }
+
+    // Start new request
+    console.log('Fetching fresh vehicle positions data from backend...');
+    this.vehiclesCache.loading = this.performVehiclePositionsRequest();
+
+    try {
+      const result = await this.vehiclesCache.loading;
+      this.vehiclesCache.data = result;
+      this.vehiclesCache.timestamp = Date.now();
+      return result;
+    } finally {
+      this.vehiclesCache.loading = null;
+    }
+  }
+
+  private static async performVehiclePositionsRequest(): Promise<ProcessedVehiclePosition[]> {
+    try {
+      // Ensure GTFS data is loaded
+      await this.loadGTFSData();
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      // Fetch from backend API (Django)
+      const backendUrl = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:8000/api/bkk/VehiclePositions'
+        : 'https://ikapi.szlg.info/api/bkk/VehiclePositions';
+      
+      const response = await fetch(backendUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/plain',
+        },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const positionsText = await response.text();
+      console.log(`Received vehicle positions data from backend: ${(positionsText.length / 1024).toFixed(1)}KB`);
+      return await this.parseVehiclePositionsFromText(positionsText);
+    } catch (error) {
+      console.error('Failed to fetch real-time vehicle positions from backend:', error);
+      
+      // Fallback to example data
+      console.log('Falling back to example vehicle positions data...');
+      return await this.fetchExampleVehiclePositions();
+    }
+  }
+
+  /**
+   * Fetch real-time BKK Trip Updates with caching and singleton pattern
+   */
+  static async fetchRealTimeTripUpdates(): Promise<string> {
+    // Return cached data if still valid
+    if (this.tripUpdatesCache.data && this.isCacheValid(this.tripUpdatesCache.timestamp)) {
+      console.log('Returning cached trip updates data');
+      return this.tripUpdatesCache.data;
+    }
+
+    // If already loading, wait for that request
+    if (this.tripUpdatesCache.loading) {
+      console.log('Waiting for ongoing trip updates request...');
+      return await this.tripUpdatesCache.loading;
+    }
+
+    // Start new request
+    console.log('Fetching fresh trip updates data from backend...');
+    this.tripUpdatesCache.loading = this.performTripUpdatesRequest();
+
+    try {
+      const result = await this.tripUpdatesCache.loading;
+      this.tripUpdatesCache.data = result;
+      this.tripUpdatesCache.timestamp = Date.now();
+      return result;
+    } finally {
+      this.tripUpdatesCache.loading = null;
+    }
+  }
+
+  private static async performTripUpdatesRequest(): Promise<string> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      // Fetch from backend API (Django)
+      const backendUrl = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:8000/api/bkk/TripUpdates'
+        : 'https://ikapi.szlg.info/api/bkk/TripUpdates';
+      
+      const response = await fetch(backendUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/plain',
+        },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const tripUpdatesText = await response.text();
+      console.log(`Received trip updates data from backend: ${(tripUpdatesText.length / 1024).toFixed(1)}KB`);
+      return tripUpdatesText;
+    } catch (error) {
+      console.error('Failed to fetch real-time trip updates from backend:', error);
+      return '';
+    }
+  }
+
+  /**
+   * Clear all caches (useful for forcing refresh)
+   */
+  static clearCaches(): void {
+    console.log('Clearing all BKK data caches');
+    this.alertsCache = { data: null, timestamp: 0, loading: null };
+    this.vehiclesCache = { data: null, timestamp: 0, loading: null };
+    this.tripUpdatesCache = { data: null, timestamp: 0, loading: null };
+  }
+
+  /**
+   * Get cache status for debugging
+   */
+  static getCacheStatus(): {
+    alerts: { cached: boolean; age: number };
+    vehicles: { cached: boolean; age: number };
+    tripUpdates: { cached: boolean; age: number };
+  } {
+    const now = Date.now();
+    return {
+      alerts: {
+        cached: !!this.alertsCache.data && this.isCacheValid(this.alertsCache.timestamp),
+        age: this.alertsCache.timestamp ? now - this.alertsCache.timestamp : 0
+      },
+      vehicles: {
+        cached: !!this.vehiclesCache.data && this.isCacheValid(this.vehiclesCache.timestamp),
+        age: this.vehiclesCache.timestamp ? now - this.vehiclesCache.timestamp : 0
+      },
+      tripUpdates: {
+        cached: !!this.tripUpdatesCache.data && this.isCacheValid(this.tripUpdatesCache.timestamp),
+        age: this.tripUpdatesCache.timestamp ? now - this.tripUpdatesCache.timestamp : 0
+      }
+    };
+  }
+
+  /**
+   * Fallback method to fetch example alerts
+   */
+  static async fetchExampleAlerts(): Promise<ProcessedBKKAlert[]> {
+    try {
+      const alertsResponse = await fetch('/BKK Examples/Alerts.txt');
+      const alertsText = await alertsResponse.text();
+      return await this.parseAlertsFromText(alertsText);
+    } catch (error) {
+      console.error('Failed to fetch example alerts:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Fallback method to fetch example vehicle positions
+   */
+  static async fetchExampleVehiclePositions(): Promise<ProcessedVehiclePosition[]> {
+    try {
+      const vehiclesResponse = await fetch('/BKK Examples/VehiclePositions.txt');
+      const vehiclesText = await vehiclesResponse.text();
+      return await this.parseVehiclePositionsFromText(vehiclesText);
+    } catch (error) {
+      console.error('Failed to fetch example vehicle positions:', error);
+      return [];
     }
   }
 

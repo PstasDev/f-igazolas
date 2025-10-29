@@ -13,6 +13,7 @@ export interface IgazolasTableRow {
   reason?: string; // Student's reason/note - separate from status
   imageUrl?: string;
   imgDriveURL?: string; // Added to match API response
+  bkk_verification?: string | object; // BKKVerification data (can be string or object)
   teacherNote?: string;
   submittedAt: string;
   reviewedAt?: string;

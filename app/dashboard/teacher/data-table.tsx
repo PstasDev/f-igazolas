@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { BKKAlertVerificationCard } from "@/components/ui/BKKAlertVerificationCard"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
@@ -1295,6 +1296,11 @@ export function DataTable<TData, TValue>({
                         </div>
                     </CardContent>
                   </Card>
+
+                  {/* BKK Verification Section */}
+                  {selectedRow.bkk_verification && (
+                    <BKKAlertVerificationCard bkkVerificationJson={selectedRow.bkk_verification} />
+                  )}
 
                     {/* Teacher Section */}
                     <Card className="border-2 border-primary/20">

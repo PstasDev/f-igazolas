@@ -66,6 +66,7 @@ export interface Igazolas {
   diak_extra_ido_elotte?: number;
   diak_extra_ido_utana?: number;
   imgDriveURL?: string;
+  bkk_verification?: object; // BKKVerification object
   allapot: 'Függőben' | 'Elfogadva' | 'Elutasítva';
   megjegyzes_tanar?: string;
   kretaban_rogzitettem: boolean;
@@ -81,6 +82,7 @@ export interface IgazolasCreateRequest {
   diak_extra_ido_elotte?: number;
   diak_extra_ido_utana?: number;
   imgDriveURL?: string;
+  bkk_verification?: object; // BKKVerification object
 }
 
 export interface LoginRequest {

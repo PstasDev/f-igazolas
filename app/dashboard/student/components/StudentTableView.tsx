@@ -38,6 +38,7 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
     reason: igazolas.megjegyzes_diak || igazolas.megjegyzes || 'Nincs megjegyzés',
     imageUrl: igazolas.imgDriveURL || '',
     imgDriveURL: igazolas.imgDriveURL || undefined,
+    bkk_verification: igazolas.bkk_verification || undefined,
     teacherNote: igazolas.megjegyzes_tanar || '',
     submittedAt: igazolas.rogzites_datuma,
     allapot: igazolas.allapot,

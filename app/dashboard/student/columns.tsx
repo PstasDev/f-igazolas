@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { IgazolasTableRow, getIgazolasType } from "@/app/dashboard/types"
+import { BKKVerificationBadge } from "@/components/ui/BKKVerificationBadge"
 import { Calendar, ArrowUpDown, ArrowUp, ArrowDown, Clapperboard, FileText } from "lucide-react"
 import { getPeriodSchedule } from "@/lib/periods"
 
@@ -57,7 +58,7 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
           </Badge>
           {fromFTV && (
             <div className="flex flex-wrap gap-1">
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:text-blue-400 text-xs dark:border-blue-500">
+              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-900/20 dark:text-purple-400 text-xs dark:border-purple-500">
                 <Clapperboard className="h-3 w-3 mr-1" />
                 FTV
               </Badge>
@@ -198,9 +199,13 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
   {
     accessorKey: "reason",
     header: "Indoklás",
+    size: 300,
+    minSize: 200,
+    maxSize: 400,
     cell: ({ row }) => {
       const reason = row.getValue("reason") as string
       const imageUrl = row.original.imageUrl || row.original.imgDriveURL
+      const hasBKKVerification = row.original.bkk_verification
       
       const handleImageClick = (e: React.MouseEvent) => {
         e.stopPropagation()
@@ -210,18 +215,29 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
       }
       
       return (
-        <div className="flex flex-col gap-2">
-          <span className="text-sm">{reason}</span>
-          {imageUrl && (
-            <Badge 
-              variant="emerald" 
-              className="w-fit cursor-pointer hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors"
-              onClick={handleImageClick}
-            >
-              <GoogleDriveIcon className="h-3 w-3 mr-1" />
-              Kép csatolva
-            </Badge>
+        <div className="flex flex-col gap-2 max-w-sm">
+          {!hasBKKVerification && (
+            <span className="text-sm break-words whitespace-normal leading-relaxed">{reason}</span>
           )}
+          <div className="flex flex-wrap gap-2">
+            {imageUrl && (
+              <Badge 
+                variant="emerald" 
+                className="w-fit cursor-pointer hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors"
+                onClick={handleImageClick}
+              >
+                <GoogleDriveIcon className="h-3 w-3 mr-1" />
+                Kép csatolva
+              </Badge>
+            )}
+            <BKKVerificationBadge 
+              bkkVerificationJson={row.original.bkk_verification}
+              onClick={() => {
+                // TODO: Show BKK verification details in a modal/dialog
+                console.log('BKK verification clicked:', row.original.bkk_verification);
+              }}
+            />
+          </div>
         </div>
       )
     },
