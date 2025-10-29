@@ -58,7 +58,7 @@ export function FTVLoadingState({
         <EmptyTitle className="flex items-center gap-1 justify-center">
           <Clapperboard className="h-5 w-5 text-blue-500 dark:text-blue-400 drop-shadow-md" />
           <span className="text-blue-500 dark:text-blue-400 drop-shadow-md shadow-blue-500 dark:shadow-blue-400">FTV</span>
-          {variant === 'sync' && <span className="text-sm font-normal text-blue-500/80 dark:text-blue-400 drop-shadow-md shadow-blue-500 dark:shadow-blue-400">Sync</span>}
+          <span className="text-sm font-normal text-blue-500/80 dark:text-blue-400 drop-shadow-md shadow-blue-500 dark:shadow-blue-400">Sync</span>
         </EmptyTitle>
         <EmptyDescription className="max-w-md mx-auto">
           {content.description}
