@@ -1211,41 +1211,117 @@ export function DataTable<TData, TValue>({
                         </div>
 
                         {selectedRow.fromFTV && (
-                          <Alert className="border-blue-300 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20">
-                            <AlertTitle className="text-blue-900 dark:text-blue-400 text-lg inline-flex items-center gap-2 mb-2">
-                              <Clapperboard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                              FTV Importált Adat
-                              </AlertTitle>
-                            <AlertDescription className="text-blue-800 dark:text-blue-400">
-                              <p className="mb-2">Ez az igazolás a Forgatásszervezői Platformról került importálásra, és a médiatanár már igazolta a jelenlétet.</p>
-                              {(selectedRow.minutesBefore || selectedRow.minutesAfter) && (
-                                <div className="mt-3 p-3 rounded-md bg-purple-100 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-500">
-                                  <p className="font-semibold text-purple-900 dark:text-purple-300 mb-1">Diák korrekciója:</p>
-                                  {(selectedRow.minutesBefore ?? 0) > 0 && (
-                                    <p className="text-sm text-purple-800 dark:text-purple-400">• <span className="text-purple-900 dark:text-purple-300 font-bold">{selectedRow.minutesBefore}</span> perc a forgatás előtt</p>
-                                  )}
-                                  {(selectedRow.minutesAfter ?? 0) > 0 && (
-                                    <p className="text-sm text-purple-800 dark:text-purple-400">• <span className="text-purple-900 dark:text-purple-300 font-bold">{selectedRow.minutesAfter}</span> perc a forgatás után</p>
-                                  )}
+                          <Card className="border-2 border-blue-300 dark:border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/50 dark:to-cyan-950/50">
+                            <CardHeader className="pb-4 bg-blue-100/50 dark:bg-blue-900/30">
+                              <div className="flex items-start gap-3">
+                                <div className="p-3 rounded-xl bg-blue-600 dark:bg-blue-500 shadow-lg">
+                                  <Clapperboard className="h-6 w-6 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                  <CardTitle className="text-xl text-blue-900 dark:text-blue-200 flex items-center gap-2">
+                                    FTV Sync
+                                    <Badge variant="outline" className="bg-blue-200 text-blue-900 border-blue-400 dark:bg-blue-800 dark:text-blue-100 dark:border-blue-600 text-xs">
+                                      Médiatanár által igazolva
+                                    </Badge>
+                                  </CardTitle>
+                                  <CardDescription className="text-blue-700 dark:text-blue-400 mt-1">
+                                    Forgatásszervezői Platform - Automatikus szinkronizálás
+                                  </CardDescription>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="pt-4 space-y-4">
+                              {/* Main FTV Info */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="p-3 rounded-lg bg-white/60 dark:bg-slate-800/60 border border-blue-200 dark:border-blue-700">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                    <Label className="text-xs font-bold text-blue-900 dark:text-blue-200 uppercase">Státusz</Label>
+                                  </div>
+                                  <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Médiatanár által visszaigazolva</p>
+                                </div>
+                                <div className="p-3 rounded-lg bg-white/60 dark:bg-slate-800/60 border border-blue-200 dark:border-blue-700">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Clapperboard className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                    <Label className="text-xs font-bold text-blue-900 dark:text-blue-200 uppercase">Forrás</Label>
+                                  </div>
+                                  <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">FTV Forgatásszervező Platform</p>
+                                </div>
+                              </div>
+
+                              {/* Important Note */}
+                              <Alert className="border-cyan-300 dark:border-cyan-600 bg-cyan-50/50 dark:bg-cyan-900/20">
+                                <Info className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                                <AlertTitle className="text-cyan-900 dark:text-cyan-300 font-semibold">Fontos információ</AlertTitle>
+                                <AlertDescription className="text-cyan-800 dark:text-cyan-400 text-sm">
+                                  Ez az igazolás közvetlenül a Forgatásszervezői Platformról került importálásra. 
+                                  A médiatanár már visszaigazolta a diák jelenlétét a forgatáson.
+                                </AlertDescription>
+                              </Alert>
+
+                              {/* Student Correction Section - Only show if there are extra minutes */}
+                              {((selectedRow.minutesBefore ?? 0) > 0 || (selectedRow.minutesAfter ?? 0) > 0) && (
+                                <div className="p-4 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-2 border-purple-300 dark:border-purple-600">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <div className="p-2 rounded-lg bg-purple-600 dark:bg-purple-500">
+                                      <User className="h-4 w-4 text-white" />
+                                    </div>
+                                    <div>
+                                      <p className="font-bold text-purple-900 dark:text-purple-200">Diák által megadott extra időszak</p>
+                                      <p className="text-xs text-purple-700 dark:text-purple-400">Osztályfőnöki jóváhagyásra vár</p>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    {(selectedRow.minutesBefore ?? 0) > 0 && (
+                                      <div className="flex items-center gap-3 p-2 rounded-md bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-700">
+                                        <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-purple-600 dark:bg-purple-500 text-white font-bold text-lg">
+                                          {selectedRow.minutesBefore}
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-semibold text-purple-900 dark:text-purple-200">Forgatás előtt</p>
+                                          <p className="text-xs text-purple-700 dark:text-purple-400">Utazási idő, előkészület</p>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {(selectedRow.minutesAfter ?? 0) > 0 && (
+                                      <div className="flex items-center gap-3 p-2 rounded-md bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-700">
+                                        <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-purple-600 dark:bg-purple-500 text-white font-bold text-lg">
+                                          {selectedRow.minutesAfter}
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-semibold text-purple-900 dark:text-purple-200">Forgatás után</p>
+                                          <p className="text-xs text-purple-700 dark:text-purple-400">Hazautazás, lezárás</p>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="mt-3 p-2 rounded bg-purple-200/50 dark:bg-purple-800/30">
+                                    <p className="text-xs text-purple-800 dark:text-purple-300">
+                                      <strong>Összesen:</strong> {(selectedRow.minutesBefore ?? 0) + (selectedRow.minutesAfter ?? 0)} perc extra időszak
+                                    </p>
+                                  </div>
                                 </div>
                               )}
-                            </AlertDescription>
-                          </Alert>
+                            </CardContent>
+                          </Card>
                         )}
 
-                        <div className="space-y-2 p-4 rounded-lg bg-muted/30">
-                          {selectedRow.correctedHours && selectedRow.correctedHours.length > 0 ? (
-                          <>
-                          <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Korrekció indoklása</Label>
-                          <p className="text-sm leading-relaxed">{selectedRow.status || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
-                          </>
-                          ) : !selectedRow.fromFTV ? (
-                          <>
-                          <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Indoklás</Label>
-                          <p className="text-sm leading-relaxed">{selectedRow.status || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
-                          </>
-                          ) : null}
-                        </div>
+                        {/* Indoklás / Korrekció section - only show if there's content */}
+                        {((selectedRow.correctedHours && selectedRow.correctedHours.length > 0) || (!selectedRow.fromFTV && selectedRow.status)) && (
+                          <div className="space-y-2 p-4 rounded-lg bg-muted/30">
+                            {selectedRow.correctedHours && selectedRow.correctedHours.length > 0 ? (
+                            <>
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Korrekció indoklása</Label>
+                            <p className="text-sm leading-relaxed">{selectedRow.status || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
+                            </>
+                            ) : (
+                            <>
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Indoklás</Label>
+                            <p className="text-sm leading-relaxed">{selectedRow.status || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
+                            </>
+                            )}
+                          </div>
+                        )}
 
                         {(selectedRow.imageUrl || selectedRow.imgDriveURL) && (
                           <div className="space-y-2">
