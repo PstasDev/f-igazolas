@@ -151,7 +151,7 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
       setUserLocation(location);
       
       // Find nearby vehicles
-      const nearby = BKKDataProcessor.findNearbyVehicles(vehicles, location, 50000); // 500 meters
+      const nearby = BKKDataProcessor.findNearbyVehicles(vehicles, location, 500); // 500 meters
       setNearbyVehicles(nearby);
       
     } catch (error: unknown) {
