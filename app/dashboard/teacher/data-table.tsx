@@ -115,10 +115,40 @@ export function DataTable<TData, TValue>({
   const [filterStatus, setFilterStatus] = React.useState<string>("all")
   const [filterType, setFilterType] = React.useState<string>("all")
   const [filterFTV, setFilterFTV] = React.useState<string>("all")
-  const [groupBy, setGroupBy] = React.useState<string>("none")
   const [dateFrom, setDateFrom] = React.useState<string>("")
   const [dateTo, setDateTo] = React.useState<string>("")
   const [isSearchCollapsed, setIsSearchCollapsed] = React.useState(true)
+  const [igazolasTipusok, setIgazolasTipusok] = React.useState<string[]>([])
+  const [isEasyProcessingActive, setIsEasyProcessingActive] = React.useState(false)
+  const isActivatingEasyProcessing = React.useRef(false)
+
+  // Fetch igazolas types on mount
+  React.useEffect(() => {
+    const fetchTypes = async () => {
+      try {
+        const types = await apiClient.listIgazolasTipus()
+        setIgazolasTipusok(types.map(t => t.nev))
+      } catch (error) {
+        console.error('Failed to fetch igazolas types:', error)
+      }
+    }
+    fetchTypes()
+  }, [])
+
+  // Watch for manual filter changes and deactivate easy processing mode
+  React.useEffect(() => {
+    // Don't deactivate if we're in the middle of activating easy processing
+    if (isActivatingEasyProcessing.current) {
+      isActivatingEasyProcessing.current = false
+      return
+    }
+    
+    if (isEasyProcessingActive) {
+      // If easy processing is active and filters changed manually, deactivate
+      setIsEasyProcessingActive(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterStatus, filterType, filterFTV, dateFrom, dateTo])
 
   // Get filtered data based on all filters
   const getFilteredData = React.useMemo(() => {
@@ -161,18 +191,23 @@ export function DataTable<TData, TValue>({
     // Date range filter
     if (dateFrom || dateTo) {
       filtered = filtered.filter((item) => {
-        const itemDate = new Date(item.submittedAt);
+        // Use the absence start date (startDate) instead of submission date
+        const itemDate = new Date(item.startDate);
         let isValid = true;
         
         if (dateFrom) {
           const fromDate = new Date(dateFrom);
+          fromDate.setHours(0, 0, 0, 0);
+          itemDate.setHours(0, 0, 0, 0);
           isValid = isValid && itemDate >= fromDate;
         }
         
         if (dateTo) {
           const toDate = new Date(dateTo);
-          toDate.setHours(23, 59, 59, 999); // Include the entire end date
-          isValid = isValid && itemDate <= toDate;
+          toDate.setHours(23, 59, 59, 999);
+          const compareDate = new Date(item.startDate);
+          compareDate.setHours(0, 0, 0, 0);
+          isValid = isValid && compareDate <= toDate;
         }
         
         return isValid;
@@ -456,39 +491,6 @@ export function DataTable<TData, TValue>({
 
   const selectedRowsCount = table.getFilteredSelectedRowModel().rows.length
 
-  // Group data if grouping is enabled
-  const groupedData = React.useMemo(() => {
-    if (groupBy === "none") return null
-
-    const filtered = getFilteredData
-    const groups: Record<string, IgazolasTableRow[]> = {}
-
-    filtered.forEach((item) => {
-      let key = ""
-      switch (groupBy) {
-        case "status":
-          key = item.allapot
-          break
-        case "type":
-          key = item.type
-          break
-        case "student":
-          key = item.studentName
-          break
-        case "date":
-          key = item.date
-          break
-        default:
-          key = "Egyéb"
-      }
-
-      if (!groups[key]) groups[key] = []
-      groups[key].push(item)
-    })
-
-    return groups
-  }, [groupBy, getFilteredData])
-
   const getHoursDisplay = (igazolas: IgazolasTableRow) => {
     const hours = igazolas.hours
     const correctedHours = igazolas.correctedHours || []
@@ -579,40 +581,85 @@ export function DataTable<TData, TValue>({
     <>
       <div className="space-y-4">
         {/* Enhanced Filters */}
-        <Card className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-200/50 dark:border-blue-800/50">
+        <Card className="border">
           <Collapsible open={!isSearchCollapsed} onOpenChange={(open) => setIsSearchCollapsed(!open)}>
             <CardHeader className="pb-4">
               <CollapsibleTrigger className="w-full cursor-pointer">
-                <div className="flex items-center justify-between font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
+                <div className="flex items-center justify-between font-medium transition-colors">
                   <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-blue-100/50 dark:bg-blue-900/50">
-                      <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="p-2 rounded-lg bg-muted">
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
                       </svg>
                     </div>
                     <div className="text-left">
-                      <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">Keresés és szűrés</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <div className="text-lg font-semibold">Keresés és szűrés</div>
+                      <div className="text-sm text-muted-foreground">
                         Szűrd az igazolásokat és rendezd őket oszlopfejlécre kattintással
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="px-3 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    <Badge variant="secondary" className="px-3 py-1">
                       {table.getFilteredRowModel().rows.length} találat
                     </Badge>
-                    <ChevronDown className={`h-5 w-5 text-blue-600 dark:text-blue-400 transition-transform duration-200 ${isSearchCollapsed ? '' : 'rotate-180'}`} />
+                    <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${isSearchCollapsed ? '' : 'rotate-180'}`} />
                   </div>
                 </div>
               </CollapsibleTrigger>
             </CardHeader>
             <CollapsibleContent>
-              <CardContent className="pt-3 border-t border-blue-200 dark:border-blue-800 space-y-6">
+              <CardContent className="pt-3 border-t space-y-6">
+            {/* Quick Action - Könnyű feldolgozás */}
+            <div className="p-4 rounded-lg border bg-muted/30">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="flex-1">
+                  <Label className="text-sm font-semibold">Könnyű feldolgozás</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Rendezés dátum szerint, csak <span className="text-blue-500 dark:text-blue-400">függőben</span> lévő és múltbeli igazolások
+                  </p>
+                </div>
+                <Button
+                  variant={isEasyProcessingActive ? "outline" : "default"}
+                  size="sm"
+                  onClick={() => {
+                    if (isEasyProcessingActive) {
+                      // Deactivate - clear filters
+                      setFilterStatus("all")
+                      setDateFrom("")
+                      setDateTo("")
+                      setSorting([])
+                      setIsEasyProcessingActive(false)
+                    } else {
+                      // Activate - set filters for past (up to today)
+                      isActivatingEasyProcessing.current = true
+                      setFilterStatus("pending")
+                      const today = new Date()
+                      setDateFrom("") // No start date - show all past
+                      setDateTo(today.toISOString().split('T')[0]) // Up to today
+                      setSorting([{ id: "date", desc: false }])
+                      setIsEasyProcessingActive(true)
+                    }
+                  }}
+                  className={`w-full sm:w-auto flex-shrink-0 gap-1 ${isEasyProcessingActive ? 'border-green-500 text-green-600 hover:bg-green-50 dark:border-green-600 dark:text-green-500 dark:hover:bg-green-950' : ''}`}
+                >
+                  {isEasyProcessingActive ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Aktív
+                    </>
+                  ) : (
+                    'Aktiválás'
+                  )}
+                </Button>
+              </div>
+            </div>
+
             {/* Primary Search */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Keresés</Label>
+              <Label className="text-sm font-medium">Keresés</Label>
               <div className="relative">
-                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <Input
@@ -621,23 +668,23 @@ export function DataTable<TData, TValue>({
                   onChange={(event) =>
                     table.getColumn("studentName")?.setFilterValue(event.target.value)
                   }
-                  className="pl-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                  className="pl-10"
                 />
               </div>
             </div>
 
             {/* Filter Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Státusz</Label>
+                <Label className="text-sm font-medium">Státusz</Label>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500">
+                  <SelectTrigger>
                     <SelectValue placeholder="Válassz státuszt" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                        <div className="w-2 h-2 rounded-full bg-muted-foreground"></div>
                         Minden státusz
                       </div>
                     </SelectItem>
@@ -664,54 +711,37 @@ export function DataTable<TData, TValue>({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Hiányzás típusa</Label>
+                <Label className="text-sm font-medium">Hiányzás típusa</Label>
                 <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500">
+                  <SelectTrigger>
                     <SelectValue placeholder="Válassz típust" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Minden típus</SelectItem>
-                    <SelectItem value="studiós távollét">🎬 Studiós</SelectItem>
-                    <SelectItem value="médiás távollét">📺 Médiás</SelectItem>
-                    <SelectItem value="orvosi igazolás">🏥 Orvosi</SelectItem>
-                    <SelectItem value="családi okok">👨‍👩‍👧‍👦 Családi</SelectItem>
-                    <SelectItem value="közlekedés">🚇 Közlekedés</SelectItem>
-                    <SelectItem value="egyéb">📝 Egyéb</SelectItem>
+                    {igazolasTipusok.map((tipus) => (
+                      <SelectItem key={tipus} value={tipus}>
+                        {tipus}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">FTV importált</Label>
+                <Label className="text-sm font-medium">FTV importált</Label>
                 <Select value={filterFTV} onValueChange={setFilterFTV}>
-                  <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500">
+                  <SelectTrigger>
                     <SelectValue placeholder="FTV státusz" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Mind</SelectItem>
                     <SelectItem value="ftv">
                       <div className="flex items-center gap-2">
-                        <Clapperboard className="h-3 w-3 text-blue-600" />
-                        Csak FTV
+                        <Clapperboard className="h-3 w-3 text-blue-500 drop-shadow-md shadow-blue-500" />
+                        Csak <span className="text-blue-500 drop-shadow-md shadow-blue-500 font-bold">FTV</span>
                       </div>
                     </SelectItem>
                     <SelectItem value="non-ftv">Csak manuális</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Csoportosítás</Label>
-                <Select value={groupBy} onValueChange={setGroupBy}>
-                  <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500">
-                    <SelectValue placeholder="Csoportosítás" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nincs csoportosítás</SelectItem>
-                    <SelectItem value="status">Státusz szerint</SelectItem>
-                    <SelectItem value="type">Típus szerint</SelectItem>
-                    <SelectItem value="student">Diák szerint</SelectItem>
-                    <SelectItem value="date">Dátum szerint</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -719,24 +749,22 @@ export function DataTable<TData, TValue>({
 
             {/* Date Range Filter */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Dátum tartomány</Label>
+              <Label className="text-sm font-medium">Dátum tartomány</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-xs text-gray-600 dark:text-gray-400">Ettől</Label>
+                  <Label className="text-xs text-muted-foreground">Ettől</Label>
                   <Input
                     type="date"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
-                    className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs text-gray-600 dark:text-gray-400">Eddig</Label>
+                  <Label className="text-xs text-muted-foreground">Eddig</Label>
                   <Input
                     type="date"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
-                    className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
               </div>
@@ -744,60 +772,60 @@ export function DataTable<TData, TValue>({
 
             {/* Active Filters */}
             {(filterStatus !== "all" || filterType !== "all" || filterFTV !== "all" || dateFrom || dateTo) && (
-              <div className="flex flex-wrap gap-2 items-center pt-4 border-t border-gray-200 dark:border-gray-700">
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Aktív szűrők:</span>
+              <div className="flex flex-wrap gap-2 items-center pt-4 border-t">
+                <span className="text-sm font-medium text-muted-foreground">Aktív szűrők:</span>
                 {filterStatus !== "all" && (
-                  <Badge variant="outline" className="gap-2 bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:text-blue-400">
+                  <Badge variant="outline" className="gap-2">
                     Státusz: {filterStatus === "pending" ? "Függőben" : filterStatus === "approved" ? "Jóváhagyva" : "Elutasítva"}
                     <button 
                       onClick={() => setFilterStatus("all")} 
-                      className="ml-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
+                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3 w-3 cursor-pointer" />
                     </button>
                   </Badge>
                 )}
                 {filterType !== "all" && (
-                  <Badge variant="outline" className="gap-2 bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-900/20 dark:text-purple-400">
+                  <Badge variant="outline" className="gap-2">
                     Típus: {filterType}
                     <button 
                       onClick={() => setFilterType("all")} 
-                      className="ml-1 hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors"
+                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3 w-3 cursor-pointer" />
                     </button>
                   </Badge>
                 )}
                 {filterFTV !== "all" && (
-                  <Badge variant="outline" className="gap-2 bg-green-50 text-green-700 border-green-300 dark:bg-green-900/20 dark:text-green-400">
+                  <Badge variant="outline" className="gap-2">
                     FTV: {filterFTV === "ftv" ? "Igen" : "Nem"}
                     <button 
                       onClick={() => setFilterFTV("all")} 
-                      className="ml-1 hover:bg-green-200 dark:hover:bg-green-800 rounded-full p-0.5 transition-colors"
+                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3 w-3 cursor-pointer" />
                     </button>
                   </Badge>
                 )}
                 {dateFrom && (
-                  <Badge variant="outline" className="gap-2 bg-orange-50 text-orange-700 border-orange-300 dark:bg-orange-900/20 dark:text-orange-400">
+                  <Badge variant="outline" className="gap-2">
                     Ettől: {dateFrom}
                     <button 
                       onClick={() => setDateFrom("")} 
-                      className="ml-1 hover:bg-orange-200 dark:hover:bg-orange-800 rounded-full p-0.5 transition-colors"
+                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3 w-3 cursor-pointer" />
                     </button>
                   </Badge>
                 )}
                 {dateTo && (
-                  <Badge variant="outline" className="gap-2 bg-orange-50 text-orange-700 border-orange-300 dark:bg-orange-900/20 dark:text-orange-400">
+                  <Badge variant="outline" className="gap-2">
                     Eddig: {dateTo}
                     <button 
                       onClick={() => setDateTo("")} 
-                      className="ml-1 hover:bg-orange-200 dark:hover:bg-orange-800 rounded-full p-0.5 transition-colors"
+                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3 w-3 cursor-pointer" />
                     </button>
                   </Badge>
                 )}
@@ -811,9 +839,9 @@ export function DataTable<TData, TValue>({
                     setDateFrom("")
                     setDateTo("")
                   }}
-                  className="h-7 px-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="h-7 px-2 text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 cursor-pointer"
                 >
-                  <RotateCcw className="h-3 w-3 mr-1" />
+                  <RotateCcw className="h-3 w-3 mr-1 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-200" />
                   Összes törlése
                 </Button>
               </div>
@@ -874,16 +902,16 @@ export function DataTable<TData, TValue>({
         )}
 
         {/* Legend */}
-        <Card className="border-amber-200 bg-gradient-to-r from-amber-50/50 to-orange-50/50 dark:from-amber-950/50 dark:to-orange-950/50 dark:border-amber-800/50">
+        <Card className="border">
           <CardContent className="p-4">
             <details className="group">
-              <summary className="flex cursor-pointer items-center justify-between font-medium hover:text-amber-700 dark:hover:text-amber-300 transition-colors">
+              <summary className="flex cursor-pointer items-center justify-between font-medium transition-colors">
                 <div className="flex items-center gap-2">
-                  <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <Info className="h-4 w-4" />
                   <span>Órarend színkódok magyarázata</span>
                 </div>
                 <svg
-                  className="h-4 w-4 transition-transform group-open:rotate-180 text-amber-600 dark:text-amber-400"
+                  className="h-4 w-4 transition-transform group-open:rotate-180"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -891,26 +919,26 @@ export function DataTable<TData, TValue>({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </summary>
-              <div className="mt-4 pt-3 border-t border-amber-200 dark:border-amber-800">
+              <div className="mt-4 pt-3 border-t">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-white/50 dark:bg-gray-900/50">
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
                     <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-blue-500 text-white shadow-sm">0</span>
                     <span className="text-sm font-medium">Függőben / FTV importált</span>
                   </div>
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-white/50 dark:bg-gray-900/50">
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
                     <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-purple-500 text-white shadow-sm">0</span>
                     <span className="text-sm font-medium">Diák korrekció</span>
                   </div>
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-white/50 dark:bg-gray-900/50">
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
                     <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-green-500 text-white shadow-sm">0</span>
                     <span className="text-sm font-medium">Jóváhagyva</span>
                   </div>
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-white/50 dark:bg-gray-900/50">
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
                     <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-red-500 text-white shadow-sm">0</span>
                     <span className="text-sm font-medium">Elutasítva</span>
                   </div>
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-white/50 dark:bg-gray-900/50">
-                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-gray-100 dark:bg-gray-800 text-gray-400 border">0</span>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-muted text-muted-foreground border">0</span>
                     <span className="text-sm font-medium">Nincs hiányzás</span>
                   </div>
                 </div>
@@ -927,31 +955,29 @@ export function DataTable<TData, TValue>({
         )}
 
         {/* Table */}
-        {groupBy === "none" ? (
-          // Standard ungrouped table
-          <Card>
-            <CardContent className="p-0">
-              <div className="rounded-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                  <Table className="min-w-full">
-                    <TableHeader className="bg-muted/50">
-                      {table.getHeaderGroups().map((headerGroup) => (
-                        <TableRow key={headerGroup.id}>
-                          {headerGroup.headers.map((header) => {
-                            return (
-                              <TableHead key={header.id} className="font-bold text-xs uppercase tracking-wide whitespace-nowrap">
-                                {header.isPlaceholder
-                                  ? null
-                                  : flexRender(
-                                      header.column.columnDef.header,
-                                      header.getContext()
-                                    )}
-                              </TableHead>
-                            )
-                          })}
-                        </TableRow>
-                      ))}
-                    </TableHeader>
+        <Card>
+          <CardContent className="p-0">
+            <div className="rounded-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table className="min-w-full">
+                  <TableHeader className="bg-muted/50">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => {
+                          return (
+                            <TableHead key={header.id} className="font-bold text-xs uppercase tracking-wide whitespace-nowrap">
+                              {header.isPlaceholder
+                                ? null
+                                : flexRender(
+                                    header.column.columnDef.header,
+                                    header.getContext()
+                                  )}
+                            </TableHead>
+                          )
+                        })}
+                      </TableRow>
+                    ))}
+                  </TableHeader>
                   <TableBody>
                     {table.getRowModel().rows?.length ? (
                       table.getRowModel().rows.map((row) => (
@@ -984,89 +1010,10 @@ export function DataTable<TData, TValue>({
                     )}
                   </TableBody>
                 </Table>
-                </div>
               </div>
-            </CardContent>
-          </Card>
-        ) : (
-          // Grouped table view
-          <div className="space-y-4">
-            {groupedData && Object.entries(groupedData).length > 0 ? (
-              Object.entries(groupedData).map(([groupKey, groupRows]) => (
-                <Card key={groupKey}>
-                  <CardHeader className="pb-2 bg-muted/30">
-                    <CardTitle className="text-base font-semibold flex items-center gap-2">
-                      <span className="text-primary">{groupKey}</span>
-                      <Badge variant="secondary" className="ml-auto">
-                        {groupRows.length} igazolás
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="rounded-lg overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <Table className="min-w-full">
-                          <TableHeader className="bg-muted/50">
-                            {table.getHeaderGroups().map((headerGroup) => (
-                              <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header) => {
-                                  return (
-                                    <TableHead key={header.id} className="font-bold text-xs uppercase tracking-wide whitespace-nowrap">
-                                      {header.isPlaceholder
-                                        ? null
-                                        : flexRender(
-                                            header.column.columnDef.header,
-                                            header.getContext()
-                                          )}
-                                    </TableHead>
-                                  )
-                                })}
-                              </TableRow>
-                            ))}
-                          </TableHeader>
-                        <TableBody>
-                          {groupRows.map((rowData) => {
-                            const row = table.getRowModel().rows.find(r => (r.original as IgazolasTableRow).id === rowData.id)
-                            if (!row) return null
-                            
-                            return (
-                              <TableRow
-                                key={row.id}
-                                data-state={row.getIsSelected() && "selected"}
-                                className="hover:bg-muted/50 transition-colors border-b"
-                              >
-                                {row.getVisibleCells().map((cell) => (
-                                  <TableCell 
-                                    key={cell.id} 
-                                    className={`py-4 ${cell.column.id !== 'actions' ? 'cursor-pointer hover:bg-muted/30' : ''}`}
-                                    onClick={cell.column.id !== 'actions' ? () => handleRowClick(row.original) : undefined}
-                                  >
-                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                  </TableCell>
-                                ))}
-                              </TableRow>
-                            )
-                          })}
-                        </TableBody>
-                      </Table>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <Card>
-                <CardContent className="p-12">
-                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <AlertCircle className="h-8 w-8" />
-                    <p className="font-medium">Nincs találat</p>
-                    <p className="text-sm">Próbálj más keresési feltételeket</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Pagination and Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -1098,35 +1045,33 @@ export function DataTable<TData, TValue>({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          {groupBy === "none" && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-                className="gap-1"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Előző
-              </Button>
-              <div className="flex items-center gap-1">
-                <div className="text-sm font-medium px-3 py-1.5 rounded-md bg-muted">
-                  {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
-                </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="gap-1"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Előző
+            </Button>
+            <div className="flex items-center gap-1">
+              <div className="text-sm font-medium px-3 py-1.5 rounded-md bg-muted">
+                {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-                className="gap-1"
-              >
-                Következő
-                <ChevronRight className="h-4 w-4" />
-              </Button>
             </div>
-          )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="gap-1"
+            >
+              Következő
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 

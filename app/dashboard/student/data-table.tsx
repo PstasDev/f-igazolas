@@ -406,7 +406,7 @@ export function DataTable<TData, TValue>({
                         onClick={() => setFilterStatus("all")} 
                         className="ml-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-3 w-3 cursor-pointer" />
                       </button>
                     </Badge>
                   )}
@@ -417,7 +417,7 @@ export function DataTable<TData, TValue>({
                         onClick={() => setFilterType("all")} 
                         className="ml-1 hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors"
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-3 w-3 cursor-pointer" />
                       </button>
                     </Badge>
                   )}
@@ -428,7 +428,7 @@ export function DataTable<TData, TValue>({
                         onClick={() => setDateFrom("")} 
                         className="ml-1 hover:bg-orange-200 dark:hover:bg-orange-800 rounded-full p-0.5 transition-colors"
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-3 w-3 cursor-pointer" />
                       </button>
                     </Badge>
                   )}
@@ -439,7 +439,7 @@ export function DataTable<TData, TValue>({
                         onClick={() => setDateTo("")} 
                         className="ml-1 hover:bg-orange-200 dark:hover:bg-orange-800 rounded-full p-0.5 transition-colors"
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-3 w-3 cursor-pointer" />
                       </button>
                     </Badge>
                   )}
@@ -452,9 +452,9 @@ export function DataTable<TData, TValue>({
                       setDateFrom("")
                       setDateTo("")
                     }}
-                    className="h-7 px-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    className="h-7 px-2 text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 cursor-pointer"
                   >
-                    <RotateCcw className="h-3 w-3 mr-1" />
+                    <RotateCcw className="h-3 w-3 mr-1 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-200" />
                     Összes törlése
                   </Button>
                 </div>
