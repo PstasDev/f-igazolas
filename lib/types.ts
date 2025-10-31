@@ -199,3 +199,33 @@ export interface ChangePasswordOTPResponse {
   message: string;
   success: boolean;
 }
+
+// FTV Sync Metadata types
+export interface FTVSyncStats {
+  classes_synced?: number;
+  igazolasok_created?: number;
+  igazolasok_updated?: number;
+  igazolasok_deleted?: number;
+  errors?: number;
+}
+
+export interface FTVSyncMetadata {
+  last_sync_time: string | null; // ISO datetime string
+  last_sync_status: 'never' | 'success' | 'failed';
+  last_sync_stats: FTVSyncStats | null;
+  sync_age_seconds: number;
+  sync_age_minutes: number;
+}
+
+export interface FTVSyncMetadataResponse {
+  success: boolean;
+  metadata: FTVSyncMetadata;
+}
+
+export interface ManualFTVSyncResponse {
+  message: string;
+  stats: FTVSyncStats;
+  metadata: FTVSyncMetadata;
+}
+
+export type FTVSyncMode = 'cached' | 'live';

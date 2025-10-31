@@ -91,6 +91,7 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
   onDataChange?: () => void
   onOptimisticUpdate?: (id: string, newAllapot: string) => void
+  ftvSyncStatus?: React.ReactNode
 }
 
 export function DataTable<TData, TValue>({
@@ -98,6 +99,7 @@ export function DataTable<TData, TValue>({
   data,
   onDataChange,
   onOptimisticUpdate,
+  ftvSyncStatus,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -916,6 +918,13 @@ export function DataTable<TData, TValue>({
             </details>
           </CardContent>
         </Card>
+
+        {/* FTV Sync Status */}
+        {ftvSyncStatus && (
+          <div>
+            {ftvSyncStatus}
+          </div>
+        )}
 
         {/* Table */}
         {groupBy === "none" ? (

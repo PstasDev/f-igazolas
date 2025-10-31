@@ -71,11 +71,13 @@ import { getPeriodSchedule } from "@/lib/periods"
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  ftvSyncStatus?: React.ReactNode
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  ftvSyncStatus,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -461,6 +463,13 @@ export function DataTable<TData, TValue>({
           </CollapsibleContent>
         </Collapsible>
       </Card>
+
+      {/* FTV Sync Status */}
+      {ftvSyncStatus && (
+        <div>
+          {ftvSyncStatus}
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-md border">
         <Table>

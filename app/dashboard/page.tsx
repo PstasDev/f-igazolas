@@ -49,8 +49,7 @@ export default function Page() {
     )
   }
 
-  const isTeacher = user?.role === 'teacher'
-  const studentId = '1' // For demo, in real app this comes from auth
+  const isTeacher = user?.role === 'teacher';
 
   const handleViewChange = (view: string) => {
     setCurrentView(view)
@@ -103,7 +102,7 @@ export default function Page() {
             <>
               {currentView === 'igazolasok' && (
                 <div>
-                  <StudentTableView studentId={studentId} />
+                  <StudentTableView />
                 </div>
               )}
               {currentView === 'new' && (

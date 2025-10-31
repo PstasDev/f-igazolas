@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DataTable } from '../data-table';
 import { createColumns } from '../columns';
@@ -8,7 +8,9 @@ import { apiClient } from '@/lib/api';
 import { Igazolas } from '@/lib/types';
 import { toast } from 'sonner';
 import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
+import { FTVSyncStatus } from '@/components/ui/ftv-sync-status';
 import { mapApiResponseToPeriods } from '@/lib/periods';
+import { useFTVSync } from '@/hooks/use-ftv-sync';
 
 interface TeacherTableViewProps {
   filter: 'all' | 'pending' | 'approved' | 'rejected';
@@ -52,113 +54,107 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
 }
 
 export function TeacherTableView({ filter }: TeacherTableViewProps) {
-  const [igazolasok, setIgazolasok] = useState<Igazolas[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Use the FTV sync hook for optimized data loading
+  const {
+    data: allIgazolasok,
+    isLoading,
+    isSyncing,
+    metadata,
+    syncNow,
+  } = useFTVSync({
+    fetchFunction: (mode) => apiClient.listIgazolas(mode),
+    autoSync: true,
+  });
 
-  const fetchIgazolasok = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      // Teachers should see all igazolások from their class, not their own
-      const data = await apiClient.listIgazolas();
-      
-      // Filter based on status
-      let filtered = data;
-      if (filter === 'pending') {
-        filtered = data.filter(i => i.allapot === 'Függőben');
-      } else if (filter === 'approved') {
-        filtered = data.filter(i => i.allapot === 'Elfogadva');
-      } else if (filter === 'rejected') {
-        filtered = data.filter(i => i.allapot === 'Elutasítva');
-      }
-      
-      setIgazolasok(filtered);
-    } catch (error) {
-      console.error('Failed to fetch igazolások:', error);
-      toast.error('Hiba történt az igazolások betöltésekor');
-    } finally {
-      setIsLoading(false);
+  // Filter based on status
+  const igazolasok = useMemo(() => {
+    if (filter === 'pending') {
+      return allIgazolasok.filter(i => i.allapot === 'Függőben');
+    } else if (filter === 'approved') {
+      return allIgazolasok.filter(i => i.allapot === 'Elfogadva');
+    } else if (filter === 'rejected') {
+      return allIgazolasok.filter(i => i.allapot === 'Elutasítva');
     }
-  }, [filter]);
+    return allIgazolasok;
+  }, [allIgazolasok, filter]);
 
+  // Local state for optimistic updates
+  const [localIgazolasok, setLocalIgazolasok] = useState<Igazolas[]>([]);
+
+  // Sync local state with filtered data
   useEffect(() => {
-    fetchIgazolasok();
-  }, [fetchIgazolasok]);
+    setLocalIgazolasok(igazolasok);
+  }, [igazolasok]);
 
   const handleApprove = async (id: string) => {
     try {
       // Optimistic update - update state immediately
-      setIgazolasok(prevIgazolasok => 
+      setLocalIgazolasok(prevIgazolasok => 
         prevIgazolasok.map(igazolas => 
           igazolas.id.toString() === id 
-            ? { ...igazolas, allapot: 'Elfogadva' } 
+            ? { ...igazolas, allapot: 'Elfogadva' as const } 
             : igazolas
         )
       );
 
       await apiClient.quickActionIgazolas(parseInt(id), { action: 'Elfogadva' });
       toast.success('Igazolás jóváhagyva');
-      
-      // No need to refetch - optimistic update already applied
     } catch (error) {
       console.error('Failed to approve igazolás:', error);
       toast.error('Hiba történt az igazolás jóváhagyásakor');
       
-      // Revert optimistic update on error and refetch to get correct state
-      await fetchIgazolasok();
+      // Revert optimistic update on error
+      setLocalIgazolasok(igazolasok);
     }
   };
 
   const handleReject = async (id: string) => {
     try {
       // Optimistic update - update state immediately
-      setIgazolasok(prevIgazolasok => 
+      setLocalIgazolasok(prevIgazolasok => 
         prevIgazolasok.map(igazolas => 
           igazolas.id.toString() === id 
-            ? { ...igazolas, allapot: 'Elutasítva' } 
+            ? { ...igazolas, allapot: 'Elutasítva' as const } 
             : igazolas
         )
       );
 
       await apiClient.quickActionIgazolas(parseInt(id), { action: 'Elutasítva' });
       toast.success('Igazolás elutasítva');
-      
-      // No need to refetch - optimistic update already applied
     } catch (error) {
       console.error('Failed to reject igazolás:', error);
       toast.error('Hiba történt az igazolás elutasításakor');
       
-      // Revert optimistic update on error and refetch to get correct state
-      await fetchIgazolasok();
+      // Revert optimistic update on error
+      setLocalIgazolasok(igazolasok);
     }
   };
 
   const handleSetPending = async (id: string) => {
     try {
       // Optimistic update - update state immediately
-      setIgazolasok(prevIgazolasok => 
+      setLocalIgazolasok(prevIgazolasok => 
         prevIgazolasok.map(igazolas => 
           igazolas.id.toString() === id 
-            ? { ...igazolas, allapot: 'Függőben' } 
+            ? { ...igazolas, allapot: 'Függőben' as const } 
             : igazolas
         )
       );
 
       await apiClient.quickActionIgazolas(parseInt(id), { action: 'Függőben' });
       toast.success('Igazolás státusza visszaállítva függőben állapotra');
-      
-      // No need to refetch - optimistic update already applied
     } catch (error) {
       console.error('Failed to set pending:', error);
       toast.error('Hiba történt a státusz módosításakor');
       
-      // Revert optimistic update on error and refetch to get correct state
-      await fetchIgazolasok();
+      // Revert optimistic update on error
+      setLocalIgazolasok(igazolasok);
     }
   };
 
   // Handle optimistic updates for the data table
   const handleOptimisticUpdate = useCallback((id: string, newAllapot: string) => {
-    setIgazolasok(prevIgazolasok => 
+    setLocalIgazolasok(prevIgazolasok => 
       prevIgazolasok.map(igazolas => 
         igazolas.id.toString() === id 
           ? { ...igazolas, allapot: newAllapot as 'Függőben' | 'Elfogadva' | 'Elutasítva' } 
@@ -193,13 +189,17 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
   };
 
   // Map data to table format
-  const tableData = igazolasok.map(mapIgazolasToTableData);
+  const tableData = localIgazolasok.map(mapIgazolasToTableData);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle><h1 className="text-xl">{getTitle()}</h1></CardTitle>
-        <CardDescription>{getDescription()}</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle><h1 className="text-xl">{getTitle()}</h1></CardTitle>
+            <CardDescription>{getDescription()}</CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -207,15 +207,25 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
             <FTVLoadingState 
               variant="sync"
               title="Igazolások betöltése"
-              description="Szinkronizálás az FTV Sync-el. Ez eltarthat egy darabig, kérjük ne frissítse az oldalt."
+              description="Gyors betöltés cache-elt adatokkal. Háttérben szinkronizálás folyik..."
             />
           </div>
         ) : (
           <DataTable 
             columns={columns} 
             data={tableData} 
-            onDataChange={fetchIgazolasok} 
+            onDataChange={syncNow} 
             onOptimisticUpdate={handleOptimisticUpdate}
+            ftvSyncStatus={
+              metadata ? (
+                <FTVSyncStatus
+                  metadata={metadata}
+                  isSyncing={isSyncing}
+                  onSyncNow={syncNow}
+                  compact={false}
+                />
+              ) : null
+            }
           />
         )}
       </CardContent>

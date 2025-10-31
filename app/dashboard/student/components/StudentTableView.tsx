@@ -1,17 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DataTable } from '../data-table';
 import { studentColumns } from '../columns';
 import { apiClient } from '@/lib/api';
 import { Igazolas } from '@/lib/types';
-import { toast } from 'sonner';
 import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
+import { FTVSyncStatus } from '@/components/ui/ftv-sync-status';
 import { mapApiResponseToPeriods } from '@/lib/periods';
+import { useFTVSync } from '@/hooks/use-ftv-sync';
 
 interface StudentTableViewProps {
-  studentId: string;
+  studentId?: string;
   filter?: 'all' | 'pending' | 'approved' | 'rejected';
 }
 
@@ -50,38 +51,29 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
   };
 }
 
-export function StudentTableView({ studentId, filter = 'all' }: StudentTableViewProps) {
-  const [igazolasok, setIgazolasok] = useState<Igazolas[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchIgazolasok = async () => {
-      try {
-        setIsLoading(true);
-        const data = await apiClient.getMyIgazolas();
-        setIgazolasok(data);
-      } catch (error) {
-        console.error('Failed to fetch igazolások:', error);
-        toast.error('Hiba történt az igazolások betöltésekor');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchIgazolasok();
-  }, [studentId]);
-
-  // Filter data based on the filter prop
-  const filteredIgazolasok = igazolasok.filter(igazolas => {
-    if (filter === 'all') return true;
-    if (filter === 'pending') return igazolas.allapot === 'Függőben';
-    if (filter === 'approved') return igazolas.allapot === 'Elfogadva';
-    if (filter === 'rejected') return igazolas.allapot === 'Elutasítva';
-    return true;
+export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
+  // Use the FTV sync hook for optimized data loading
+  const {
+    data: allIgazolasok,
+    isLoading,
+    isSyncing,
+    metadata,
+    syncNow,
+  } = useFTVSync({
+    fetchFunction: (mode) => apiClient.getMyIgazolas(mode),
+    autoSync: true,
   });
 
+  // Filter data based on the filter prop
+  const igazolasok = useMemo(() => {
+    if (filter === 'pending') return allIgazolasok.filter(i => i.allapot === 'Függőben');
+    if (filter === 'approved') return allIgazolasok.filter(i => i.allapot === 'Elfogadva');
+    if (filter === 'rejected') return allIgazolasok.filter(i => i.allapot === 'Elutasítva');
+    return allIgazolasok;
+  }, [allIgazolasok, filter]);
+
   // Map data to table format
-  const tableData = filteredIgazolasok.map(mapIgazolasToTableData);
+  const tableData = igazolasok.map(mapIgazolasToTableData);
 
   // Get filter-specific title and description
   const getFilterTitle = () => {
@@ -105,8 +97,12 @@ export function StudentTableView({ studentId, filter = 'all' }: StudentTableView
   return (
     <Card>
       <CardHeader>
-        <CardTitle><h1 className='text-xl'>{getFilterTitle()}</h1></CardTitle>
-        <CardDescription>{getFilterDescription()}</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle><h1 className='text-xl'>{getFilterTitle()}</h1></CardTitle>
+            <CardDescription>{getFilterDescription()}</CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -114,11 +110,24 @@ export function StudentTableView({ studentId, filter = 'all' }: StudentTableView
             <FTVLoadingState 
               variant="default"
               title="Igazolásaid betöltése"
-              description="Adatok betöltése az FTV rendszerből. Kérjük, várjon..."
+              description="Gyors betöltés cache-elt adatokkal. Háttérben szinkronizálás folyik..."
             />
           </div>
         ) : (
-          <DataTable columns={studentColumns} data={tableData} />
+          <DataTable 
+            columns={studentColumns} 
+            data={tableData}
+            ftvSyncStatus={
+              metadata ? (
+                <FTVSyncStatus
+                  metadata={metadata}
+                  isSyncing={isSyncing}
+                  onSyncNow={syncNow}
+                  compact={false}
+                />
+              ) : null
+            }
+          />
         )}
       </CardContent>
     </Card>

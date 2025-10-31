@@ -25,6 +25,9 @@ import type {
   CheckOTPResponse,
   ChangePasswordOTPRequest,
   ChangePasswordOTPResponse,
+  FTVSyncMode,
+  FTVSyncMetadataResponse,
+  ManualFTVSyncResponse,
 } from './types';
 
 // Use the config for API base URL
@@ -187,12 +190,12 @@ class APIClient {
 
   // Igazolas endpoints
 
-  async listIgazolas(): Promise<Igazolas[]> {
-    return this.fetchWithAuth<Igazolas[]>('/igazolas');
+  async listIgazolas(mode: FTVSyncMode = 'live'): Promise<Igazolas[]> {
+    return this.fetchWithAuth<Igazolas[]>(`/igazolas?mode=${mode}`);
   }
 
-  async getMyIgazolas(): Promise<Igazolas[]> {
-    return this.fetchWithAuth<Igazolas[]>('/igazolas/my');
+  async getMyIgazolas(mode: FTVSyncMode = 'live'): Promise<Igazolas[]> {
+    return this.fetchWithAuth<Igazolas[]>(`/igazolas/my?mode=${mode}`);
   }
 
   async getIgazolas(igazolasId: number): Promise<Igazolas> {
@@ -369,6 +372,18 @@ class APIClient {
       }
       throw new Error('An unexpected error occurred');
     }
+  }
+
+  // FTV Sync endpoints
+
+  async getFTVSyncMetadata(): Promise<FTVSyncMetadataResponse> {
+    return this.fetchWithAuth<FTVSyncMetadataResponse>('/sync/ftv/metadata');
+  }
+
+  async manualFTVSync(): Promise<ManualFTVSyncResponse> {
+    return this.fetchWithAuth<ManualFTVSyncResponse>('/sync/ftv', {
+      method: 'POST',
+    });
   }
 }
 
