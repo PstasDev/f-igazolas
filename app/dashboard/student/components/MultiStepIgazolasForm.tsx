@@ -18,7 +18,7 @@ import { Calendar, Clock, FileText, Check, HelpCircle, ExternalLink, Folder, Sha
 import BKKLogo from '@/components/icons/BKKLogo';
 import MavLogo from '@/components/icons/MavLogo';
 import { apiClient } from '@/lib/api';
-import { IgazolasTipus, IgazolasCreateRequest } from '@/lib/types';
+import { IgazolasTipus, IgazolasCreateRequest, Profile } from '@/lib/types';
 import { getIgazolasType } from '../../types';
 import { BELL_SCHEDULE, getPeriodSchedule } from '@/lib/periods';
 import { toast } from 'sonner';
@@ -55,6 +55,8 @@ const INITIAL_FORM_DATA: FormData = {
 export function MultiStepIgazolasForm() {
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
   const [igazolasTipusok, setIgazolasTipusok] = useState<IgazolasTipus[]>([]);
+  const [filteredIgazolasTipusok, setFilteredIgazolasTipusok] = useState<IgazolasTipus[]>([]);
+  const [myProfile, setMyProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showBKKSelector, setShowBKKSelector] = useState(false);
@@ -65,8 +67,44 @@ export function MultiStepIgazolasForm() {
     const loadIgazolasTipusok = async () => {
       try {
         setIsLoading(true);
-        const types = await apiClient.listIgazolasTipus();
+        
+        // Fetch both profile and igazolás types
+        const [profile, types] = await Promise.all([
+          apiClient.getMyProfile(),
+          apiClient.listIgazolasTipus()
+        ]);
+        
+        setMyProfile(profile);
         setIgazolasTipusok(types);
+        
+        // Filter types based on student's class
+        if (profile.osztalyom) {
+          // Get the student's class ID
+          const myClassId = profile.osztalyom.id;
+          
+          // Filter out types that are not accepted by the student's class
+          const acceptedTypes = types.filter(tipus => {
+            // Check if the student's class is in the nem_fogado_osztalyok list
+            const isNotAccepted = tipus.nem_fogado_osztalyok?.some(
+              osztaly => osztaly.id === myClassId
+            );
+            return !isNotAccepted; // Only include if NOT in the rejected list
+          });
+          
+          setFilteredIgazolasTipusok(acceptedTypes);
+          
+          // Show info message if some types are filtered out
+          if (acceptedTypes.length < types.length) {
+            const filteredCount = types.length - acceptedTypes.length;
+            toast.info(
+              `${filteredCount} igazolástípus nem érhető el az osztályod számára`,
+              { duration: 5000 }
+            );
+          }
+        } else {
+          // If no class, show all types
+          setFilteredIgazolasTipusok(types);
+        }
       } catch (error) {
         console.error('Failed to load igazolás types:', error);
         toast.error('Hiba történt az igazolás típusok betöltésekor');
@@ -467,6 +505,16 @@ export function MultiStepIgazolasForm() {
                 <FileText className="w-5 h-5 text-blue-500" />
                 <Label className="text-lg font-medium">Igazolás típusa</Label>
               </div>
+              
+              {myProfile?.osztalyom && filteredIgazolasTipusok.length < igazolasTipusok.length && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    ℹ️ Az osztályfőnököd korlátozta az elérhető igazolástípusokat. 
+                    Csak a {filteredIgazolasTipusok.length} engedélyezett típus érhető el az osztályod számára.
+                  </p>
+                </div>
+              )}
+              
               <Select
                 value={formData.tipus?.toString() || ''}
                 onValueChange={(value) => updateFormData({ tipus: parseInt(value) })}
@@ -475,7 +523,12 @@ export function MultiStepIgazolasForm() {
                   <SelectValue placeholder="Válassz igazolás típust..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {igazolasTipusok.map((tipus) => {
+                  {filteredIgazolasTipusok.length === 0 ? (
+                    <div className="p-2 text-sm text-muted-foreground text-center">
+                      Nincs elérhető igazolástípus
+                    </div>
+                  ) : (
+                    filteredIgazolasTipusok.map((tipus) => {
                       const typeInfo = getIgazolasType(tipus.nev);
                       return (
                         <SelectItem key={tipus.id} value={tipus.id.toString()}>
@@ -485,7 +538,8 @@ export function MultiStepIgazolasForm() {
                           </div>
                         </SelectItem>
                       );
-                    })}
+                    })
+                  )}
                 </SelectContent>
               </Select>
               

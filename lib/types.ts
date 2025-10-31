@@ -28,6 +28,7 @@ export interface Osztaly {
   nev: string;
   tanulok: User[];
   osztalyfonokok: User[];
+  nem_fogadott_igazolas_tipusok?: IgazolasTipus[];
 }
 
 export interface Mulasztas {
@@ -48,6 +49,7 @@ export interface IgazolasTipus {
   leiras?: string;
   beleszamit: boolean;
   iskolaerdeku: boolean;
+  nem_fogado_osztalyok?: OsztalySimple[];
 }
 
 export interface Igazolas {
@@ -198,6 +200,19 @@ export interface ChangePasswordOTPRequest {
 export interface ChangePasswordOTPResponse {
   message: string;
   success: boolean;
+}
+
+// Igazolás Tipus Toggle types
+export interface IgazolasTipusToggleRequest {
+  tipus_id: number;
+  enabled: boolean;
+}
+
+export interface IgazolasTipusToggleResponse {
+  message: string;
+  success: boolean;
+  tipus_id: number;
+  enabled: boolean;
 }
 
 // FTV Sync Metadata types

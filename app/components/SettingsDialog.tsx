@@ -15,6 +15,9 @@ import {
   UserCircle,
   Check,
   X,
+  FlaskConicalIcon,
+  FlaskConicalOff,
+  Clapperboard,
 } from "lucide-react"
 
 import {
@@ -34,6 +37,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
@@ -49,8 +59,8 @@ import {
   ItemDescription,
   ItemGroup,
   ItemMedia,
-  ItemSeparator,
   ItemTitle,
+  ItemActions,
 } from "@/components/ui/item"
 import {
   Field,
@@ -66,24 +76,29 @@ import {
   RadioGroupItem,
 } from "@/components/ui/radio-group"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import { Switch } from "@/components/ui/switch"
 import { useTheme } from "../context/ThemeContext"
 import { useRole } from "../context/RoleContext"
 import { apiClient } from "@/lib/api"
-import type { IgazolasTipus } from "@/lib/types"
+import type { IgazolasTipus, Osztaly } from "@/lib/types"
 import { getIgazolasType } from "@/app/dashboard/types"
+import { toast } from "sonner"
+import { IconFolderCode } from "@tabler/icons-react"
+import { ArrowUpRightIcon } from "lucide-react"
+import BKKLogo from "@/components/icons/BKKLogo"
 
 type PageId = "account" | "appearance" | "verification-types" | "experimental"
 
@@ -107,7 +122,9 @@ export function SettingsDialog() {
   const { theme, toggleTheme } = useTheme()
   const { user } = useRole()
   const [igazolasTipusok, setIgazolasTipusok] = React.useState<IgazolasTipus[]>([])
+  const [myClass, setMyClass] = React.useState<Osztaly | null>(null)
   const [loading, setLoading] = React.useState(false)
+  const [togglingTipus, setTogglingTipus] = React.useState<number | null>(null)
   
   const isTeacher = user?.role === 'teacher'
 
@@ -115,12 +132,61 @@ export function SettingsDialog() {
   React.useEffect(() => {
     if (open && activePage === 'verification-types' && isTeacher) {
       setLoading(true)
-      apiClient.listIgazolasTipus()
-        .then(setIgazolasTipusok)
+      Promise.all([
+        apiClient.listIgazolasTipus(),
+        apiClient.getMyProfile()
+      ])
+        .then(([tipusok, profile]) => {
+          setIgazolasTipusok(tipusok)
+          
+          // Get the teacher's class information
+          if (profile.osztalyom) {
+            return apiClient.getOsztaly(profile.osztalyom.id)
+          }
+          return null
+        })
+        .then((osztaly) => {
+          if (osztaly) {
+            setMyClass(osztaly)
+          }
+        })
         .catch(console.error)
         .finally(() => setLoading(false))
     }
   }, [open, activePage, isTeacher])
+
+  const handleToggleIgazolasTipus = async (tipusId: number, currentlyEnabled: boolean) => {
+    if (!myClass) {
+      toast.error('Nem található osztály')
+      return
+    }
+
+    setTogglingTipus(tipusId)
+    
+    try {
+      const result = await apiClient.toggleIgazolasTipus({
+        tipus_id: tipusId,
+        enabled: !currentlyEnabled, // Toggle the current state
+      })
+      
+      toast.success(result.message)
+      
+      // Refresh the class data to get updated nem_fogadott_igazolas_tipusok
+      const updatedClass = await apiClient.getOsztaly(myClass.id)
+      setMyClass(updatedClass)
+    } catch (error) {
+      console.error('Failed to toggle igazolás tipus:', error)
+      
+      let errorMessage = 'Hiba történt a típus módosításakor'
+      if (error instanceof Error) {
+        errorMessage = error.message
+      }
+      
+      toast.error(errorMessage)
+    } finally {
+      setTogglingTipus(null)
+    }
+  }
 
   const filteredNavItems = navItems.filter(item => !item.teacherOnly || isTeacher)
 
@@ -220,97 +286,132 @@ export function SettingsDialog() {
         return (
           <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
             <div>
-              <h2 className="text-lg font-semibold">Igazolástípusok</h2>
+              <h2 className="text-lg font-semibold">Igazolástípusok kezelése</h2>
               <p className="text-sm text-muted-foreground">
-                Az alábbi igazolástípusok használhatóak a rendszerben.
+                Engedélyezd vagy tiltsd le az egyes igazolástípusokat az osztályod számára.
               </p>
+              {myClass && (
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-2">
+                  Osztály: {myClass.nev}
+                </p>
+              )}
             </div>
             
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <p className="text-sm text-muted-foreground">Betöltés...</p>
               </div>
+            ) : !myClass ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-muted-foreground">Nem található osztály.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Ez a funkció csak osztályfőnökök számára érhető el.
+                  </p>
+                </div>
+              </div>
             ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Név</TableHead>
-                      <TableHead className="text-center">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="cursor-help">Beleszámít</span>
-                            </TooltipTrigger>
-                            <TooltipContent className="dark:bg-gray-900 dark:text-white max-w-xs">
-                              <p>Ha igaz, akkor ez az igazolástípus beleszámít a hivatalos mulasztások számába. Ha hamis, akkor jelenlétként számít az év végi bizonyítványban.</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </TableHead>
-                      <TableHead className="text-center">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="cursor-help">Iskolaérdekű</span>
-                            </TooltipTrigger>
-                            <TooltipContent className="dark:bg-gray-900 dark:text-white max-w-xs">
-                              <p>Ha igaz, akkor az ilyen típusú igazolás elutasításakor megerősítést kér a rendszer, mivel a tanuló hivatalos iskolaérdekű okból volt távol.</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {igazolasTipusok.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center text-muted-foreground">
-                          Nincsenek elérhető igazolástípusok
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      igazolasTipusok.map((tipus) => {
-                        const typeConfig = getIgazolasType(tipus.nev)
-                        return (
-                          <TableRow key={tipus.id}>
-                            <TableCell>
+              <div className="space-y-3">
+                {igazolasTipusok.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    Nincsenek elérhető igazolástípusok
+                  </div>
+                ) : (
+                  igazolasTipusok.map((tipus) => {
+                    const typeConfig = getIgazolasType(tipus.nev)
+                    const isDisabled = myClass.nem_fogadott_igazolas_tipusok?.some(t => t.id === tipus.id) || false
+                    const isEnabled = !isDisabled
+                    const isToggling = togglingTipus === tipus.id
+                    
+                    return (
+                      <div 
+                        key={tipus.id}
+                        className={`p-4 rounded-lg border transition-all ${
+                          isEnabled 
+                            ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' 
+                            : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{typeConfig.emoji}</span>
+                              <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors ${typeConfig.color}`}>
+                                {tipus.nev}
+                              </span>
+                              {isEnabled ? (
+                                <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                                  <Check className="h-3 w-3" />
+                                  Engedélyezve
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                  <X className="h-3 w-3" />
+                                  Tiltva
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {typeConfig.description}
+                            </p>
+                            <div className="flex gap-3 text-xs">
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <div className="flex items-center gap-2 cursor-help">
-                                      <span className="text-lg">{typeConfig.emoji}</span>
-                                      <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors ${typeConfig.color}`}>
-                                        {tipus.nev}
-                                      </span>
+                                    <div className="flex items-center gap-1">
+                                      {tipus.beleszamit ? (
+                                        <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+                                      ) : (
+                                        <X className="h-3 w-3 text-red-600 dark:text-red-400" />
+                                      )}
+                                      <span className="text-muted-foreground">Beleszámít</span>
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent className="dark:bg-gray-900 dark:text-white max-w-xs">
-                                    <p>{typeConfig.description}</p>
+                                    <p>Ha igaz, akkor ez az igazolástípus beleszámít a hivatalos mulasztások számába.</p>
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {tipus.beleszamit ? (
-                                <Check className="h-5 w-5 mx-auto text-green-600 dark:text-green-400" />
-                              ) : (
-                                <X className="h-5 w-5 mx-auto text-red-600 dark:text-red-400" />
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {tipus.iskolaerdeku ? (
-                                <Check className="h-5 w-5 mx-auto text-green-600 dark:text-green-400" />
-                              ) : (
-                                <X className="h-5 w-5 mx-auto text-red-600 dark:text-red-400" />
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })
-                    )}
-                  </TableBody>
-                </Table>
+                              
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-1">
+                                      {tipus.iskolaerdeku ? (
+                                        <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+                                      ) : (
+                                        <X className="h-3 w-3 text-red-600 dark:text-red-400" />
+                                      )}
+                                      <span className="text-muted-foreground">Iskolaérdekű</span>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="dark:bg-gray-900 dark:text-white max-w-xs">
+                                    <p>Ha igaz, akkor az ilyen típusú igazolás elutasításakor megerősítést kér a rendszer.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={isEnabled}
+                              disabled={isToggling}
+                              onCheckedChange={() => handleToggleIgazolasTipus(tipus.id, isEnabled)}
+                              aria-label={`Toggle ${tipus.nev}`}
+                            />
+                          </div>
+                        </div>
+                        
+                        {!isEnabled && (
+                          <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded text-xs text-amber-800 dark:text-amber-200">
+                            ⚠️ Az osztályod diákjai nem fogják látni ezt a típust az igazolás beküldő űrlapon.
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
               </div>
             )}
           </div>
@@ -320,9 +421,68 @@ export function SettingsDialog() {
         return (
           <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
             <h2 className="text-lg font-semibold">Kísérleti funkciók</h2>
-            <p className="text-sm text-muted-foreground">
-              Ezek a funkciók még fejlesztés alatt állnak és nem stabil működésűek lehetnek.
-            </p>
+            {/* <div className="">
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon" className="bg-teal-500/30 dark:bg-teal-300/30 text-teal-500 dark:text-teal-300">
+                    <FlaskConicalOff className="" />
+                  </EmptyMedia>
+                  <EmptyTitle>Nincsenek kísérleti funkciók</EmptyTitle>
+                  <EmptyDescription>
+                    Jelenleg nincsenek elérhető kísérleti funkciók a számodra.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            </div> */}
+            <ItemGroup className="gap-4">
+              <Item variant="outline" className="bg-teal-50 dark:bg-teal-950/30 border-teal-200 dark:border-teal-800">
+                <ItemContent>
+                  <ItemMedia className="mb-2">
+                    <BKKLogo />
+                  </ItemMedia>
+                  <ItemTitle>BKK Élő Forgalmi Zavar Információk</ItemTitle>
+                  <ItemDescription>
+                    Integráció a BKK élő forgalmi zavar információival az alkalmazásban.
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <Switch checked={true} disabled />
+                </ItemActions>
+              </Item>
+
+              <Item variant="outline" className="bg-teal-50 dark:bg-teal-950/30 border-teal-200 dark:border-teal-800">
+                <ItemContent>
+                  <ItemMedia className="mb-2">
+                    <BKKLogo />
+                  </ItemMedia>
+                  <ItemTitle>BKK Élő Jármű Menetmódosítási Információk</ItemTitle>
+                  <ItemDescription>
+                    Integráció a BKK élő jármű menetmódosítási információival az alkalmazásban.
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <Switch checked={true} disabled />
+                </ItemActions>
+              </Item>
+
+              <Item variant="outline" className="bg-teal-50 dark:bg-teal-950/30 border-teal-200 dark:border-teal-800">
+                <ItemContent>
+                  <ItemMedia className="mb-2">
+                    <div className="inline-flex items-center gap-1">
+                      <Clapperboard className="text-blue-500 drop-shadow-md shadow-blue-500 size-5" />
+                      <span className="text-blue-500 font-semibold">FTV</span><span className="text-blue-500 font-light">Sync </span></div>
+                  </ItemMedia>
+                  <ItemTitle>Forgatásszervezési adatok közvetlen integrációja</ItemTitle>
+                  <ItemDescription>
+                    Az FTV - Forgatásszervező Platform adatainak közvetlen integrációja az alkalmazásban.
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <Switch checked={true} disabled />
+                </ItemActions>
+              </Item>
+
+            </ItemGroup>
           </div>
         )
       
@@ -367,8 +527,30 @@ export function SettingsDialog() {
           </Sidebar>
           <main className="flex h-[480px] flex-1 flex-col overflow-hidden">
             <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-              <div className="flex items-center gap-2 px-4">
-                <Breadcrumb>
+              <div className="flex items-center gap-2 px-4 w-full">
+                {/* Mobile dropdown selector */}
+                <div className="md:hidden w-full">
+                  <Select value={activePage} onValueChange={(value) => setActivePage(value as PageId)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue>
+                        {filteredNavItems.find(item => item.id === activePage)?.name}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredNavItems.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          <div className="flex items-center gap-2">
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Desktop breadcrumb */}
+                <Breadcrumb className="hidden md:block">
                   <BreadcrumbList>
                     <BreadcrumbItem className="hidden md:block">
                       <BreadcrumbLink>Beállítások</BreadcrumbLink>

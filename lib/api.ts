@@ -25,6 +25,8 @@ import type {
   CheckOTPResponse,
   ChangePasswordOTPRequest,
   ChangePasswordOTPResponse,
+  IgazolasTipusToggleRequest,
+  IgazolasTipusToggleResponse,
   FTVSyncMode,
   FTVSyncMetadataResponse,
   ManualFTVSyncResponse,
@@ -176,6 +178,14 @@ class APIClient {
 
   async getOsztaly(osztalyId: number): Promise<Osztaly> {
     return this.fetchWithAuth<Osztaly>(`/osztaly/${osztalyId}`);
+  }
+
+  // Toggle igazolás tipus acceptance for teacher's class
+  async toggleIgazolasTipus(data: IgazolasTipusToggleRequest): Promise<IgazolasTipusToggleResponse> {
+    return this.fetchWithAuth<IgazolasTipusToggleResponse>('/osztaly/igazolas-tipus/toggle', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
   }
 
   // IgazolasTipus endpoints
