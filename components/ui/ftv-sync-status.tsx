@@ -121,10 +121,10 @@ export function FTVSyncStatus({
   }
 
   return (
-    <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 border rounded-lg bg-muted/50">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto overflow-hidden">
         {/* FTV Sync Branding */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <Clapperboard className="h-4 w-4 text-blue-500 dark:text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
           <span className="text-sm font-bold text-blue-500 dark:text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]">
             FTV
@@ -134,13 +134,13 @@ export function FTVSyncStatus({
           </span>
         </div>
         
-        {/* Separator */}
-        <div className="h-4 w-px bg-border" />
+        {/* Separator - hidden on mobile */}
+        <div className="hidden sm:block h-4 w-px bg-border flex-shrink-0" />
         
         {/* Status Info */}
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-muted-foreground" />
-          <div className="text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          <div className="text-sm text-muted-foreground whitespace-nowrap">
             {timeAgo}
           </div>
           {getStatusBadge()}
@@ -148,7 +148,7 @@ export function FTVSyncStatus({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge variant="outline" className="gap-1 border-yellow-500/50 text-yellow-700 dark:text-yellow-400 cursor-help">
+                  <Badge variant="outline" className="gap-1 border-yellow-500/50 text-yellow-700 dark:text-yellow-400 cursor-help whitespace-nowrap">
                     <AlertCircle className="h-3 w-3" />
                     Régi adatok
                   </Badge>
@@ -168,7 +168,7 @@ export function FTVSyncStatus({
           variant="outline"
           onClick={onSyncNow}
           disabled={isSyncing}
-          className="gap-2"
+          className="gap-2 w-full sm:w-auto flex-shrink-0"
         >
           <RefreshCcw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
           {isSyncing ? 'Szinkronizálás...' : 'Frissítés'}
