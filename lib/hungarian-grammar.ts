@@ -2,8 +2,6 @@
  * Hungarian grammar utilities for route numbers
  */
 
-import { parse } from "path";
-
 /**
  * Get the correct Hungarian suffix for a route number
  */
