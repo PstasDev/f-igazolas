@@ -42,14 +42,26 @@ export function ForgotPasswordForm({
     e.preventDefault();
     
     if (!username.trim()) {
-      toast.error('Kérlek add meg a felhasználóneved!');
+      toast.error('Kérlek add meg a felhasználóneved vagy e-mail címed!');
+      return;
+    }
+
+    // Check if input is an email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isEmailFormat = emailRegex.test(username);
+    
+    // Extract username - either use the input as-is (if username) or extract from email
+    const processedUsername = isEmailFormat ? username.split('@')[0] : username;
+    
+    if (!processedUsername.trim()) {
+      toast.error('Érvénytelen felhasználónév!');
       return;
     }
 
     setIsLoading(true);
     
     try {
-      await apiClient.forgotPassword({ username: username.trim() });
+      await apiClient.forgotPassword({ username: processedUsername.trim() });
       toast.success('OTP kód elküldve az email címére!');
       setStep('otp');
     } catch (error) {
@@ -69,11 +81,16 @@ export function ForgotPasswordForm({
       return;
     }
 
+    // Extract username from email or use directly
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isEmailFormat = emailRegex.test(username);
+    const processedUsername = isEmailFormat ? username.split('@')[0] : username;
+
     setIsLoading(true);
     
     try {
       const data = await apiClient.checkOTP({ 
-        username: username.trim(), 
+        username: processedUsername.trim(), 
         otp_code: otpCode.trim() 
       });
       toast.success('OTP kód ellenőrizve!');
@@ -101,11 +118,16 @@ export function ForgotPasswordForm({
       return;
     }
 
+    // Extract username from email or use directly
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isEmailFormat = emailRegex.test(username);
+    const processedUsername = isEmailFormat ? username.split('@')[0] : username;
+
     setIsLoading(true);
     
     try {
       await apiClient.changePasswordOTP({ 
-        username: username.trim(), 
+        username: processedUsername.trim(), 
         reset_token: resetToken,
         new_password: newPassword 
       });
@@ -131,16 +153,16 @@ export function ForgotPasswordForm({
           <Mail className="h-12 w-12 text-muted-foreground mb-2" />
           <h1 className="text-2xl font-bold">Elfelejtett jelszó</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            Add meg a felhasználóneved és küldünk egy OTP kódot az email címedre
+            Add meg a felhasználóneved vagy e-mail címed és küldünk egy OTP kódot az email címedre
           </p>
         </div>
         
         <Field>
-          <Label htmlFor="username">Felhasználónév</Label>
+          <Label htmlFor="username">Felhasználónév vagy E-mail cím</Label>
           <Input
             id="username"
             type="text"
-            placeholder="felhasználónév"
+            placeholder="felhasználónév vagy e-mail"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             disabled={isLoading}

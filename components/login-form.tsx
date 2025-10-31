@@ -98,16 +98,16 @@ export function LoginForm({
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Bejelentkezés</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            Add meg a felhasználóneved és jelszavad
+            Add meg a felhasználóneved vagy e-mail címed és jelszavad
           </p>
         </div>
         
         <Field>
-          <Label htmlFor="username">Felhasználónév</Label>
+          <Label htmlFor="username">Felhasználónév vagy E-mail cím</Label>
           <Input
             id="username"
             type="text"
-            placeholder="felhasználónév"
+            placeholder="felhasználónév vagy e-mail"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             disabled={isLoading}

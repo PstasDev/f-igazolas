@@ -42,21 +42,19 @@ export function FirstPasswordForm({
     e.preventDefault();
     
     if (!email.trim()) {
-      toast.error('Kérlek add meg az email címed!');
+      toast.error('Kérlek add meg a felhasználóneved vagy e-mail címed!');
       return;
     }
 
-    // Validate email format
-    if (!email.includes('@') || email.split('@').length !== 2) {
-      toast.error('Kérlek adj meg egy érvényes email címet!');
-      return;
-    }
-
-    // Extract username from email (part before @)
-    const username = email.split('@')[0];
+    // Check if input is an email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isEmailFormat = emailRegex.test(email);
+    
+    // Extract username - either use the input as-is (if username) or extract from email
+    const username = isEmailFormat ? email.split('@')[0] : email;
     
     if (!username.trim()) {
-      toast.error('Az email cím nem tartalmazhat üres felhasználónevet!');
+      toast.error('Érvénytelen felhasználónév!');
       return;
     }
 
@@ -83,8 +81,10 @@ export function FirstPasswordForm({
       return;
     }
 
-    // Extract username from email
-    const username = email.split('@')[0];
+    // Extract username from email or use directly
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isEmailFormat = emailRegex.test(email);
+    const username = isEmailFormat ? email.split('@')[0] : email;
 
     setIsLoading(true);
     
@@ -118,8 +118,10 @@ export function FirstPasswordForm({
       return;
     }
 
-    // Extract username from email
-    const username = email.split('@')[0];
+    // Extract username from email or use directly
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isEmailFormat = emailRegex.test(email);
+    const username = isEmailFormat ? email.split('@')[0] : email;
 
     setIsLoading(true);
     
@@ -151,21 +153,21 @@ export function FirstPasswordForm({
           <UserPlus className="h-12 w-12 text-muted-foreground mb-2" />
           <h1 className="text-2xl font-bold">Első jelszó beállítása</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            Add meg az email címed és küldünk egy OTP kódot az első jelszavad beállításához
+            Add meg a felhasználóneved vagy e-mail címed és küldünk egy OTP kódot az első jelszavad beállításához
           </p>
         </div>
         
         <Field>
-          <Label htmlFor="email">Email cím</Label>
+          <Label htmlFor="email">Felhasználónév vagy E-mail cím</Label>
           <Input
             id="email"
-            type="email"
-            placeholder="pelda@iskola.hu"
+            type="text"
+            placeholder="felhasználónév vagy e-mail"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={isLoading}
             required
-            autoComplete="email"
+            autoComplete="username"
           />
         </Field>
 

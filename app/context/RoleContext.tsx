@@ -123,7 +123,31 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       await fetchUserProfile();
     } catch (error) {
       console.error('Login failed:', error);
-      throw error;
+      
+      // Check if the error is 401 (unauthorized) and username looks like an email
+      const isUnauthorized = (error as { status?: number })?.status === 401;
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const isEmailFormat = emailRegex.test(username);
+      
+      if (isUnauthorized && isEmailFormat) {
+        try {
+          // Extract username part before @ and retry
+          const extractedUsername = username.split('@')[0];
+          await apiClient.login({ username: extractedUsername, password });
+          
+          // Token is already stored in cookies by apiClient
+          // Now fetch the user profile
+          await fetchUserProfile();
+          return; // Success on retry
+        } catch (retryError) {
+          console.error('Login retry failed:', retryError);
+          // Throw the retry error (this will be the final error shown to user)
+          throw retryError;
+        }
+      } else {
+        // Not an email format or different error, throw original error
+        throw error;
+      }
     } finally {
       setIsLoading(false);
     }
