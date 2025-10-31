@@ -1,7 +1,7 @@
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import ThemeToggle from "@/app/components/ThemeToggle"
+import { SettingsDialog } from "@/app/components/SettingsDialog"
 
 interface SiteHeaderProps {
   title?: string
@@ -35,7 +35,7 @@ export function SiteHeader({ title = "Igazoláskezelő" }: SiteHeaderProps) {
           </div>
         </div>
         <div className="flex items-center">
-          <ThemeToggle />
+          <SettingsDialog />
         </div>
       </div>
     </header>

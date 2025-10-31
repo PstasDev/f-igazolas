@@ -11,6 +11,16 @@ import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
 import { FTVSyncStatus } from '@/components/ui/ftv-sync-status';
 import { mapApiResponseToPeriods } from '@/lib/periods';
 import { useFTVSync } from '@/hooks/use-ftv-sync';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface TeacherTableViewProps {
   filter: 'all' | 'pending' | 'approved' | 'rejected';
@@ -80,6 +90,10 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
 
   // Local state for optimistic updates
   const [localIgazolasok, setLocalIgazolasok] = useState<Igazolas[]>([]);
+  
+  // State for confirmation dialog
+  const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
+  const [pendingRejectId, setPendingRejectId] = useState<string | null>(null);
 
   // Sync local state with filtered data
   useEffect(() => {
@@ -109,6 +123,21 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
   };
 
   const handleReject = async (id: string) => {
+    // Find the igazolás to check if it's iskolaérdekű
+    const igazolas = localIgazolasok.find(i => i.id.toString() === id);
+    
+    if (igazolas && igazolas.tipus.iskolaerdeku) {
+      // Show confirmation dialog for iskolaérdekű igazolás
+      setPendingRejectId(id);
+      setConfirmRejectOpen(true);
+      return;
+    }
+    
+    // Proceed with rejection if not iskolaérdekű
+    await performReject(id);
+  };
+
+  const performReject = async (id: string) => {
     try {
       // Optimistic update - update state immediately
       setLocalIgazolasok(prevIgazolasok => 
@@ -128,6 +157,19 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
       // Revert optimistic update on error
       setLocalIgazolasok(igazolasok);
     }
+  };
+  
+  const handleConfirmReject = async () => {
+    if (pendingRejectId) {
+      await performReject(pendingRejectId);
+      setPendingRejectId(null);
+      setConfirmRejectOpen(false);
+    }
+  };
+  
+  const handleCancelReject = () => {
+    setPendingRejectId(null);
+    setConfirmRejectOpen(false);
   };
 
   const handleSetPending = async (id: string) => {
@@ -192,7 +234,31 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
   const tableData = localIgazolasok.map(mapIgazolasToTableData);
 
   return (
-    <Card>
+    <>
+      <AlertDialog open={confirmRejectOpen} onOpenChange={setConfirmRejectOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Iskolaérdekű igazolás elutasítása</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ez az igazolás típusa azt jelzi, hogy a tanuló hivatalos iskolaérdekű okból volt távol. 
+              Biztosan el szeretnéd utasítani ezt az igazolást?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelReject}>
+              Mégse
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmReject}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Elutasítás
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -230,5 +296,6 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
         )}
       </CardContent>
     </Card>
+    </>
   );
 }

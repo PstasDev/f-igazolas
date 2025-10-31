@@ -62,7 +62,7 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     category: 'Orvosi igazolás',
     beleszamit: true,
     iskolaerdeku: false,
-    description: 'A tanuló orvosi ellátásban részesült'
+    description: 'A tanuló orvosi kezelés alatt állt'
   },
   'családi okok': {
     name: 'Családi Okok',
@@ -76,11 +76,47 @@ export const igazolasTypes: Record<string, IgazolasType> = {
   'közlekedés': {
     name: 'Közlekedés',
     emoji: '🚇',
-    color: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-500',
+    color: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-500',
     category: 'Közlekedési probléma',
     beleszamit: true,
     iskolaerdeku: false,
     description: 'A tanuló közlekedési problémák miatt nem tudott részt venni az órán'
+  },
+  'oktv': {
+    name: 'OKTV',
+    emoji: '🎓',
+    color: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-500',
+    category: 'OKTV',
+    beleszamit: false,
+    iskolaerdeku: true,
+    description: 'A tanuló Országos Középiskolai Tanulmányi Versenyen vett részt'
+  },
+  'sitabor': {
+    name: 'Sítábor',
+    emoji: '⛷️',
+    color: 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-500',
+    category: 'Sítábor',
+    beleszamit: true,
+    iskolaerdeku: false,
+    description: 'A tanuló iskolai szervezésű sítáborban volt'
+  },
+  'utazas': {
+    name: 'Utazás',
+    emoji: '🏖️',
+    color: 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-500',
+    category: 'Utazás',
+    beleszamit: true,
+    iskolaerdeku: false,
+    description: 'A tanuló a jelzett időpontban elutazott'
+  },
+  'igazgatoi': {
+    name: 'Egyéb Igazgatói Engedély',
+    emoji: '📝',
+    color: 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-800/30 dark:text-gray-300 dark:border-gray-500',
+    category: 'Egyéb',
+    beleszamit: true,
+    iskolaerdeku: false,
+    description: 'Igazgatói engedéllyel volt távol a tanuló'
   },
   'egyéb': {
     name: 'Egyéb',
