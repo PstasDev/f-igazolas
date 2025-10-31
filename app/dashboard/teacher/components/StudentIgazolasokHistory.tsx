@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calendar, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, XCircle, Info, AlertCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { apiClient } from '@/lib/api';
 import { Igazolas } from '@/lib/types';
-import { getIgazolasType } from '@/app/dashboard/types';
+import { getIgazolasType, isMultiDayAbsence, buildCalendarGrid, getDayOfWeekShort } from '@/app/dashboard/types';
 import { toast } from 'sonner';
 import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
 
@@ -135,7 +137,7 @@ export function StudentIgazolasokHistory({ studentId }: StudentIgazolasokHistory
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Összes</CardTitle>
@@ -162,7 +164,21 @@ export function StudentIgazolasokHistory({ studentId }: StudentIgazolasokHistory
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Órák</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+              Órák
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">
+                      Irányadó adat. A rendszer nem ismeri a diákok pontos órarendjét, így az óraszám jelentősen eltérhet a valóságtól.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalHours}</div>
@@ -170,63 +186,157 @@ export function StudentIgazolasokHistory({ studentId }: StudentIgazolasokHistory
         </Card>
       </div>
 
+      <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
+        <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        <AlertDescription className="text-sm text-blue-800 dark:text-blue-200">
+          <strong>Fontos:</strong> Az óraszám csak iránymutató adat. A rendszer nem ismeri a diákok egyedi órarendjét, 
+          így a megjelenített óraszám jelentősen eltérhet a tényleges hiányzásoktól.
+        </AlertDescription>
+      </Alert>
+
       <Card>
         <CardHeader>
           <CardTitle>Igazolások története</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 sm:p-6">
           {igazolasok.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               Nincs még igazolás
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Dátum</TableHead>
-                  <TableHead>Típus</TableHead>
-                  <TableHead>Órák</TableHead>
-                  <TableHead>Megjegyzés</TableHead>
-                  <TableHead>Státusz</TableHead>
-                  <TableHead>Beküldve</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {igazolasok.map((igazolas) => (
-                  <TableRow key={igazolas.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        {new Date(igazolas.eleje).toLocaleDateString('hu-HU')}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const typeConfig = getIgazolasType(igazolas.tipus.nev);
-                        return (
-                          <Badge variant="outline" className={typeConfig.color}>
-                            <span className="mr-1.5">{typeConfig.emoji}</span>
-                            {typeConfig.name}
-                          </Badge>
-                        );
-                      })()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {getHoursDisplay(igazolas.eleje, igazolas.vege)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
-                      {igazolas.megjegyzes_diak || igazolas.megjegyzes || 'Nincs megjegyzés'}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(igazolas.allapot)}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {new Date(igazolas.rogzites_datuma).toLocaleDateString('hu-HU')}
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[140px]">Dátum</TableHead>
+                    <TableHead className="min-w-[140px]">Típus</TableHead>
+                    <TableHead className="min-w-[200px]">Órarend</TableHead>
+                    <TableHead className="min-w-[150px] max-w-[250px]">Megjegyzés</TableHead>
+                    <TableHead className="min-w-[120px]">Státusz</TableHead>
+                    <TableHead className="min-w-[100px]">Beküldve</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {igazolasok.map((igazolas) => {
+                    const isMultiDay = isMultiDayAbsence(igazolas.eleje, igazolas.vege);
+                    const startDate = new Date(igazolas.eleje);
+                    const endDate = new Date(igazolas.vege);
+                    
+                    return (
+                      <TableRow key={igazolas.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            {isMultiDay ? (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-sm font-medium">
+                                  {startDate.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })}
+                                </span>
+                                <span className="text-xs text-muted-foreground">→</span>
+                                <span className="text-sm font-medium">
+                                  {endDate.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-sm">
+                                {startDate.toLocaleDateString('hu-HU')}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {(() => {
+                            const typeConfig = getIgazolasType(igazolas.tipus.nev);
+                            return (
+                              <Badge variant="outline" className={`${typeConfig.color} whitespace-nowrap`}>
+                                <span className="mr-1.5">{typeConfig.emoji}</span>
+                                {typeConfig.name}
+                              </Badge>
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell>
+                          {isMultiDay ? (
+                            <TooltipProvider>
+                              <div className="flex flex-col gap-0.5 w-fit">
+                                {/* Day headers */}
+                                <div className="grid grid-cols-7 gap-0.5">
+                                  {[1, 2, 3, 4, 5, 6, 0].map((dayIndex) => (
+                                    <div
+                                      key={dayIndex}
+                                      className="flex items-center justify-center text-[9px] font-semibold text-muted-foreground uppercase h-4 w-7"
+                                    >
+                                      {getDayOfWeekShort(dayIndex)}
+                                    </div>
+                                  ))}
+                                </div>
+                                
+                                {/* Calendar weeks */}
+                                {buildCalendarGrid(igazolas.eleje, igazolas.vege).map((week, weekIndex) => (
+                                  <div key={weekIndex} className="grid grid-cols-7 gap-0.5">
+                                    {week.map((day, dayIndex) => {
+                                      let bgColor = "period-inactive";
+                                      let glowColor = "";
+                                      let tooltipText = `${day.date.toLocaleDateString('hu-HU', { weekday: 'long' })}\n${day.date.toLocaleDateString('hu-HU')}`;
+                                      
+                                      if (day.isInRange) {
+                                        if (igazolas.allapot === 'Függőben') {
+                                          bgColor = "period-pending";
+                                          glowColor = "period-glow-blue";
+                                          tooltipText += "\nEllenőrzésre vár";
+                                        } else if (igazolas.allapot === 'Elfogadva') {
+                                          bgColor = "period-approved";
+                                          glowColor = "period-glow-green";
+                                          tooltipText += "\nJóváhagyva";
+                                        } else if (igazolas.allapot === 'Elutasítva') {
+                                          bgColor = "period-rejected";
+                                          glowColor = "period-glow-red";
+                                          tooltipText += "\nElutasítva";
+                                        }
+                                      } else {
+                                        tooltipText = `${day.date.toLocaleDateString('hu-HU', { weekday: 'long' })}\n${day.date.toLocaleDateString('hu-HU')}\nNem érintett`;
+                                      }
+                                      
+                                      return (
+                                        <Tooltip key={dayIndex}>
+                                          <TooltipTrigger asChild>
+                                            <span
+                                              className={`inline-flex items-center justify-center w-7 h-7 text-[10px] font-bold rounded-full cursor-help transition-all duration-300 ease-in-out transform ${bgColor} ${day.isInRange ? glowColor : ''} hover:scale-110`}
+                                            >
+                                              {day.dayOfMonth}
+                                            </span>
+                                          </TooltipTrigger>
+                                          <TooltipContent className="bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 border-slate-600 dark:border-slate-400 font-medium text-xs whitespace-pre-line max-w-xs shadow-lg">
+                                            {tooltipText}
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      );
+                                    })}
+                                  </div>
+                                ))}
+                              </div>
+                            </TooltipProvider>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {getHoursDisplay(igazolas.eleje, igazolas.vege)}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-[250px]">
+                          <div className="text-xs text-muted-foreground line-clamp-2" title={igazolas.megjegyzes_diak || igazolas.megjegyzes || 'Nincs megjegyzés'}>
+                            {igazolas.megjegyzes_diak || igazolas.megjegyzes || 'Nincs megjegyzés'}
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(igazolas.allapot)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(igazolas.rogzites_datuma).toLocaleDateString('hu-HU')}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

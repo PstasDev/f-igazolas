@@ -29,6 +29,8 @@ import { createDisruptionVerification, createVehicleVerification, BKKVerificatio
 
 interface FormData {
   date: string;
+  endDate: string; // For multi-day absences
+  isMultiDay: boolean; // Toggle between single day and multi-day
   periodRange: number[]; // [startPeriod, endPeriod] for consecutive periods
   tipus: number | null;
   megjegyzes_diak: string;
@@ -42,6 +44,8 @@ interface FormData {
 
 const INITIAL_FORM_DATA: FormData = {
   date: '',
+  endDate: '',
+  isMultiDay: false,
   periodRange: [0, 2], // Default to first 3 periods (0, 1, 2)
   tipus: null,
   megjegyzes_diak: '',
@@ -90,19 +94,30 @@ export function MultiStepIgazolasForm() {
 
   // Calculate datetime strings for API submission
   const getStartDateTime = (): string => {
-    if (formData.periodRange.length === 2) {
-      const firstPeriod = formData.periodRange[0];
-      const startTime = BELL_SCHEDULE[firstPeriod]?.start || '08:00';
-      return `${formData.date}T${startTime}`;
+    if (formData.isMultiDay) {
+      // For multi-day absences, start at the beginning of the day
+      return `${formData.date}T${BELL_SCHEDULE[0]?.start || '08:00'}`;
+    } else {
+      if (formData.periodRange.length === 2) {
+        const firstPeriod = formData.periodRange[0];
+        const startTime = BELL_SCHEDULE[firstPeriod]?.start || '08:00';
+        return `${formData.date}T${startTime}`;
+      }
     }
     return '';
   };
 
   const getEndDateTime = (): string => {
-    if (formData.periodRange.length === 2) {
-      const lastPeriod = formData.periodRange[1];
-      const endTime = BELL_SCHEDULE[lastPeriod]?.end || '16:00';
-      return `${formData.date}T${endTime}`;
+    if (formData.isMultiDay) {
+      // For multi-day absences, use the end date and end of last period
+      const endDate = formData.endDate || formData.date;
+      return `${endDate}T${BELL_SCHEDULE[BELL_SCHEDULE.length - 1]?.end || '16:00'}`;
+    } else {
+      if (formData.periodRange.length === 2) {
+        const lastPeriod = formData.periodRange[1];
+        const endTime = BELL_SCHEDULE[lastPeriod]?.end || '16:00';
+        return `${formData.date}T${endTime}`;
+      }
     }
     return '';
   };
@@ -292,23 +307,93 @@ export function MultiStepIgazolasForm() {
             <Calendar className="w-5 h-5 text-blue-500" />
             <Label htmlFor="date" className="text-lg font-medium">Dátum</Label>
           </div>
-          <Input
-            id="date"
-            type="date"
-            value={formData.date}
-            onChange={(e) => updateFormData({ date: e.target.value })}
-            required
-            className="max-w-xs"
-          />
+          
+          {/* Toggle for single day vs multi-day */}
+          <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+            <Label htmlFor="isMultiDay" className="text-sm font-medium cursor-pointer">
+              <input
+                id="isMultiDay"
+                type="checkbox"
+                checked={formData.isMultiDay}
+                onChange={(e) => {
+                  const isMultiDay = e.target.checked;
+                  updateFormData({ 
+                    isMultiDay,
+                    endDate: isMultiDay ? formData.date : '',
+                    periodRange: isMultiDay ? [0, BELL_SCHEDULE.length - 1] : formData.periodRange
+                  });
+                }}
+                className="mr-2"
+              />
+              Több napos hiányzás
+            </Label>
+            <span className="text-xs text-muted-foreground">
+              {formData.isMultiDay ? '(Teljes napok)' : '(Egy nap)'}
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="date" className="text-sm">
+                {formData.isMultiDay ? 'Kezdő dátum' : 'Dátum'}
+              </Label>
+              <Input
+                id="date"
+                type="date"
+                value={formData.date}
+                onChange={(e) => {
+                  const newDate = e.target.value;
+                  updateFormData({ 
+                    date: newDate,
+                    // If multi-day and end date is before start date, update end date
+                    endDate: formData.isMultiDay && formData.endDate && formData.endDate < newDate 
+                      ? newDate 
+                      : formData.endDate
+                  });
+                }}
+                required
+                className="w-full"
+              />
+            </div>
+            
+            {formData.isMultiDay && (
+              <div className="space-y-2">
+                <Label htmlFor="endDate" className="text-sm">Befejező dátum</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(e) => updateFormData({ endDate: e.target.value })}
+                  min={formData.date}
+                  required={formData.isMultiDay}
+                  className="w-full"
+                />
+              </div>
+            )}
+          </div>
+          
+          {formData.isMultiDay && formData.date && formData.endDate && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Több napos hiányzás:</strong> {new Date(formData.date).toLocaleDateString('hu-HU')} - {new Date(formData.endDate).toLocaleDateString('hu-HU')}
+                {' '}({Math.ceil((new Date(formData.endDate).getTime() - new Date(formData.date).getTime()) / (1000 * 60 * 60 * 24)) + 1} nap)
+              </p>
+              <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+                A hiányzás minden tanórát érint ezeken a napokon.
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Step 2: Period Selection */}
-        <Separator />
-        <div className="space-y-6">
-          <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-blue-500" />
-            <Label className="text-lg font-medium">Tanórák kiválasztása</Label>
-          </div>
+        {/* Step 2: Period Selection (only for single day) */}
+        {!formData.isMultiDay && (
+          <>
+            <Separator />
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-blue-500" />
+                <Label className="text-lg font-medium">Tanórák kiválasztása</Label>
+              </div>
               
               <Field>
                 <FieldTitle>Óraválasztó</FieldTitle>
@@ -372,6 +457,8 @@ export function MultiStepIgazolasForm() {
                 </p>
               </div>
             </div>
+          </>
+        )}
 
         {/* Step 3: Type Selection */}
         <Separator />
@@ -706,16 +793,33 @@ export function MultiStepIgazolasForm() {
               <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">Dátum</Label>
-                    <p className="text-sm">{new Date(formData.date).toLocaleDateString('hu-HU')}</p>
+                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                      {formData.isMultiDay ? 'Dátum tartomány' : 'Dátum'}
+                    </Label>
+                    {formData.isMultiDay ? (
+                      <p className="text-sm">
+                        {new Date(formData.date).toLocaleDateString('hu-HU')} - {new Date(formData.endDate || formData.date).toLocaleDateString('hu-HU')}
+                      </p>
+                    ) : (
+                      <p className="text-sm">{new Date(formData.date).toLocaleDateString('hu-HU')}</p>
+                    )}
                   </div>
                   
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">Időszak</Label>
-                    <p className="text-sm">
-                      {getConsecutivePeriods().map(i => BELL_SCHEDULE[i]?.name).join(', ')}
-                    </p>
-                  </div>
+                  {!formData.isMultiDay && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">Időszak</Label>
+                      <p className="text-sm">
+                        {getConsecutivePeriods().map(i => BELL_SCHEDULE[i]?.name).join(', ')}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {formData.isMultiDay && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">Típus</Label>
+                      <p className="text-sm">Teljes napok</p>
+                    </div>
+                  )}
                   
                   {selectedTipus && (
                     <div>

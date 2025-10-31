@@ -4,7 +4,7 @@ import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { IgazolasTableRow, getIgazolasType } from "@/app/dashboard/types"
+import { IgazolasTableRow, getIgazolasType, isMultiDayAbsence, buildCalendarGrid, getDayOfWeekShort } from "@/app/dashboard/types"
 import { BKKVerificationBadge } from "@/components/ui/BKKVerificationBadge"
 import { Calendar, ArrowUpDown, ArrowUp, ArrowDown, Clapperboard, FileText } from "lucide-react"
 import { getPeriodSchedule } from "@/lib/periods"
@@ -95,12 +95,37 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
         </Button>
       )
     },
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2 whitespace-nowrap">
-        <Calendar className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-medium">{row.getValue("date")}</span>
-      </div>
-    ),
+    cell: ({ row }) => {
+      const isMultiDay = isMultiDayAbsence(row.original.startDate, row.original.endDate);
+      
+      if (isMultiDay) {
+        const startDate = new Date(row.original.startDate);
+        const endDate = new Date(row.original.endDate);
+        return (
+          <div className="flex flex-col gap-1 whitespace-nowrap">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs font-medium">
+                {startDate.toLocaleDateString('hu-HU')}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <span className="text-xs">→</span>
+              <span className="text-xs">
+                {endDate.toLocaleDateString('hu-HU')}
+              </span>
+            </div>
+          </div>
+        );
+      }
+      
+      return (
+        <div className="flex items-center gap-2 whitespace-nowrap">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">{row.getValue("date")}</span>
+        </div>
+      );
+    },
     enableSorting: true,
   },
   {
@@ -112,7 +137,76 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
       const correctedHours = row.original.correctedHours || []
       const allapot = row.original.allapot
       const fromFTV = row.original.fromFTV || false
+      const isMultiDay = isMultiDayAbsence(row.original.startDate, row.original.endDate);
       
+      // Multi-day display: show calendar grid with dates
+      if (isMultiDay) {
+        const calendarGrid = buildCalendarGrid(row.original.startDate, row.original.endDate);
+        
+        return (
+          <TooltipProvider>
+            <div className="flex flex-col gap-0.5 w-fit">
+              {/* Day headers */}
+              <div className="grid grid-cols-7 gap-0.5">
+                {[1, 2, 3, 4, 5, 6, 0].map((dayIndex) => (
+                  <div
+                    key={dayIndex}
+                    className="flex items-center justify-center text-[9px] font-semibold text-muted-foreground uppercase h-4 w-7"
+                  >
+                    {getDayOfWeekShort(dayIndex)}
+                  </div>
+                ))}
+              </div>
+              
+              {/* Calendar weeks */}
+              {calendarGrid.map((week, weekIndex) => (
+                <div key={weekIndex} className="grid grid-cols-7 gap-0.5">
+                  {week.map((day, dayIndex) => {
+                    let bgColor = "period-inactive";
+                    let glowColor = "";
+                    let tooltipText = `${day.date.toLocaleDateString('hu-HU', { weekday: 'long' })}\n${day.date.toLocaleDateString('hu-HU')}`;
+                    
+                    if (day.isInRange) {
+                      if (allapot === 'Függőben') {
+                        bgColor = "period-pending";
+                        glowColor = "period-glow-blue";
+                        tooltipText += "\nEllenőrzésre vár";
+                      } else if (allapot === 'Elfogadva') {
+                        bgColor = "period-approved";
+                        glowColor = "period-glow-green";
+                        tooltipText += "\nJóváhagyva";
+                      } else if (allapot === 'Elutasítva') {
+                        bgColor = "period-rejected";
+                        glowColor = "period-glow-red";
+                        tooltipText += "\nElutasítva";
+                      }
+                    } else {
+                      tooltipText = `${day.date.toLocaleDateString('hu-HU', { weekday: 'long' })}\n${day.date.toLocaleDateString('hu-HU')}\nNem érintett`;
+                    }
+                    
+                    return (
+                      <Tooltip key={dayIndex}>
+                        <TooltipTrigger asChild>
+                          <span
+                            className={`inline-flex items-center justify-center w-7 h-7 text-[10px] font-bold rounded-full cursor-help transition-all duration-300 ease-in-out transform ${bgColor} ${day.isInRange ? glowColor : ''} hover:scale-110`}
+                          >
+                            {day.dayOfMonth}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 border-slate-600 dark:border-slate-400 font-medium text-xs whitespace-pre-line max-w-xs shadow-lg">
+                          {tooltipText}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </TooltipProvider>
+        );
+      }
+      
+      // Single day display: show period squares (existing logic)
       return (
         <TooltipProvider>
           <div className="flex gap-1 flex-nowrap min-w-[360px]">

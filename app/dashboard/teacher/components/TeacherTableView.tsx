@@ -34,6 +34,8 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
     studentClass: igazolas.profile.osztalyom?.nev || 'N/A',
     type: igazolas.tipus.nev,
     date: new Date(igazolas.eleje).toLocaleDateString('hu-HU'),
+    startDate: igazolas.eleje,
+    endDate: igazolas.vege,
     hours: originalPeriods,
     correctedHours: correctedPeriods,
     status: igazolas.megjegyzes_diak || igazolas.megjegyzes || 'Nincs megjegyzés',

@@ -7,6 +7,8 @@ export interface IgazolasTableRow {
   studentClass: string;
   type: string;
   date: string;
+  startDate: string; // ISO date string for multi-day support
+  endDate: string;   // ISO date string for multi-day support
   hours: number[];
   correctedHours?: number[]; // Added for student corrections
   status: string;
@@ -135,4 +137,103 @@ export function getIgazolasType(typeName: string): IgazolasType {
   }
   
   return igazolasTypes[mapped] || igazolasTypes['egyéb'];
+}
+
+// Helper function to check if an igazolás spans multiple days
+export function isMultiDayAbsence(eleje: string, vege: string): boolean {
+  const start = new Date(eleje);
+  const end = new Date(vege);
+  
+  // Set both to midnight for comparison
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  
+  return start.getTime() !== end.getTime();
+}
+
+// Get all dates between start and end (inclusive)
+export function getDateRange(eleje: string, vege: string): Date[] {
+  const start = new Date(eleje);
+  const end = new Date(vege);
+  const dates: Date[] = [];
+  
+  const currentDate = new Date(start);
+  currentDate.setHours(0, 0, 0, 0);
+  
+  const endDate = new Date(end);
+  endDate.setHours(0, 0, 0, 0);
+  
+  while (currentDate <= endDate) {
+    dates.push(new Date(currentDate));
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return dates;
+}
+
+// Get day of week letter in Hungarian
+export function getDayOfWeekLetter(date: Date): string {
+  const days = ['V', 'H', 'K', 'Sz', 'Cs', 'P', 'Szo'];
+  return days[date.getDay()];
+}
+
+// Get day of week name in Hungarian (short form)
+export function getDayOfWeekShort(dayIndex: number): string {
+  const days = ['V', 'H', 'K', 'Sze', 'Cs', 'P', 'Szo'];
+  return days[dayIndex];
+}
+
+// Build calendar grid for date range
+export interface CalendarDay {
+  date: Date;
+  dayOfMonth: number;
+  isInRange: boolean;
+  isDisabled: boolean;
+}
+
+export function buildCalendarGrid(startDate: string, endDate: string): CalendarDay[][] {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  // Set to start of day
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  
+  // Find the Monday of the week containing start date
+  const firstDay = new Date(start);
+  const dayOfWeek = firstDay.getDay();
+  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Monday = 1
+  firstDay.setDate(firstDay.getDate() + diff);
+  
+  // Find the Sunday of the week containing end date
+  const lastDay = new Date(end);
+  const lastDayOfWeek = lastDay.getDay();
+  const lastDiff = lastDayOfWeek === 0 ? 0 : 7 - lastDayOfWeek;
+  lastDay.setDate(lastDay.getDate() + lastDiff);
+  
+  const weeks: CalendarDay[][] = [];
+  const currentDate = new Date(firstDay);
+  
+  while (currentDate <= lastDay) {
+    const week: CalendarDay[] = [];
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(currentDate);
+      const isInRange = date >= start && date <= end;
+      const isDisabled = !isInRange;
+      
+      week.push({
+        date: new Date(date),
+        dayOfMonth: date.getDate(),
+        isInRange,
+        isDisabled
+      });
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    weeks.push(week);
+  }
+  
+  return weeks;
 }

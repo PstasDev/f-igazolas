@@ -65,7 +65,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { getIgazolasType } from "../types"
+import { getIgazolasType, isMultiDayAbsence, buildCalendarGrid, getDayOfWeekShort } from "../types"
 import {
   Select,
   SelectContent,
@@ -1201,13 +1201,88 @@ export function DataTable<TData, TValue>({
                             <Calendar className="h-3 w-3" />
                             Dátum
                           </Label>
-                          <p className="font-semibold text-base">{selectedRow.date}</p>
+                          {isMultiDayAbsence(selectedRow.startDate, selectedRow.endDate) ? (
+                            <div className="space-y-1">
+                              <p className="text-sm font-semibold">{new Date(selectedRow.startDate).toLocaleDateString('hu-HU')}</p>
+                              <p className="text-xs text-muted-foreground">→</p>
+                              <p className="text-sm font-semibold">{new Date(selectedRow.endDate).toLocaleDateString('hu-HU')}</p>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                {Math.ceil((new Date(selectedRow.endDate).getTime() - new Date(selectedRow.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} nap
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="font-semibold text-base">{selectedRow.date}</p>
+                          )}
                         </div>
                       </div>
 
                         <div className="space-y-3 p-4 rounded-lg bg-muted/30">
-                          <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Érintett órák</Label>
-                          {getHoursDisplay(selectedRow)}
+                          <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            {isMultiDayAbsence(selectedRow.startDate, selectedRow.endDate) ? 'Érintett napok' : 'Érintett órák'}
+                          </Label>
+                          {isMultiDayAbsence(selectedRow.startDate, selectedRow.endDate) ? (
+                            <div className="flex flex-col gap-1 w-fit">
+                              {/* Day headers */}
+                              <div className="grid grid-cols-7 gap-1">
+                                {[1, 2, 3, 4, 5, 6, 0].map((dayIndex) => (
+                                  <div
+                                    key={dayIndex}
+                                    className="flex items-center justify-center text-[10px] font-semibold text-muted-foreground uppercase h-5 w-9"
+                                  >
+                                    {getDayOfWeekShort(dayIndex)}
+                                  </div>
+                                ))}
+                              </div>
+                              
+                              {/* Calendar weeks */}
+                              {buildCalendarGrid(selectedRow.startDate, selectedRow.endDate).map((week, weekIndex) => (
+                                <div key={weekIndex} className="grid grid-cols-7 gap-1">
+                                  {week.map((day, dayIndex) => {
+                                    let bgColor = "period-inactive";
+                                    let glowColor = "";
+                                    let tooltipText = `${day.date.toLocaleDateString('hu-HU', { weekday: 'long' })}\n${day.date.toLocaleDateString('hu-HU')}`;
+                                    
+                                    if (day.isInRange) {
+                                      if (selectedRow.allapot === 'Függőben') {
+                                        bgColor = "period-pending";
+                                        glowColor = "period-glow-blue";
+                                        tooltipText += "\nEllenőrzésre vár";
+                                      } else if (selectedRow.allapot === 'Elfogadva') {
+                                        bgColor = "period-approved";
+                                        glowColor = "period-glow-green";
+                                        tooltipText += "\nJóváhagyva";
+                                      } else if (selectedRow.allapot === 'Elutasítva') {
+                                        bgColor = "period-rejected";
+                                        glowColor = "period-glow-red";
+                                        tooltipText += "\nElutasítva";
+                                      }
+                                    } else {
+                                      tooltipText = `${day.date.toLocaleDateString('hu-HU', { weekday: 'long' })}\n${day.date.toLocaleDateString('hu-HU')}\nNem érintett`;
+                                    }
+                                    
+                                    return (
+                                      <TooltipProvider key={dayIndex}>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <span
+                                              className={`inline-flex items-center justify-center w-9 h-9 text-xs font-bold rounded-full cursor-help transition-all duration-300 ease-in-out transform ${bgColor} ${day.isInRange ? glowColor : ''} hover:scale-110`}
+                                            >
+                                              {day.dayOfMonth}
+                                            </span>
+                                          </TooltipTrigger>
+                                          <TooltipContent className="bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 border-slate-600 dark:border-slate-400 font-medium text-xs whitespace-pre-line max-w-xs shadow-lg">
+                                            {tooltipText}
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    );
+                                  })}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            getHoursDisplay(selectedRow)
+                          )}
                         </div>
 
                         {selectedRow.fromFTV && (
