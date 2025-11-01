@@ -18,6 +18,14 @@ import {
   FlaskConicalIcon,
   FlaskConicalOff,
   Clapperboard,
+  Info,
+  Code2,
+  GitBranch,
+  GitCommit,
+  Calendar,
+  Network,
+  Database,
+  ExternalLink,
 } from "lucide-react"
 
 import {
@@ -100,7 +108,7 @@ import { IconFolderCode } from "@tabler/icons-react"
 import { ArrowUpRightIcon } from "lucide-react"
 import BKKLogo from "@/components/icons/BKKLogo"
 
-type PageId = "account" | "appearance" | "verification-types" | "experimental"
+type PageId = "account" | "appearance" | "verification-types" | "experimental" | "info"
 
 interface NavItem {
   id: PageId
@@ -114,6 +122,7 @@ const navItems: NavItem[] = [
   { id: "appearance", name: "Kinézet", icon: Paintbrush },
   { id: "verification-types", name: "Igazolástípusok", icon: FileText, teacherOnly: true },
   { id: "experimental", name: "Kísérleti", icon: FlaskConical },
+  { id: "info", name: "Információ", icon: Info },
 ]
 
 export function SettingsDialog() {
@@ -482,6 +491,288 @@ export function SettingsDialog() {
                 </ItemActions>
               </Item>
 
+            </ItemGroup>
+          </div>
+        )
+      
+      case "info":
+        return (
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            <div>
+              <h2 className="text-lg font-semibold">Információ</h2>
+            </div>
+            
+            <ItemGroup className="gap-3">
+              {/* Credits Section */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Készítette
+                </h3>
+                <Item variant="outline" className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+                  <ItemMedia>
+                    <UserCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle className="text-blue-900 dark:text-blue-100">Balla Botond</ItemTitle>
+                    <ItemDescription className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <School className="h-3 w-3" />
+                        <span>23F osztály</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-3 w-3" />
+                        <a 
+                          href="mailto:balla.botond.23f@szlgbp.hu" 
+                          className="hover:underline text-blue-600 dark:text-blue-400"
+                        >
+                          balla.botond.23f@szlgbp.hu
+                        </a>
+                      </div>
+                    </ItemDescription>
+                  </ItemContent>
+                </Item>
+              </div>
+
+              {/* Version Info Section */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Verzió információk
+                </h3>
+                <Item variant="outline">
+                  <ItemMedia>
+                    <Code2 className="h-5 w-5" />
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle>Alkalmazás verzió</ItemTitle>
+                    <ItemDescription>
+                      <span className="font-mono text-xs">v{process.env.NEXT_PUBLIC_APP_VERSION || '0.1.0'}</span>
+                    </ItemDescription>
+                  </ItemContent>
+                </Item>
+
+                {process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA && (
+                  <Item variant="outline">
+                    <ItemMedia>
+                      <GitCommit className="h-5 w-5" />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>Commit SHA</ItemTitle>
+                      <ItemDescription>
+                        <span className="font-mono text-xs">
+                          {process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.substring(0, 7)}
+                        </span>
+                      </ItemDescription>
+                    </ItemContent>
+                  </Item>
+                )}
+
+                {process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF && (
+                  <Item variant="outline">
+                    <ItemMedia>
+                      <GitBranch className="h-5 w-5" />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>Git Branch</ItemTitle>
+                      <ItemDescription>
+                        <span className="font-mono text-xs">
+                          {process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF}
+                        </span>
+                      </ItemDescription>
+                    </ItemContent>
+                  </Item>
+                )}
+
+                {process.env.NEXT_PUBLIC_VERCEL_ENV && (
+                  <Item variant="outline">
+                    <ItemMedia>
+                      <Settings className="h-5 w-5" />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>Környezet</ItemTitle>
+                      <ItemDescription>
+                        <span className="font-mono text-xs capitalize">
+                          {process.env.NEXT_PUBLIC_VERCEL_ENV}
+                        </span>
+                      </ItemDescription>
+                    </ItemContent>
+                  </Item>
+                )}
+
+                <Item variant="outline">
+                  <ItemMedia>
+                    <Calendar className="h-5 w-5" />
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle>Build idő</ItemTitle>
+                    <ItemDescription>
+                      <span className="text-xs">
+                        {new Date().toLocaleString('hu-HU', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </ItemDescription>
+                  </ItemContent>
+                </Item>
+              </div>
+
+              {/* Framework Info */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Frontend technológiák
+                </h3>
+                <Item variant="outline">
+                  <ItemContent>
+                    <ItemDescription className="text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Next.js</span>
+                        <span className="font-mono">15.5.6</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">React</span>
+                        <span className="font-mono">19.1.0</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">TypeScript</span>
+                        <span className="font-mono">5.x</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Tailwind CSS</span>
+                        <span className="font-mono">4.x</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Framer Motion</span>
+                        <span className="font-mono">12.x</span>
+                      </div>
+                    </ItemDescription>
+                  </ItemContent>
+                </Item>
+              </div>
+
+              {/* Backend Info */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Backend technológiák
+                </h3>
+                <Item variant="outline">
+                  <ItemContent>
+                    <ItemDescription className="text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Django</span>
+                        <span className="font-mono">5.2.7</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Django Ninja</span>
+                        <span className="font-mono">1.4.5</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Pydantic</span>
+                        <span className="font-mono">2.12.3</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">PyJWT</span>
+                        <span className="font-mono">2.10.1</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Python</span>
+                        <span className="font-mono">3.x</span>
+                      </div>
+                    </ItemDescription>
+                  </ItemContent>
+                </Item>
+              </div>
+
+              {/* Operating Principle */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Működési elv
+                </h3>
+                <Item variant="outline" className="bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800">
+                  <ItemMedia>
+                    <Network className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle className="text-purple-900 dark:text-purple-100">Rendszerarchitektúra diagram</ItemTitle>
+                    <ItemDescription>
+                      <a 
+                        href="https://excalidraw.com/#json=EcRoDuCSLh5-0e_LFzdNH,Qz3E_PgJsk0pIPZP9yy9_Q"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 hover:underline text-xs"
+                      >
+                        Megnyitás Excalidraw-ban
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </ItemDescription>
+                  </ItemContent>
+                </Item>
+              </div>
+
+              {/* Data Sources */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Adatforrások
+                </h3>
+                <Item variant="outline" className="bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800">
+                  <ItemMedia>
+                    <BKKLogo />
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle className="text-emerald-900 dark:text-emerald-100">BKK Élő adatok</ItemTitle>
+                    <ItemDescription className="space-y-2">
+                      <div className="text-xs space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Database className="h-3 w-3" />
+                          <span className="font-semibold">GTFS & GTFS-RT</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Database className="h-3 w-3" />
+                          <span className="font-semibold">Futár API v1</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-2">
+                          RealCity verzió: 1.0.0-244104.gecea8b8-SNAPSHOT
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-emerald-700 dark:text-emerald-300 mt-2 pt-2 border-t border-emerald-200 dark:border-emerald-800">
+                        Adatok forrása: BKK Zrt., CC BY 4.0
+                      </div>
+                    </ItemDescription>
+                  </ItemContent>
+                </Item>
+
+                <Item variant="outline" className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+                  <ItemMedia>
+                    <div className="inline-flex items-center gap-1">
+                      <Clapperboard className="text-blue-500 drop-shadow-md shadow-blue-500 size-5" />
+                    </div>
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle className="text-blue-900 dark:text-blue-100">
+                      <span className="inline-flex items-center gap-1">
+                        <span className="font-semibold">FTV</span>
+                        <span className="font-light">Sync</span>
+                      </span>
+                    </ItemTitle>
+                    <ItemDescription className="space-y-2">
+                      <div className="text-xs space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Database className="h-3 w-3" />
+                          <span className="font-semibold">Forgatásszervező Platform API</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-2">
+                          Valós idejű forgatási adatok szinkronizálása
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-blue-700 dark:text-blue-300 mt-2 pt-2 border-t border-blue-200 dark:border-blue-800">
+                        Adatok forrása: FTV - Forgatásszervező Platform
+                      </div>
+                    </ItemDescription>
+                  </ItemContent>
+                </Item>
+              </div>
             </ItemGroup>
           </div>
         )
