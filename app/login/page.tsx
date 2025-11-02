@@ -73,11 +73,17 @@ export default function LoginPage() {
             <LoginForm onModeChange={setIsSpecialMode} />
           </div>
         </div>
-        {/* <div className="text-center text-xs text-muted-foreground">
-            <Link href="/" className="hover:underline">
-              ← Vissza a főoldalra
+        <div className="text-center text-xs text-muted-foreground space-y-1">
+          <div className="flex items-center justify-center gap-3">
+            <Link href="/utmutato/tanuloi" className="hover:underline hover:text-foreground transition-colors">
+              Tanulói útmutató
             </Link>
-          </div> */}
+            <span>•</span>
+            <Link href="/utmutato/osztalyfonoki" className="hover:underline hover:text-foreground transition-colors">
+              Osztályfőnöki útmutató
+            </Link>
+          </div>
+        </div>
       </div>
       <div className="bg-black relative hidden lg:block overflow-hidden h-full">
         <div className="absolute inset-0 w-full h-full overflow-hidden">

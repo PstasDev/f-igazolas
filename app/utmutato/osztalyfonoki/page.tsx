@@ -1,5 +1,6 @@
 "use client";
 
+import Head from "next/head";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -13,7 +14,6 @@ import {
   AlertCircle,
   Users,
   Eye,
-  Printer,
   Home,
   Search,
   Filter,
@@ -22,113 +22,61 @@ import {
 } from "lucide-react";
 
 export default function OsztalyfonokiUtmutato() {
-  const handlePrint = () => {
-    window.print();
-  };
+  const pageTitle = "Osztályfőnöki útmutató - Szent László Gimnázium F Tagozat";
+  const pageDescription = "Átfogó útmutató osztályfőnökök számára az igazoláskezelő rendszer használatához. Gyors műveletek, részletes elbírálás, hivatalos igazolások kezelése és diákok adminisztrációja.";
+  const pageUrl = "https://igazolas.f-tagozat.hu/utmutato/osztalyfonoki";
+  const pageImage = "https://igazolas.f-tagozat.hu/og-teacher-guide.png";
 
   return (
     <>
-      {/* Print styles */}
-      <style jsx global>{`
-        @media print {
-          /* Hide everything except print content */
-          body * {
-            visibility: hidden;
-          }
-          .print-content, .print-content * {
-            visibility: visible;
-          }
-          .print-content {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          .no-print {
-            display: none !important;
-          }
-          .print-page-break {
-            page-break-before: always;
-          }
-          
-          /* Preserve ALL colors, backgrounds, and styling in print */
-          *, *::before, *::after {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
-          }
-          
-          /* Preserve page background */
-          body {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          
-          /* Ensure all visual elements print with their colors */
-          div, span, section, article, main, header, footer,
-          h1, h2, h3, h4, h5, h6, p, ul, li, a, button,
-          .bg-blue-50, .bg-blue-100, .bg-blue-500, .bg-blue-600, .bg-blue-950,
-          .bg-green-50, .bg-green-100, .bg-green-500, .bg-green-600,
-          .bg-purple-50, .bg-purple-100, .bg-purple-500, .bg-purple-600, .bg-purple-950,
-          .bg-red-50, .bg-red-100, .bg-red-500, .bg-red-600,
-          .bg-teal-50, .bg-teal-100, .bg-teal-500, .bg-teal-600,
-          .bg-slate-50, .bg-slate-100, .bg-slate-800, .bg-slate-900,
-          .bg-emerald-50, .bg-emerald-950,
-          .bg-cyan-50, .bg-cyan-950,
-          .bg-muted, .bg-background, .bg-primary, .bg-white {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          
-          /* Preserve gradients */
-          [class*="bg-gradient"] {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          
-          /* Preserve borders */
-          [class*="border-"] {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          
-          /* Preserve text colors */
-          [class*="text-"] {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          
-          /* Preserve shadows */
-          [class*="shadow"] {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          
-          /* Preserve rounded corners and all styling */
-          [class*="rounded"] {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-        }
-      `}</style>
+      <Head>
+        {/* Primary Meta Tags */}
+        <title>{pageTitle}</title>
+        <meta name="title" content={pageTitle} />
+        <meta name="description" content={pageDescription} />
+        <meta name="keywords" content="osztályfőnök, útmutató, igazolás, Szent László Gimnázium, F tagozat, tanár, elbírálás, hiányzás kezelés" />
+        <meta name="author" content="Szent László Gimnázium F Tagozat" />
+        <meta name="robots" content="index, follow" />
+
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+        <meta property="og:image" content={pageImage} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Osztályfőnöki útmutató - Igazoláskezelő rendszer" />
+        <meta property="og:site_name" content="F Tagozat Igazoláskezelő" />
+        <meta property="og:locale" content="hu_HU" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={pageUrl} />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+        <meta name="twitter:image" content={pageImage} />
+        <meta name="twitter:image:alt" content="Osztályfőnöki útmutató - Igazoláskezelő rendszer" />
+
+        {/* Additional Meta Tags */}
+        <meta name="theme-color" content="#1a1a1a" />
+        <meta name="format-detection" content="telephone=no" />
+        <link rel="canonical" href={pageUrl} />
+      </Head>
 
       <div className="min-h-screen bg-background">
-        {/* Navigation Bar - Hidden in print */}
-        <div className="no-print sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        {/* Navigation Bar */}
+        <div className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container flex h-16 items-center justify-between px-4">
             <div className="flex items-center gap-2">
               <Home className="h-5 w-5 text-muted-foreground" />
               <span className="font-semibold">Osztályfőnöki útmutató</span>
             </div>
-            <Button onClick={handlePrint} size="sm" variant="outline">
-              <Printer className="h-4 w-4 mr-2" />
-              Nyomtatás / PDF
-            </Button>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="print-content container max-w-4xl mx-auto py-8 px-4 space-y-8">
+        <div className="container max-w-4xl mx-auto py-8 px-4 space-y-8">
           {/* Header */}
           <div className="space-y-2">
             <h1 className="text-4xl font-bold tracking-tight">Osztályfőnöki útmutató</h1>
