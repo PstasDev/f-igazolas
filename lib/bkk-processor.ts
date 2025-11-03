@@ -894,6 +894,7 @@ export class BKKDataProcessor {
   
   private static decodeHtml(text: string): string {
     return text
+      // Lowercase Hungarian vowels
       .replace(/\\303\\241/g, 'á')
       .replace(/\\303\\251/g, 'é')
       .replace(/\\303\\255/g, 'í')
@@ -903,8 +904,21 @@ export class BKKDataProcessor {
       .replace(/\\303\\272/g, 'ú')
       .replace(/\\303\\274/g, 'ü')
       .replace(/\\305\\261/g, 'ű')
+      // Uppercase Hungarian vowels
+      .replace(/\\303\\201/g, 'Á')
+      .replace(/\\303\\211/g, 'É')
+      .replace(/\\303\\215/g, 'Í')
+      .replace(/\\303\\223/g, 'Ó')
+      .replace(/\\303\\226/g, 'Ö')
+      .replace(/\\305\\220/g, 'Ő')
+      .replace(/\\303\\232/g, 'Ú')
+      .replace(/\\303\\234/g, 'Ü')
+      .replace(/\\305\\260/g, 'Ű')
+      // Special characters
       .replace(/\\302\\240/g, ' ')
+      // Remove HTML tags
       .replace(/<[^>]*>/g, '')
+      // Clean up whitespace
       .replace(/\\n/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
