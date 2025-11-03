@@ -64,6 +64,15 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     iskolaerdeku: false,
     description: 'A tanuló orvosi kezelés alatt állt'
   },
+  'rosszullet': {
+    name: 'Rosszullét',
+    emoji: '🤢',
+    color: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-500',
+    category: 'Orvosi igazolás',
+    beleszamit: true,
+    iskolaerdeku: false,
+    description: 'A tanuló a tanítási idő alatt lett rosszul, ezért elhagyta az intézményt'
+  },
   'családi okok': {
     name: 'Családi Okok',
     emoji: '👨‍👩‍👧‍👦',
