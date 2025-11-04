@@ -5,9 +5,9 @@ import {
   IconPlus,
   IconFileText,
   IconUsers,
-  IconSchool,
 } from "@tabler/icons-react"
 import Link from "next/link"
+import { Logo } from "@/components/Logo"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -79,7 +79,7 @@ export function AppSidebar({ onViewChange, currentView, ...props }: AppSidebarPr
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
               <Link href="/">
-                <IconSchool className="!size-5" />
+                <Logo className="!size-5 shrink-0" />
                 <span className="text-base font-semibold"><h1>Igazoláskezelő</h1></span>
               </Link>
             </SidebarMenuButton>

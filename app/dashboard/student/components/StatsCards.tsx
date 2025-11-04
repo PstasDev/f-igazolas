@@ -27,11 +27,17 @@ export function StatsCards({ studentId }: StatsCardsProps) {
     totalHours: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isFtvRegistered, setIsFtvRegistered] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         setIsLoading(true);
+        
+        // Check FTV registration
+        const profile = await apiClient.getMyProfile();
+        setIsFtvRegistered(profile.ftv_registered ?? false);
+        
         const igazolasok = await apiClient.getMyIgazolas();
         
         const stats: StudentStats = {
@@ -95,11 +101,17 @@ export function StatsCards({ studentId }: StatsCardsProps) {
         {[1, 2, 3, 4].map((i) => (
           <Card key={i}>
             <CardContent className="flex justify-center items-center py-6">
-              <FTVLoadingState 
-                variant="default"
-                title="Statisztikák betöltése"
-                description="Betöltés az FTV rendszerből..."
-              />
+              {isFtvRegistered ? (
+                <FTVLoadingState 
+                  variant="default"
+                  title="Statisztikák betöltése"
+                  description="Betöltés az FTV rendszerből..."
+                />
+              ) : (
+                <div className="text-center text-sm text-muted-foreground">
+                  Betöltés...
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}

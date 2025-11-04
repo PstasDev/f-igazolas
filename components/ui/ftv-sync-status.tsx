@@ -20,9 +20,28 @@ export function FTVSyncStatus({
   compact = false,
 }: FTVSyncStatusProps) {
   const [timeAgo, setTimeAgo] = useState<string>('');
+  const [hasEverSynced, setHasEverSynced] = useState<boolean>(false);
+
+  // Track if we've ever completed a sync during this session
+  useEffect(() => {
+    if (metadata?.last_sync_time && metadata.last_sync_status === 'success') {
+      setHasEverSynced(true);
+    }
+  }, [metadata?.last_sync_time, metadata?.last_sync_status]);
 
   // Calculate time ago from last_sync_time and update every second
   useEffect(() => {
+    // If currently syncing and no previous sync, show syncing state
+    if (isSyncing && !hasEverSynced) {
+      setTimeAgo('Első szinkronizálás...');
+      return;
+    }
+
+    if (isSyncing) {
+      setTimeAgo('Frissítés...');
+      return;
+    }
+
     if (!metadata?.last_sync_time) {
       setTimeAgo('Még soha');
       return;
@@ -51,7 +70,7 @@ export function FTVSyncStatus({
     const interval = setInterval(updateTimeAgo, 1000);
 
     return () => clearInterval(interval);
-  }, [metadata?.last_sync_time]);
+  }, [metadata?.last_sync_time, isSyncing, hasEverSynced]);
 
   if (!metadata) {
     return null;
@@ -68,11 +87,28 @@ export function FTVSyncStatus({
   const getStatusBadge = () => {
     if (isSyncing) {
       return (
-        <Badge variant="outline" className="gap-1">
+        <Badge variant="outline" className="gap-1 border-blue-500/50 text-blue-700 dark:text-blue-400">
           <RefreshCcw className="h-3 w-3 animate-spin" />
           Szinkronizálás...
         </Badge>
       );
+    }
+
+    // If we've synced during this session, don't show "never" status
+    // even if metadata hasn't updated yet
+    if (hasEverSynced && metadata.last_sync_status === 'never') {
+      return (
+        <Badge variant="outline" className="gap-1 border-green-500/50 text-green-700 dark:text-green-400">
+          <CheckCircle2 className="h-3 w-3" />
+          Sikeres
+        </Badge>
+      );
+    }
+
+    // Don't show "never" status during initial load
+    // This prevents the flickering of "never" during initial load
+    if (metadata.last_sync_status === 'never' && !metadata.last_sync_time && !isSyncing) {
+      return null;
     }
 
     switch (metadata.last_sync_status) {
@@ -94,7 +130,7 @@ export function FTVSyncStatus({
         return (
           <Badge variant="outline" className="gap-1 border-yellow-500/50 text-yellow-700 dark:text-yellow-400">
             <AlertCircle className="h-3 w-3" />
-            Még nem volt szinkronizálás
+            Nincs előzmény
           </Badge>
         );
     }

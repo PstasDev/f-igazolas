@@ -74,6 +74,7 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
   } = useFTVSync({
     fetchFunction: (mode) => apiClient.listIgazolas(mode),
     autoSync: true,
+    syncType: 'class', // Teachers use class-level sync
   });
 
   // Filter based on status

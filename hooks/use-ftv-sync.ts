@@ -1,11 +1,14 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { apiClient } from '@/lib/api';
-import { Igazolas, FTVSyncMetadata } from '@/lib/types';
+import { Igazolas, FTVSyncMetadata, FTVSyncType } from '@/lib/types';
 import { toast } from 'sonner';
 
 interface UseFTVSyncOptions {
-  fetchFunction: (mode: 'cached' | 'live') => Promise<Igazolas[]>;
+  fetchFunction: (mode: 'cached' | 'live', debugPerformance?: boolean) => Promise<Igazolas[]>;
   autoSync?: boolean;
+  debugPerformance?: boolean; // Enable performance debugging (for development)
+  syncType?: FTVSyncType; // Specify sync type for metadata queries
+  checkFtvRegistration?: boolean; // Auto-check FTV registration before syncing
 }
 
 interface UseFTVSyncReturn {
@@ -16,6 +19,7 @@ interface UseFTVSyncReturn {
   error: Error | null;
   refresh: () => Promise<void>;
   syncNow: () => Promise<void>;
+  isFtvRegistered: boolean | null; // null = not checked yet, true/false = checked
 }
 
 /**
@@ -31,12 +35,16 @@ interface UseFTVSyncReturn {
 export function useFTVSync({
   fetchFunction,
   autoSync = true,
+  debugPerformance = false,
+  syncType = 'base',
+  checkFtvRegistration = false,
 }: UseFTVSyncOptions): UseFTVSyncReturn {
   const [data, setData] = useState<Igazolas[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [metadata, setMetadata] = useState<FTVSyncMetadata | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const [isFtvRegistered, setIsFtvRegistered] = useState<boolean | null>(null);
   
   // Track if initial load has been done to prevent re-runs
   const hasInitialized = useRef(false);
@@ -47,17 +55,40 @@ export function useFTVSync({
     fetchFunctionRef.current = fetchFunction;
   }, [fetchFunction]);
 
+  // Check FTV registration status
+  const checkRegistration = useCallback(async () => {
+    if (!checkFtvRegistration) {
+      return true; // Assume registered if not checking
+    }
+
+    try {
+      const profile = await apiClient.getMyProfile();
+      const isRegistered = profile.ftv_registered ?? false;
+      setIsFtvRegistered(isRegistered);
+      
+      if (!isRegistered) {
+        console.log('User is not registered in FTV - skipping sync operations');
+      }
+      
+      return isRegistered;
+    } catch (err) {
+      console.error('Failed to check FTV registration:', err);
+      setIsFtvRegistered(false);
+      return false;
+    }
+  }, [checkFtvRegistration]);
+
   // Fetch metadata about last sync
   const fetchMetadata = useCallback(async () => {
     try {
-      const response = await apiClient.getFTVSyncMetadata();
+      const response = await apiClient.getFTVSyncMetadata(syncType);
       setMetadata(response.metadata);
       return response.metadata;
     } catch (err) {
       console.error('Failed to fetch sync metadata:', err);
       return null;
     }
-  }, []);
+  }, [syncType]);
 
   // Sync with live data in the background
   const syncLiveData = useCallback(async () => {
@@ -65,10 +96,18 @@ export function useFTVSync({
       console.log('Sync already in progress, skipping...');
       return;
     }
+
+    // Check FTV registration before syncing
+    const isRegistered = await checkRegistration();
+    if (!isRegistered) {
+      console.log('User not registered in FTV - using cached mode only');
+      toast.info('Csak a manuálisan rögzített igazolások láthatók');
+      return;
+    }
     
     try {
       setIsSyncing(true);
-      const liveData = await fetchFunctionRef.current('live');
+      const liveData = await fetchFunctionRef.current('live', debugPerformance);
       
       // Compare with existing data
       setData(prevData => {
@@ -95,7 +134,7 @@ export function useFTVSync({
     } finally {
       setIsSyncing(false);
     }
-  }, [isSyncing, fetchMetadata]);
+  }, [isSyncing, fetchMetadata, debugPerformance, checkRegistration]);
 
   // Manual refresh - reload everything
   const refresh = useCallback(async () => {
@@ -166,5 +205,6 @@ export function useFTVSync({
     error,
     refresh,
     syncNow,
+    isFtvRegistered,
   };
 }

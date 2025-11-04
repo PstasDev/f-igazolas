@@ -30,6 +30,7 @@ import type {
   FTVSyncMode,
   FTVSyncMetadataResponse,
   ManualFTVSyncResponse,
+  FTVRegistrationCheckResponse,
 } from './types';
 
 // Use the config for API base URL
@@ -200,12 +201,20 @@ class APIClient {
 
   // Igazolas endpoints
 
-  async listIgazolas(mode: FTVSyncMode = 'live'): Promise<Igazolas[]> {
-    return this.fetchWithAuth<Igazolas[]>(`/igazolas?mode=${mode}`);
+  async listIgazolas(mode: FTVSyncMode = 'live', debugPerformance: boolean = false): Promise<Igazolas[]> {
+    const params = new URLSearchParams({ mode });
+    if (debugPerformance) {
+      params.append('debug-performance', 'true');
+    }
+    return this.fetchWithAuth<Igazolas[]>(`/igazolas?${params.toString()}`);
   }
 
-  async getMyIgazolas(mode: FTVSyncMode = 'live'): Promise<Igazolas[]> {
-    return this.fetchWithAuth<Igazolas[]>(`/igazolas/my?mode=${mode}`);
+  async getMyIgazolas(mode: FTVSyncMode = 'live', debugPerformance: boolean = false): Promise<Igazolas[]> {
+    const params = new URLSearchParams({ mode });
+    if (debugPerformance) {
+      params.append('debug-performance', 'true');
+    }
+    return this.fetchWithAuth<Igazolas[]>(`/igazolas/my?${params.toString()}`);
   }
 
   async getIgazolas(igazolasId: number): Promise<Igazolas> {
@@ -386,14 +395,19 @@ class APIClient {
 
   // FTV Sync endpoints
 
-  async getFTVSyncMetadata(): Promise<FTVSyncMetadataResponse> {
-    return this.fetchWithAuth<FTVSyncMetadataResponse>('/sync/ftv/metadata');
+  async getFTVSyncMetadata(syncType: 'base' | 'user' | 'class' = 'base'): Promise<FTVSyncMetadataResponse> {
+    return this.fetchWithAuth<FTVSyncMetadataResponse>(`/sync/ftv/metadata?sync_type=${syncType}`);
   }
 
-  async manualFTVSync(): Promise<ManualFTVSyncResponse> {
-    return this.fetchWithAuth<ManualFTVSyncResponse>('/sync/ftv', {
+  async manualFTVSync(debugPerformance: boolean = false): Promise<ManualFTVSyncResponse> {
+    const params = debugPerformance ? '?debug-performance=true' : '';
+    return this.fetchWithAuth<ManualFTVSyncResponse>(`/sync/ftv${params}`, {
       method: 'POST',
     });
+  }
+
+  async checkFTVRegistration(): Promise<FTVRegistrationCheckResponse> {
+    return this.fetchWithAuth<FTVRegistrationCheckResponse>('/sync/ftv/check-registration');
   }
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DataTable } from '../data-table';
 import { studentColumns } from '../columns';
@@ -52,7 +52,25 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
 }
 
 export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
+  // Check if user is registered in FTV system
+  const [isFtvRegistered, setIsFtvRegistered] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkFtvRegistration = async () => {
+      try {
+        const profile = await apiClient.getMyProfile();
+        setIsFtvRegistered(profile.ftv_registered ?? false);
+      } catch (error) {
+        console.error('Failed to check FTV registration:', error);
+        setIsFtvRegistered(false);
+      }
+    };
+
+    checkFtvRegistration();
+  }, []);
+
   // Use the FTV sync hook for optimized data loading
+  // Only enable autoSync if user is FTV registered
   const {
     data: allIgazolasok,
     isLoading,
@@ -61,7 +79,9 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
     syncNow,
   } = useFTVSync({
     fetchFunction: (mode) => apiClient.getMyIgazolas(mode),
-    autoSync: true,
+    autoSync: isFtvRegistered ?? false, // Only auto-sync if FTV registered
+    checkFtvRegistration: true, // Enable FTV registration check in the hook
+    syncType: 'user', // Students use user-level sync
   });
 
   // Filter data based on the filter prop
@@ -107,18 +127,26 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
       <CardContent>
         {isLoading ? (
           <div className="py-4">
-            <FTVLoadingState 
-              variant="default"
-              title="Igazolásaid betöltése"
-              description="Gyors betöltés cache-elt adatokkal. Háttérben szinkronizálás folyik..."
-            />
+            {isFtvRegistered ? (
+              <FTVLoadingState 
+                variant="default"
+                title="Igazolásaid betöltése"
+                description="Gyors betöltés cache-elt adatokkal. Háttérben szinkronizálás folyik..."
+              />
+            ) : (
+              <div className="flex items-center justify-center py-4">
+                <div className="text-center text-muted-foreground">
+                  Betöltés...
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <DataTable 
             columns={studentColumns} 
             data={tableData}
             ftvSyncStatus={
-              metadata ? (
+              isFtvRegistered && metadata ? (
                 <FTVSyncStatus
                   metadata={metadata}
                   isSyncing={isSyncing}

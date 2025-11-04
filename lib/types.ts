@@ -19,6 +19,7 @@ export interface Profile {
   id: number;
   user: User;
   osztalyom?: OsztalySimple;
+  ftv_registered?: boolean; // Whether user is registered in FTV system
 }
 
 export interface Osztaly {
@@ -244,3 +245,14 @@ export interface ManualFTVSyncResponse {
 }
 
 export type FTVSyncMode = 'cached' | 'live';
+
+// FTV Sync Type (for metadata queries)
+export type FTVSyncType = 'base' | 'user' | 'class';
+
+// FTV Registration Check types
+export interface FTVRegistrationCheckResponse {
+  ftv_registered: boolean;
+  email: string | null;
+  ftv_user_id?: number;
+  message: string;
+}
