@@ -64,12 +64,17 @@ class APIClient {
 
   // Set JWT token in cookies (7 days expiry)
   setToken(token: string): void {
-    Cookies.set(JWT_COOKIE_KEY, token, { expires: 7, sameSite: 'strict' });
+    Cookies.set(JWT_COOKIE_KEY, token, { 
+      expires: 7, 
+      sameSite: 'strict',
+      path: '/',
+      secure: window.location.protocol === 'https:'
+    });
   }
 
   // Remove JWT token from cookies
   removeToken(): void {
-    Cookies.remove(JWT_COOKIE_KEY);
+    Cookies.remove(JWT_COOKIE_KEY, { path: '/' });
   }
 
   // Generic fetch wrapper with JWT authentication

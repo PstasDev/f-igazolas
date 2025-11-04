@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [isSpecialMode, setIsSpecialMode] = useState(false)
 
   useEffect(() => {
+    // Only check authentication after loading is complete
     if (!isLoading) {
       if (isAuthenticated) {
         router.replace('/dashboard')

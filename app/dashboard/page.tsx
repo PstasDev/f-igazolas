@@ -16,18 +16,16 @@ import { StudentsManagementView } from "./teacher/components/StudentsManagementV
 import { MultiStepIgazolasForm } from "./student/components/MultiStepIgazolasForm"
 
 export default function Page() {
-  const { isAuthenticated, user } = useRole()
+  const { isAuthenticated, user, isLoading } = useRole()
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(true)
   const [currentView, setCurrentView] = useState<string>('igazolasok')
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login')
-    } else {
-      setIsLoading(false)
+    // Only redirect after loading is complete and user is not authenticated
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login')
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, isLoading, router])
 
   // Handle hash changes for navigation
   useEffect(() => {

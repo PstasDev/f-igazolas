@@ -44,7 +44,7 @@ export function LoginForm({
     try {
       await login(username, password);
       toast.success('Sikeres bejelentkezés!');
-      router.push('/dashboard');
+      router.replace('/dashboard');
     } catch (error) {
       const errorMessage = (error as Error)?.message || 'Bejelentkezési hiba';
       toast.error(errorMessage);

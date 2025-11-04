@@ -55,6 +55,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       const token = apiClient.getToken();
       if (!token) {
         setUser(null);
+        setIsLoading(false);
         return;
       }
 
@@ -86,6 +87,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       console.error('Failed to fetch user profile:', error);
       setUser(null);
       apiClient.removeToken();
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -101,11 +104,9 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Check for JWT token and fetch profile
+    // Check for JWT token and fetch profile on mount only
     const initAuth = async () => {
-      setIsLoading(true);
       await fetchUserProfile();
-      setIsLoading(false);
     };
     
     initAuth();
