@@ -95,10 +95,19 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     name: 'OKTV',
     emoji: '🎓',
     color: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-500',
-    category: 'OKTV',
+    category: 'Verseny',
     beleszamit: false,
     iskolaerdeku: true,
     description: 'A tanuló Országos Középiskolai Tanulmányi Versenyen vett részt'
+  },
+  'verseny': {
+    name: 'Verseny',
+    emoji: '🎓',
+    color: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-500',
+    category: 'Verseny',
+    beleszamit: false,
+    iskolaerdeku: true,
+    description: 'A tanuló egyéb tanulmányi vagy sportversenyen vett részt'
   },
   'sitabor': {
     name: 'Sítábor',
