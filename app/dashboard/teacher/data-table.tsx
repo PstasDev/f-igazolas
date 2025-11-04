@@ -160,7 +160,8 @@ export function DataTable<TData, TValue>({
     const searchValue = nameFilter?.value as string
     if (searchValue) {
       filtered = filtered.filter((item) =>
-        item.studentName.toLowerCase().includes(searchValue.toLowerCase())
+        item.studentName.toLowerCase().includes(searchValue.toLowerCase()) ||
+        item.status?.toLowerCase().includes(searchValue.toLowerCase())
       )
     }
 
@@ -663,7 +664,7 @@ export function DataTable<TData, TValue>({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <Input
-                  placeholder="Diák neve alapján..."
+                  placeholder="Diák neve vagy indoklás alapján..."
                   value={(table.getColumn("studentName")?.getFilterValue() as string) ?? ""}
                   onChange={(event) =>
                     table.getColumn("studentName")?.setFilterValue(event.target.value)

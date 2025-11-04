@@ -156,6 +156,7 @@ export interface DiakjaSignle {
   first_name?: string;
   last_name?: string;
   email?: string;
+  last_action?: string; // ISO datetime string
   igazolasok: IgazolasSimple[];
 }
 

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -571,29 +570,11 @@ export function StudentsManagementView() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="sticky left-0 z-10 bg-background min-w-[140px] max-w-[180px]">Név</TableHead>
-                      <TableHead className="hidden lg:table-cell min-w-[120px]">Felhasználónév</TableHead>
-                      <TableHead className="hidden xl:table-cell min-w-[180px] max-w-[220px]">Email</TableHead>
-                      <TableHead className="text-center min-w-[80px]">
-                        <span className="hidden sm:inline">Összes</span>
-                        <span className="sm:hidden">Σ</span>
-                      </TableHead>
-                      <TableHead className="text-center min-w-[80px]">
-                        <span className="hidden sm:inline">Függő</span>
-                        <span className="sm:hidden">⏳</span>
-                      </TableHead>
-                      <TableHead className="text-center hidden md:table-cell min-w-[90px]">
-                        <span className="hidden sm:inline">Jóváhagyva</span>
-                        <span className="sm:hidden">✓</span>
-                      </TableHead>
-                      <TableHead className="text-center hidden md:table-cell min-w-[90px]">
-                        <span className="hidden sm:inline">Elutasítva</span>
-                        <span className="sm:hidden">✗</span>
-                      </TableHead>
-                      <TableHead className="text-center hidden lg:table-cell min-w-[100px]">
-                        <span className="hidden xl:inline">Hivatalos (óra)</span>
-                        <span className="xl:hidden">Óra</span>
-                      </TableHead>
+                      <TableHead className="sticky left-0 z-10 bg-background min-w-[200px]">Név</TableHead>
+                      <TableHead className="hidden lg:table-cell min-w-[180px]">Felhasználónév</TableHead>
+                      <TableHead className="hidden xl:table-cell min-w-[250px]">Email</TableHead>
+                      <TableHead className="text-center min-w-[100px]">Függő</TableHead>
+                      <TableHead className="hidden md:table-cell min-w-[140px]">Utolsó művelet</TableHead>
                       <TableHead className="sticky right-0 z-10 bg-background text-center min-w-[70px]">
                         <span className="sr-only">Műveletek</span>
                       </TableHead>
@@ -602,7 +583,7 @@ export function StudentsManagementView() {
                   <TableBody>
                     {filteredStudents.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                           Nincs megjeleníthető diák
                         </TableCell>
                       </TableRow>
@@ -612,58 +593,56 @@ export function StudentsManagementView() {
                         
                         return (
                           <TableRow key={student.id} className="hover:bg-accent/50">
-                            <TableCell className="sticky left-0 z-10 bg-background font-medium">
+                            <TableCell className="sticky left-0 z-10 bg-background font-medium select-text">
                               <div className="flex flex-col">
-                                <span className="truncate max-w-[160px]">
+                                <span className="whitespace-nowrap">
                                   {student.last_name} {student.first_name}
                                 </span>
-                                <span className="text-xs text-muted-foreground lg:hidden truncate max-w-[160px]">
+                                <span className="text-xs text-muted-foreground lg:hidden whitespace-nowrap">
                                   @{student.username}
                                 </span>
                               </div>
                             </TableCell>
-                            <TableCell className="hidden lg:table-cell font-mono text-sm">
-                              <span className="truncate block max-w-[120px]">
+                            <TableCell className="hidden lg:table-cell font-mono text-sm select-text">
+                              <span className="whitespace-nowrap">
                                 {student.username}
                               </span>
                             </TableCell>
-                            <TableCell className="hidden xl:table-cell text-sm text-muted-foreground">
-                              <span className="truncate block max-w-[200px]" title={student.email || 'Nincs email'}>
+                            <TableCell className="hidden xl:table-cell text-sm text-muted-foreground select-text">
+                              <span className="whitespace-nowrap" title={student.email || 'Nincs email'}>
                                 {student.email || 'Nincs email'}
                               </span>
                             </TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="outline" className="tabular-nums">{stats.total}</Badge>
-                            </TableCell>
-                            <TableCell className="text-center">
+                            <TableCell className="text-center select-text">
                               {stats.pending > 0 ? (
-                                <Badge variant="warning" className="tabular-nums">
-                                  {stats.pending}
-                                </Badge>
+                                <div className="inline-flex items-center justify-center min-w-[60px] px-3 py-1.5 rounded-md bg-orange-500/10 dark:bg-orange-500/20 border border-orange-500/30">
+                                  <span className="text-lg font-bold text-orange-600 dark:text-orange-500 tabular-nums">
+                                    {stats.pending}
+                                  </span>
+                                </div>
                               ) : (
-                                <span className="text-xs text-muted-foreground tabular-nums">0</span>
+                                <span className="text-sm text-muted-foreground tabular-nums">0</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-center hidden md:table-cell">
-                              {stats.approved > 0 ? (
-                                <Badge variant="approved" className="tabular-nums">
-                                  {stats.approved}
-                                </Badge>
+                            <TableCell className="hidden md:table-cell text-sm text-muted-foreground select-text">
+                              {student.last_action ? (
+                                <div className="flex flex-col whitespace-nowrap">
+                                  <span className="font-medium text-foreground">
+                                    {new Date(student.last_action).toLocaleDateString('hu-HU', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                    })}
+                                  </span>
+                                  <span className="text-xs">
+                                    {new Date(student.last_action).toLocaleTimeString('hu-HU', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                  </span>
+                                </div>
                               ) : (
-                                <span className="text-xs text-muted-foreground tabular-nums">0</span>
+                                <span className="italic">Soha nem jelentkezett be</span>
                               )}
-                            </TableCell>
-                            <TableCell className="text-center hidden md:table-cell">
-                              {stats.rejected > 0 ? (
-                                <Badge variant="rejected" className="tabular-nums">
-                                  {stats.rejected}
-                                </Badge>
-                              ) : (
-                                <span className="text-xs text-muted-foreground tabular-nums">0</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center hidden lg:table-cell">
-                              <Badge variant="secondary" className="tabular-nums">{stats.totalHours}</Badge>
                             </TableCell>
                             <TableCell className="sticky right-0 z-10 bg-background">
                               <Button

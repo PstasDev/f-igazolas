@@ -265,290 +265,349 @@ export function DataTable<TData, TValue>({
   })
 
   return (
-    <div className="space-y-4">
-      {/* Enhanced Filters */}
-      <Card className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-200/50 dark:border-blue-800/50">
-        <Collapsible open={!isSearchCollapsed} onOpenChange={(open) => setIsSearchCollapsed(!open)}>
-          <CardHeader className="pb-4">
-            <CollapsibleTrigger className="w-full cursor-pointer">
-              <div className="flex items-center justify-between font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-blue-100/50 dark:bg-blue-900/50">
-                    <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
-                    </svg>
-                  </div>
-                  <div className="text-left">
-                    <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">Keresés és szűrés</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      Szűrd az igazolásokat és rendezd őket oszlopfejlécre kattintással
+    <>
+      <div className="space-y-4">
+        {/* Enhanced Filters */}
+        <Card className="border">
+          <Collapsible open={!isSearchCollapsed} onOpenChange={(open) => setIsSearchCollapsed(!open)}>
+            <CardHeader className="pb-4">
+              <CollapsibleTrigger className="w-full cursor-pointer">
+                <div className="flex items-center justify-between font-medium transition-colors">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-muted">
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+                      </svg>
+                    </div>
+                    <div className="text-left">
+                      <div className="text-lg font-semibold">Keresés és szűrés</div>
+                      <div className="text-sm text-muted-foreground">
+                        Szűrd az igazolásokat és rendezd őket oszlopfejlécre kattintással
+                      </div>
                     </div>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="px-3 py-1">
+                      {table.getFilteredRowModel().rows.length} találat
+                    </Badge>
+                    <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${isSearchCollapsed ? '' : 'rotate-180'}`} />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="px-3 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                    {table.getFilteredRowModel().rows.length} találat
-                  </Badge>
-                  <ChevronDown className={`h-5 w-5 text-blue-600 dark:text-blue-400 transition-transform duration-200 ${isSearchCollapsed ? '' : 'rotate-180'}`} />
-                </div>
+              </CollapsibleTrigger>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="pt-3 border-t space-y-6">
+            {/* Primary Search */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Keresés</Label>
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <Input
+                  placeholder="Keresés dátum, típus, indoklás vagy státusz alapján..."
+                  value={(table.getColumn("date")?.getFilterValue() as string) ?? ""}
+                  onChange={(event) =>
+                    table.getColumn("date")?.setFilterValue(event.target.value)
+                  }
+                  className="pl-10"
+                />
               </div>
-            </CollapsibleTrigger>
-          </CardHeader>
-          <CollapsibleContent>
-            <CardContent className="pt-3 border-t border-blue-200 dark:border-blue-800 space-y-6">
-              {/* Primary Search */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Keresés</Label>
-                <div className="relative">
-                  <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+            </div>
+
+            {/* Filter Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Státusz</Label>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Válassz státuszt" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-muted-foreground"></div>
+                        Minden státusz
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="pending">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                        Függőben
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="approved">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        Jóváhagyva
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="rejected">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                        Elutasítva
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Hiányzás típusa</Label>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Válassz típust" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Minden típus</SelectItem>
+                    <SelectItem value="studiós távollét">🎬 Studiós</SelectItem>
+                    <SelectItem value="médiás távollét">📺 Médiás</SelectItem>
+                    <SelectItem value="orvosi igazolás">🏥 Orvosi</SelectItem>
+                    <SelectItem value="családi okok">👨‍👩‍👧‍👦 Családi</SelectItem>
+                    <SelectItem value="közlekedés">🚇 Közlekedés</SelectItem>
+                    <SelectItem value="egyéb">📝 Egyéb</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Date Range Filter */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Dátum tartomány</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Ettől</Label>
                   <Input
-                    placeholder="Keresés dátum, típus, indoklás vagy státusz alapján..."
-                    value={(table.getColumn("date")?.getFilterValue() as string) ?? ""}
-                    onChange={(event) =>
-                      table.getColumn("date")?.setFilterValue(event.target.value)
-                    }
-                    className="pl-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Eddig</Label>
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
                   />
                 </div>
               </div>
+            </div>
 
-              {/* Filter Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Státusz</Label>
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500">
-                      <SelectValue placeholder="Válassz státuszt" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-gray-400"></div>
-                          Minden státusz
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="pending">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                          Függőben
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="approved">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                          Jóváhagyva
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="rejected">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                          Elutasítva
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Hiányzás típusa</Label>
-                  <Select value={filterType} onValueChange={setFilterType}>
-                    <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500">
-                      <SelectValue placeholder="Válassz típust" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Minden típus</SelectItem>
-                      <SelectItem value="studiós távollét">🎬 Studiós</SelectItem>
-                      <SelectItem value="médiás távollét">📺 Médiás</SelectItem>
-                      <SelectItem value="orvosi igazolás">🏥 Orvosi</SelectItem>
-                      <SelectItem value="családi okok">👨‍👩‍👧‍👦 Családi</SelectItem>
-                      <SelectItem value="közlekedés">🚇 Közlekedés</SelectItem>
-                      <SelectItem value="egyéb">📝 Egyéb</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Date Range Filter */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Dátum tartomány</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400">Ettől</Label>
-                    <Input
-                      type="date"
-                      value={dateFrom}
-                      onChange={(e) => setDateFrom(e.target.value)}
-                      className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400">Eddig</Label>
-                    <Input
-                      type="date"
-                      value={dateTo}
-                      onChange={(e) => setDateTo(e.target.value)}
-                      className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Active Filters */}
-              {(filterStatus !== "all" || filterType !== "all" || dateFrom || dateTo) && (
-                <div className="flex flex-wrap gap-2 items-center pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Aktív szűrők:</span>
-                  {filterStatus !== "all" && (
-                    <Badge variant="outline" className="gap-2 bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:text-blue-400">
-                      Státusz: {filterStatus === "pending" ? "Függőben" : filterStatus === "approved" ? "Jóváhagyva" : "Elutasítva"}
-                      <button 
-                        onClick={() => setFilterStatus("all")} 
-                        className="ml-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
-                      >
-                        <X className="h-3 w-3 cursor-pointer" />
-                      </button>
-                    </Badge>
-                  )}
-                  {filterType !== "all" && (
-                    <Badge variant="outline" className="gap-2 bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-900/20 dark:text-purple-400">
-                      Típus: {filterType}
-                      <button 
-                        onClick={() => setFilterType("all")} 
-                        className="ml-1 hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors"
-                      >
-                        <X className="h-3 w-3 cursor-pointer" />
-                      </button>
-                    </Badge>
-                  )}
-                  {dateFrom && (
-                    <Badge variant="outline" className="gap-2 bg-orange-50 text-orange-700 border-orange-300 dark:bg-orange-900/20 dark:text-orange-400">
-                      Ettől: {dateFrom}
-                      <button 
-                        onClick={() => setDateFrom("")} 
-                        className="ml-1 hover:bg-orange-200 dark:hover:bg-orange-800 rounded-full p-0.5 transition-colors"
-                      >
-                        <X className="h-3 w-3 cursor-pointer" />
-                      </button>
-                    </Badge>
-                  )}
-                  {dateTo && (
-                    <Badge variant="outline" className="gap-2 bg-orange-50 text-orange-700 border-orange-300 dark:bg-orange-900/20 dark:text-orange-400">
-                      Eddig: {dateTo}
-                      <button 
-                        onClick={() => setDateTo("")} 
-                        className="ml-1 hover:bg-orange-200 dark:hover:bg-orange-800 rounded-full p-0.5 transition-colors"
-                      >
-                        <X className="h-3 w-3 cursor-pointer" />
-                      </button>
-                    </Badge>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setFilterStatus("all")
-                      setFilterType("all")
-                      setDateFrom("")
-                      setDateTo("")
-                    }}
-                    className="h-7 px-2 text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 cursor-pointer"
-                  >
-                    <RotateCcw className="h-3 w-3 mr-1 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-200" />
-                    Összes törlése
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </CollapsibleContent>
-        </Collapsible>
-      </Card>
-
-      {/* FTV Sync Status */}
-      {ftvSyncStatus && (
-        <div>
-          {ftvSyncStatus}
-        </div>
-      )}
-
-      <div className="overflow-hidden rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  )
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleRowClick(row.original)}
+            {/* Active Filters */}
+            {(filterStatus !== "all" || filterType !== "all" || dateFrom || dateTo) && (
+              <div className="flex flex-wrap gap-2 items-center pt-4 border-t">
+                <span className="text-sm font-medium text-muted-foreground">Aktív szűrők:</span>
+                {filterStatus !== "all" && (
+                  <Badge variant="outline" className="gap-2">
+                    Státusz: {filterStatus === "pending" ? "Függőben" : filterStatus === "approved" ? "Jóváhagyva" : "Elutasítva"}
+                    <button 
+                      onClick={() => setFilterStatus("all")} 
+                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
+                    >
+                      <X className="h-3 w-3 cursor-pointer" />
+                    </button>
+                  </Badge>
+                )}
+                {filterType !== "all" && (
+                  <Badge variant="outline" className="gap-2">
+                    Típus: {filterType}
+                    <button 
+                      onClick={() => setFilterType("all")} 
+                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
+                    >
+                      <X className="h-3 w-3 cursor-pointer" />
+                    </button>
+                  </Badge>
+                )}
+                {dateFrom && (
+                  <Badge variant="outline" className="gap-2">
+                    Ettől: {dateFrom}
+                    <button 
+                      onClick={() => setDateFrom("")} 
+                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
+                    >
+                      <X className="h-3 w-3 cursor-pointer" />
+                    </button>
+                  </Badge>
+                )}
+                {dateTo && (
+                  <Badge variant="outline" className="gap-2">
+                    Eddig: {dateTo}
+                    <button 
+                      onClick={() => setDateTo("")} 
+                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
+                    >
+                      <X className="h-3 w-3 cursor-pointer" />
+                    </button>
+                  </Badge>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setFilterStatus("all")
+                    setFilterType("all")
+                    setDateFrom("")
+                    setDateTo("")
+                  }}
+                  className="h-7 px-2 text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 cursor-pointer"
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <AlertCircle className="h-8 w-8" />
-                    <p className="font-medium">Nincs találat</p>
-                    <p className="text-sm">Próbálj más keresési feltételeket</p>
-                  </div>
-                </TableCell>
-              </TableRow>
+                  <RotateCcw className="h-3 w-3 mr-1 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-200" />
+                  Összes törlése
+                </Button>
+              </div>
             )}
-          </TableBody>
-        </Table>
-      </div>
-      <div className="flex items-center justify-between">
-        <div className="text-muted-foreground text-sm">
-          {table.getFilteredRowModel().rows.length} igazolás összesen
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            className="gap-1"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Előző
-          </Button>
-          <div className="text-sm">
-            {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+
+        {/* Legend */}
+        <Card className="border">
+          <CardContent className="p-4">
+            <details className="group">
+              <summary className="flex cursor-pointer items-center justify-between font-medium transition-colors">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>Órarend színkódok magyarázata</span>
+                </div>
+                <svg
+                  className="h-4 w-4 transition-transform group-open:rotate-180"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <div className="mt-4 pt-3 border-t">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-blue-500 text-white shadow-sm">0</span>
+                    <span className="text-sm font-medium">Függőben / FTV importált</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-purple-500 text-white shadow-sm">0</span>
+                    <span className="text-sm font-medium">Diák korrekció</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-green-500 text-white shadow-sm">0</span>
+                    <span className="text-sm font-medium">Jóváhagyva</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-red-500 text-white shadow-sm">0</span>
+                    <span className="text-sm font-medium">Elutasítva</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-muted text-muted-foreground border">0</span>
+                    <span className="text-sm font-medium">Nincs hiányzás</span>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </CardContent>
+        </Card>
+
+        {/* FTV Sync Status */}
+        {ftvSyncStatus && (
+          <div>
+            {ftvSyncStatus}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            className="gap-1"
-          >
-            Következő
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        )}
+
+        {/* Table */}
+        <Card>
+          <CardContent className="p-0">
+            <div className="rounded-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table className="min-w-full">
+                  <TableHeader className="bg-muted/50">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => {
+                          return (
+                            <TableHead key={header.id} className="font-bold text-xs uppercase tracking-wide whitespace-nowrap">
+                              {header.isPlaceholder
+                                ? null
+                                : flexRender(
+                                    header.column.columnDef.header,
+                                    header.getContext()
+                                  )}
+                            </TableHead>
+                          )
+                        })}
+                      </TableRow>
+                    ))}
+                  </TableHeader>
+                  <TableBody>
+                    {table.getRowModel().rows?.length ? (
+                      table.getRowModel().rows.map((row) => (
+                        <TableRow
+                          key={row.id}
+                          data-state={row.getIsSelected() && "selected"}
+                          className="hover:bg-muted/50 transition-colors border-b cursor-pointer"
+                          onClick={() => handleRowClick(row.original)}
+                        >
+                          {row.getVisibleCells().map((cell) => (
+                            <TableCell key={cell.id} className="py-4">
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={columns.length} className="h-32 text-center">
+                          <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                            <AlertCircle className="h-8 w-8" />
+                            <p className="font-medium">Nincs találat</p>
+                            <p className="text-sm">Próbálj más keresési feltételeket</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pagination */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-muted-foreground font-medium">
+              Összesen {table.getFilteredRowModel().rows.length} igazolás
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="gap-1"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Előző
+            </Button>
+            <div className="flex items-center gap-1">
+              <div className="text-sm font-medium px-3 py-1.5 rounded-md bg-muted">
+                {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="gap-1"
+            >
+              Következő
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -920,6 +979,6 @@ export function DataTable<TData, TValue>({
           )}
         </SheetContent>
       </Sheet>
-    </div>
+    </>
   )
 }
