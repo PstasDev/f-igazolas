@@ -14,6 +14,9 @@ import { StudentTableView } from "./student/components/StudentTableView"
 import { TeacherTableView } from "./teacher/components/TeacherTableView"
 import { StudentsManagementView } from "./teacher/components/StudentsManagementView"
 import { MultiStepIgazolasForm } from "./student/components/MultiStepIgazolasForm"
+import { CalendarView } from "./components/CalendarView"
+import { AdminView } from "./components/AdminView"
+import { SystemMessageBanner } from "@/app/components/SystemMessageBanner"
 
 export default function Page() {
   const { isAuthenticated, user, isLoading } = useRole()
@@ -48,6 +51,7 @@ export default function Page() {
   }
 
   const isTeacher = user?.role === 'teacher';
+  const isSuperuser = user?.isSuperuser || false;
 
   const handleViewChange = (view: string) => {
     setCurrentView(view)
@@ -55,6 +59,9 @@ export default function Page() {
   }
 
   const getPageTitle = () => {
+    if (currentView === 'naptar') return 'Naptár'
+    if (currentView === 'adminisztracio' && isSuperuser) return 'Adminisztráció'
+    
     if (isTeacher) {
       switch (currentView) {
         case 'igazolasok': return 'Igazolások'
@@ -83,10 +90,25 @@ export default function Page() {
       <SidebarInset>
         <SiteHeader title={getPageTitle()} />
         <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+          {/* Naptár view (all users) */}
+          {currentView === 'naptar' && (
+            <div>
+              <CalendarView />
+            </div>
+          )}
+          
+          {/* Adminisztráció view (superusers only) */}
+          {currentView === 'adminisztracio' && isSuperuser && (
+            <div>
+              <AdminView />
+            </div>
+          )}
+          
           {isTeacher ? (
             <>
               {currentView === 'igazolasok' && (
                 <div>
+                  <SystemMessageBanner />
                   <TeacherTableView filter="all" />
                 </div>
               )}
@@ -100,6 +122,7 @@ export default function Page() {
             <>
               {currentView === 'igazolasok' && (
                 <div>
+                  <SystemMessageBanner />
                   <StudentTableView />
                 </div>
               )}

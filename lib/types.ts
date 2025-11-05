@@ -257,3 +257,67 @@ export interface FTVRegistrationCheckResponse {
   ftv_user_id?: number;
   message: string;
 }
+
+// Tanév Rendje (School Year Schedule) types
+
+export interface TanitasiSzunet {
+  id: number;
+  type: 'oszi' | 'teli' | 'tavaszi' | 'nyari' | 'erettsegi' | 'digitalis' | 'egyeb';
+  name: string | null;
+  from_date: string; // ISO date string (YYYY-MM-DD)
+  to_date: string; // ISO date string (YYYY-MM-DD)
+  description?: string | null;
+}
+
+export interface Override {
+  id: number;
+  date: string; // ISO date string (YYYY-MM-DD)
+  is_required: boolean; // true = attendance required, false = not required
+  class_id: number | null; // null = global override
+  class_name?: string | null; // Present if class_id is not null
+  reason: string | null;
+}
+
+export interface TanevRendje {
+  tanitasi_szunetek: TanitasiSzunet[];
+  overrides: Override[];
+}
+
+// Tanév Rendje Request types
+
+export interface TanitasiSzunetCreateRequest {
+  type: 'oszi' | 'teli' | 'tavaszi' | 'nyari' | 'erettsegi' | 'digitalis' | 'egyeb';
+  name?: string | null;
+  from_date: string; // ISO date string (YYYY-MM-DD)
+  to_date: string; // ISO date string (YYYY-MM-DD)
+  description?: string | null;
+}
+
+export interface TanitasiSzunetUpdateRequest {
+  type?: 'oszi' | 'teli' | 'tavaszi' | 'nyari' | 'erettsegi' | 'digitalis' | 'egyeb';
+  name?: string | null;
+  from_date?: string; // ISO date string (YYYY-MM-DD)
+  to_date?: string; // ISO date string (YYYY-MM-DD)
+  description?: string | null;
+}
+
+export interface OverrideCreateRequest {
+  date: string; // ISO date string (YYYY-MM-DD)
+  is_required: boolean;
+  class_id?: number | null; // Optional for class-specific endpoint, required for global
+  reason?: string | null;
+}
+
+export interface OverrideUpdateRequest {
+  date?: string; // ISO date string (YYYY-MM-DD)
+  is_required?: boolean;
+  class_id?: number | null; // Optional, can be null for global overrides
+  reason?: string | null;
+}
+
+// Superuser Check types
+
+export interface SuperuserCheckResponse {
+  is_superuser: boolean;
+  username: string;
+}

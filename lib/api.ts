@@ -31,7 +31,16 @@ import type {
   FTVSyncMetadataResponse,
   ManualFTVSyncResponse,
   FTVRegistrationCheckResponse,
+  TanevRendje,
+  TanitasiSzunetCreateRequest,
+  TanitasiSzunetUpdateRequest,
+  OverrideCreateRequest,
+  OverrideUpdateRequest,
+  SuperuserCheckResponse,
+  TanitasiSzunet,
+  Override,
 } from './types';
+import { SystemMessage } from './system-message-types';
 
 // Use the config for API base URL
 const API_BASE_URL = config.api.baseUrl;
@@ -174,6 +183,19 @@ class APIClient {
 
   async listProfiles(): Promise<Profile[]> {
     return this.fetchWithAuth<Profile[]>('/profiles');
+  }
+
+  // Frontend Config endpoints
+
+  async getMyFrontendConfig(): Promise<Record<string, unknown>> {
+    return this.fetchWithAuth<Record<string, unknown>>('/profiles/me/frontend-config');
+  }
+
+  async updateMyFrontendConfig(data: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.fetchWithAuth<Record<string, unknown>>('/profiles/me/frontend-config', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   // Osztaly endpoints
@@ -413,6 +435,118 @@ class APIClient {
 
   async checkFTVRegistration(): Promise<FTVRegistrationCheckResponse> {
     return this.fetchWithAuth<FTVRegistrationCheckResponse>('/sync/ftv/check-registration');
+  }
+
+  // Tanév Rendje (School Year Schedule) endpoints
+
+  // Check if current user is superuser
+  async amISuperuser(): Promise<SuperuserCheckResponse> {
+    return this.fetchWithAuth<SuperuserCheckResponse>('/am-i-superuser');
+  }
+
+  // Get schedule (breaks and overrides) with optional date filters
+  async getTanevRendje(fromDate?: string, toDate?: string): Promise<TanevRendje> {
+    const params = new URLSearchParams();
+    if (fromDate) params.append('from_date', fromDate);
+    if (toDate) params.append('to_date', toDate);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.fetchWithAuth<TanevRendje>(`/tanev_rendje${query}`);
+  }
+
+  // Teacher endpoints - Create override for own class
+  async createClassOverride(data: OverrideCreateRequest): Promise<Override> {
+    return this.fetchWithAuth<Override>('/override/class', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Teacher endpoints - Update override for own class
+  async updateClassOverride(overrideId: number, data: OverrideUpdateRequest): Promise<Override> {
+    return this.fetchWithAuth<Override>(`/override/class/${overrideId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Teacher endpoints - Delete override for own class
+  async deleteClassOverride(overrideId: number): Promise<void> {
+    return this.fetchWithAuth<void>(`/override/class/${overrideId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Superuser endpoints - Create any override (global or class-specific)
+  async createGlobalOverride(data: OverrideCreateRequest): Promise<Override> {
+    return this.fetchWithAuth<Override>('/override/global', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Superuser endpoints - Update any override
+  async updateGlobalOverride(overrideId: number, data: OverrideUpdateRequest): Promise<Override> {
+    return this.fetchWithAuth<Override>(`/override/global/${overrideId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Superuser endpoints - Delete any override
+  async deleteGlobalOverride(overrideId: number): Promise<void> {
+    return this.fetchWithAuth<void>(`/override/global/${overrideId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Superuser endpoints - Create school break
+  async createTanitasiSzunet(data: TanitasiSzunetCreateRequest): Promise<TanitasiSzunet> {
+    return this.fetchWithAuth<TanitasiSzunet>('/tanitasi-szunet', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Superuser endpoints - Update school break
+  async updateTanitasiSzunet(szunetId: number, data: TanitasiSzunetUpdateRequest): Promise<TanitasiSzunet> {
+    return this.fetchWithAuth<TanitasiSzunet>(`/tanitasi-szunet/${szunetId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Superuser endpoints - Delete school break
+  async deleteTanitasiSzunet(szunetId: number): Promise<void> {
+    return this.fetchWithAuth<void>(`/tanitasi-szunet/${szunetId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // System Messages endpoints (no authentication required)
+
+  async getActiveSystemMessages(): Promise<SystemMessage[]> {
+    const url = `${this.baseUrl}/system-messages/active`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        // Don't throw error for system messages, just return empty array
+        console.error('Failed to fetch system messages:', response.statusText);
+        return [];
+      }
+
+      return await response.json();
+    } catch (error) {
+      // Don't throw error for system messages, just return empty array
+      console.error('Error fetching system messages:', error);
+      return [];
+    }
   }
 }
 

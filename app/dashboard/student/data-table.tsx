@@ -94,6 +94,26 @@ export function DataTable<TData, TValue>({
   const [selectedRow, setSelectedRow] = React.useState<IgazolasTableRow | null>(null)
   const [isOpen, setIsOpen] = React.useState(false)
 
+  // Check for calendar date filters on mount
+  React.useEffect(() => {
+    const storedDateFrom = sessionStorage.getItem('datatable_date_from')
+    const storedDateTo = sessionStorage.getItem('datatable_date_to')
+    const expandSearch = sessionStorage.getItem('datatable_expand_search')
+    
+    if (storedDateFrom && storedDateTo) {
+      setDateFrom(storedDateFrom)
+      setDateTo(storedDateTo)
+      // Clear after reading
+      sessionStorage.removeItem('datatable_date_from')
+      sessionStorage.removeItem('datatable_date_to')
+    }
+    
+    if (expandSearch === 'true') {
+      setIsSearchCollapsed(false)
+      sessionStorage.removeItem('datatable_expand_search')
+    }
+  }, [])
+
   // Get filtered data based on all filters
   const getFilteredData = React.useMemo(() => {
     const igazolasokData = data as unknown as IgazolasTableRow[]

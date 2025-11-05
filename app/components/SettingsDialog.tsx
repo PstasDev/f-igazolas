@@ -15,8 +15,6 @@ import {
   UserCircle,
   Check,
   X,
-  FlaskConicalIcon,
-  FlaskConicalOff,
   Clapperboard,
   Info,
   Code2,
@@ -26,6 +24,8 @@ import {
   Network,
   Database,
   ExternalLink,
+  Cog,
+  FileHeart,
 } from "lucide-react"
 
 import {
@@ -47,7 +47,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -56,6 +58,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -89,23 +92,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty"
 import { Switch } from "@/components/ui/switch"
 import { useTheme } from "../context/ThemeContext"
 import { useRole } from "../context/RoleContext"
+import { useHeadingFont } from "../context/HeadingFontContext"
 import { apiClient } from "@/lib/api"
 import type { IgazolasTipus, Osztaly } from "@/lib/types"
 import { getIgazolasType } from "@/app/dashboard/types"
 import { toast } from "sonner"
-import { IconFolderCode } from "@tabler/icons-react"
-import { ArrowUpRightIcon } from "lucide-react"
 import BKKLogo from "@/components/icons/BKKLogo"
 
 type PageId = "account" | "appearance" | "verification-types" | "experimental" | "info"
@@ -115,20 +109,27 @@ interface NavItem {
   name: string
   icon: React.ComponentType<{ className?: string }>
   teacherOnly?: boolean
+  group?: string
 }
 
 const navItems: NavItem[] = [
   { id: "account", name: "Fiók", icon: User },
   { id: "appearance", name: "Kinézet", icon: Paintbrush },
-  { id: "verification-types", name: "Igazolástípusok", icon: FileText, teacherOnly: true },
+  { id: "verification-types", name: "Igazolástípusok", icon: FileText, teacherOnly: true, group: "Osztályom" },
   { id: "experimental", name: "Kísérleti", icon: FlaskConical },
   { id: "info", name: "Információ", icon: Info },
 ]
+
+const your_admins = [
+                  { name: "Molnár Attila", representing: "Intézményi Adminisztrátor", email: "molnar.attila@szlgbp.hu" },
+                  { name: "Balla Botond", representing: "Rendszerüzemeltetés és fejlesztés", email: "balla.botond.23f@szlgbp.hu" }
+                ]
 
 export function SettingsDialog() {
   const [open, setOpen] = React.useState(false)
   const [activePage, setActivePage] = React.useState<PageId>("account")
   const { theme, toggleTheme } = useTheme()
+  const { headingFont, setHeadingFont } = useHeadingFont()
   const { user } = useRole()
   const [igazolasTipusok, setIgazolasTipusok] = React.useState<IgazolasTipus[]>([])
   const [myClass, setMyClass] = React.useState<Osztaly | null>(null)
@@ -199,6 +200,23 @@ export function SettingsDialog() {
 
   const filteredNavItems = navItems.filter(item => !item.teacherOnly || isTeacher)
 
+  // Group nav items by their group property
+  const groupedNavItems = React.useMemo(() => {
+    const groups: Record<string, NavItem[]> = {
+      main: [],
+    }
+    
+    filteredNavItems.forEach(item => {
+      const groupName = item.group || 'main'
+      if (!groups[groupName]) {
+        groups[groupName] = []
+      }
+      groups[groupName].push(item)
+    })
+    
+    return groups
+  }, [filteredNavItems])
+
   const renderPageContent = () => {
     switch (activePage) {
       case "account":
@@ -247,7 +265,7 @@ export function SettingsDialog() {
                   Téma
                 </FieldLabel>
                 <FieldDescription>
-                  Válaszd ki az alkalmazás témáját.
+                  Válaszd ki az alkalmazás témáját. A beállítás automatikusan szinkronizálódik a szerverrel.
                 </FieldDescription>
                 <RadioGroup 
                   value={theme} 
@@ -286,6 +304,54 @@ export function SettingsDialog() {
                     </Field>
                   </FieldLabel>
                 </RadioGroup>
+              </FieldSet>
+
+              <FieldSet>
+                <FieldLabel htmlFor="heading-font-selector">
+                  Címsor betűtípus
+                </FieldLabel>
+                <FieldDescription>
+                  Válaszd ki a címsorok (h1, h2, stb.) betűtípusát.
+                </FieldDescription>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setHeadingFont('serif')}
+                    className={`flex flex-col items-center justify-center p-6 rounded-lg border-2 transition-all ${
+                      headingFont === 'serif'
+                        ? 'border-primary bg-primary/5 shadow-sm'
+                        : 'border-border hover:border-primary/50 hover:bg-accent'
+                    }`}
+                  >
+                    <span 
+                      className="text-4xl mb-2 font-serif"
+                      style={{ fontFamily: 'var(--font-playfair), serif' }}
+                    >
+                      Aa
+                    </span>
+                    <span className="text-sm font-medium">Serif</span>
+                    <span className="text-xs text-muted-foreground">Playfair Display</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setHeadingFont('sans-serif')}
+                    className={`flex flex-col items-center justify-center p-6 rounded-lg border-2 transition-all ${
+                      headingFont === 'sans-serif'
+                        ? 'border-primary bg-primary/5 shadow-sm'
+                        : 'border-border hover:border-primary/50 hover:bg-accent'
+                    }`}
+                  >
+                    <span 
+                      className="text-4xl mb-2 font-sans"
+                      style={{ fontFamily: 'var(--font-noto-sans), sans-serif' }}
+                    >
+                      Aa
+                    </span>
+                    <span className="text-sm font-medium">Sans-serif</span>
+                    <span className="text-xs text-muted-foreground">Noto Sans</span>
+                  </button>
+                </div>
               </FieldSet>
             </FieldGroup>
           </div>
@@ -510,7 +576,7 @@ export function SettingsDialog() {
                 </h3>
                 <Item variant="outline" className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
                   <ItemMedia>
-                    <UserCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <FileHeart className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </ItemMedia>
                   <ItemContent>
                     <ItemTitle className="text-blue-900 dark:text-blue-100">Balla Botond</ItemTitle>
@@ -532,6 +598,35 @@ export function SettingsDialog() {
                   </ItemContent>
                 </Item>
               </div>
+              
+                <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Az Ön Adminisztrátora{your_admins.length > 1 ? "i" : ""}:
+                </h3>
+
+                {your_admins.map((admin) => (
+                  <Item key={admin.email} variant="outline" className="bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800">
+                  <ItemMedia>
+                    <Cog className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle className="text-red-900 dark:text-red-100">{admin.name}</ItemTitle>
+                    <ItemDescription className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <School className="h-3 w-3" />
+                      <span>{admin.representing}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-3 w-3" />
+                      <a href={`mailto:${admin.email}`} className="hover:underline text-red-600 dark:text-red-400">
+                      {admin.email}
+                      </a>
+                    </div>
+                    </ItemDescription>
+                  </ItemContent>
+                  </Item>
+                ))}
+                </div>
 
               {/* Version Info Section */}
               <div className="space-y-3">
@@ -797,23 +892,50 @@ export function SettingsDialog() {
         <SidebarProvider className="items-start">
           <Sidebar collapsible="none" className="hidden md:flex">
             <SidebarContent>
-              <SidebarGroup>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {filteredNavItems.map((item) => (
-                      <SidebarMenuItem key={item.id}>
-                        <SidebarMenuButton
-                          isActive={activePage === item.id}
-                          onClick={() => setActivePage(item.id)}
-                        >
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.name}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
+              {/* Main group without label */}
+              {groupedNavItems.main && groupedNavItems.main.length > 0 && (
+                <SidebarGroup>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {groupedNavItems.main.map((item) => (
+                        <SidebarMenuItem key={item.id}>
+                          <SidebarMenuButton
+                            isActive={activePage === item.id}
+                            onClick={() => setActivePage(item.id)}
+                          >
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.name}</span>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              )}
+              
+              {/* Other groups with labels */}
+              {Object.entries(groupedNavItems)
+                .filter(([groupName]) => groupName !== 'main')
+                .map(([groupName, items]) => (
+                  <SidebarGroup key={groupName}>
+                    <SidebarGroupLabel>{groupName}</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {items.map((item) => (
+                          <SidebarMenuItem key={item.id}>
+                            <SidebarMenuButton
+                              isActive={activePage === item.id}
+                              onClick={() => setActivePage(item.id)}
+                            >
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.name}</span>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </SidebarGroup>
+                ))}
             </SidebarContent>
           </Sidebar>
           <main className="flex h-[480px] flex-1 flex-col overflow-hidden">
@@ -828,14 +950,36 @@ export function SettingsDialog() {
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {filteredNavItems.map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
-                          <div className="flex items-center gap-2">
-                            <item.icon className="h-4 w-4" />
-                            <span>{item.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {/* Main group without label */}
+                      {groupedNavItems.main && groupedNavItems.main.length > 0 && (
+                        <SelectGroup>
+                          {groupedNavItems.main.map((item) => (
+                            <SelectItem key={item.id} value={item.id}>
+                              <div className="flex items-center gap-2">
+                                <item.icon className="h-4 w-4" />
+                                <span>{item.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
+                      
+                      {/* Other groups with labels */}
+                      {Object.entries(groupedNavItems)
+                        .filter(([groupName]) => groupName !== 'main')
+                        .map(([groupName, items]) => (
+                          <SelectGroup key={groupName}>
+                            <SelectLabel>{groupName}</SelectLabel>
+                            {items.map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
+                                <div className="flex items-center gap-2">
+                                  <item.icon className="h-4 w-4" />
+                                  <span>{item.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>

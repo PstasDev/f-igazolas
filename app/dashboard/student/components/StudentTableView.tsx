@@ -5,11 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { DataTable } from '../data-table';
 import { studentColumns } from '../columns';
 import { apiClient } from '@/lib/api';
-import { Igazolas } from '@/lib/types';
+import { Igazolas, TanevRendje } from '@/lib/types';
 import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
 import { FTVSyncStatus } from '@/components/ui/ftv-sync-status';
 import { mapApiResponseToPeriods } from '@/lib/periods';
 import { useFTVSync } from '@/hooks/use-ftv-sync';
+import { isAttendanceRequired } from '@/lib/attendance-utils';
+import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
 
 interface StudentTableViewProps {
   studentId?: string;
@@ -54,12 +57,25 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
 export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
   // Check if user is registered in FTV system
   const [isFtvRegistered, setIsFtvRegistered] = useState<boolean | null>(null);
+  const [schedule, setSchedule] = useState<TanevRendje | null>(null);
+  const [userProfile, setUserProfile] = useState<{ osztalyom?: { id: number; nev: string; tagozat: string; kezdes_eve: number } } | null>(null);
 
   useEffect(() => {
     const checkFtvRegistration = async () => {
       try {
         const profile = await apiClient.getMyProfile();
         setIsFtvRegistered(profile.ftv_registered ?? false);
+        setUserProfile(profile);
+        
+        // Load schedule for filtering
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const startYear = now.getMonth() >= 8 ? currentYear : currentYear - 1;
+        const fromDate = `${startYear}-09-01`;
+        const toDate = `${startYear + 1}-08-31`;
+        
+        const scheduleData = await apiClient.getTanevRendje(fromDate, toDate);
+        setSchedule(scheduleData);
       } catch (error) {
         console.error('Failed to check FTV registration:', error);
         setIsFtvRegistered(false);
@@ -85,12 +101,35 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
   });
 
   // Filter data based on the filter prop
+  // Also filters out igazolások that fall entirely on non-attendance days
   const igazolasok = useMemo(() => {
-    if (filter === 'pending') return allIgazolasok.filter(i => i.allapot === 'Függőben');
-    if (filter === 'approved') return allIgazolasok.filter(i => i.allapot === 'Elfogadva');
-    if (filter === 'rejected') return allIgazolasok.filter(i => i.allapot === 'Elutasítva');
-    return allIgazolasok;
-  }, [allIgazolasok, filter]);
+    let filtered = allIgazolasok;
+    
+    // Filter out igazolások that fall entirely on non-attendance days
+    if (schedule && userProfile?.osztalyom) {
+      filtered = filtered.filter(i => {
+        const start = new Date(i.eleje);
+        const end = new Date(i.vege);
+        
+        // Check if at least one day requires attendance
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const dateStr = format(d, 'yyyy-MM-dd');
+          if (isAttendanceRequired(dateStr, userProfile.osztalyom, schedule)) {
+            return true; // Has at least one attendance-required day
+          }
+        }
+        
+        return false; // All days are non-attendance days, filter it out
+      });
+    }
+    
+    // Apply status filter
+    if (filter === 'pending') filtered = filtered.filter(i => i.allapot === 'Függőben');
+    if (filter === 'approved') filtered = filtered.filter(i => i.allapot === 'Elfogadva');
+    if (filter === 'rejected') filtered = filtered.filter(i => i.allapot === 'Elutasítva');
+    
+    return filtered;
+  }, [allIgazolasok, filter, schedule, userProfile]);
 
   // Map data to table format
   const tableData = igazolasok.map(mapIgazolasToTableData);
@@ -106,22 +145,37 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
   };
 
   const getFilterDescription = () => {
-    switch (filter) {
-      case 'pending': return 'Ellenőrzésre váró igazolások';
-      case 'approved': return 'Osztályfőnök által elfogadott igazolások';
-      case 'rejected': return 'Osztályfőnök által elutasított igazolások';
-      default: return 'Az összes beküldött igazolásod';
+    const baseDesc = (() => {
+      switch (filter) {
+        case 'pending': return 'Ellenőrzésre váró igazolások';
+        case 'approved': return 'Osztályfőnök által elfogadott igazolások';
+        case 'rejected': return 'Osztályfőnök által elutasított igazolások';
+        default: return 'Az összes beküldött igazolásod';
+      }
+    })();
+    
+    if (schedule) {
+      return (
+        <>
+          {baseDesc}
+          <Badge variant="outline" className="ml-2 text-xs bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-900">
+            Szünnapokra vonatkozó igazolások elrejtve
+          </Badge>
+        </>
+      );
     }
+    
+    return baseDesc;
   };
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle><h1 className='text-xl'>{getFilterTitle()}</h1></CardTitle>
-            <CardDescription>{getFilterDescription()}</CardDescription>
-          </div>
+        <div>
+          <CardTitle><h1 className='text-xl'>{getFilterTitle()}</h1></CardTitle>
+          <CardDescription>
+            {getFilterDescription()}
+          </CardDescription>
         </div>
       </CardHeader>
       <CardContent>

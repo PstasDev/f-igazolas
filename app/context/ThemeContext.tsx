@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useFrontendConfig } from './FrontendConfigContext';
 
 type Theme = 'light' | 'dark';
 
@@ -14,18 +15,32 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>('light');
+  const [isInitialized, setIsInitialized] = useState(false);
+  const { config, updateConfig, loading } = useFrontendConfig();
 
-  // Load theme from localStorage on mount
+  // Initialize theme from frontend config or localStorage
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme | null;
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (loading || isInitialized) return;
+
+    // Try to get theme from frontend config first
+    const configTheme = config.appearance?.themeMode;
     
-    if (savedTheme) {
-      setTheme(savedTheme);
-    } else if (prefersDark) {
-      setTheme('dark');
+    if (configTheme) {
+      setTheme(configTheme);
+    } else {
+      // Fallback to localStorage or system preference
+      const savedTheme = localStorage.getItem('theme') as Theme | null;
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      
+      if (savedTheme) {
+        setTheme(savedTheme);
+      } else if (prefersDark) {
+        setTheme('dark');
+      }
     }
-  }, []);
+    
+    setIsInitialized(true);
+  }, [config, loading, isInitialized]);
 
   // Apply theme class to document
   useEffect(() => {
@@ -39,12 +54,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.classList.remove('dark');
     }
     
+    // Keep localStorage in sync as backup
     localStorage.setItem('theme', theme);
-    console.log('Theme applied:', theme, 'Classes:', root.className);
   }, [theme]);
 
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  const toggleTheme = async () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    
+    // Persist to backend via frontend config
+    try {
+      await updateConfig({
+        appearance: {
+          themeMode: newTheme,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to save theme preference:', error);
+      // Theme is already updated locally, so just log the error
+    }
   };
 
   return (

@@ -16,6 +16,7 @@ export interface User {
   avatar?: string;
   class?: string; // For students
   profile?: Profile;
+  isSuperuser?: boolean; // Whether user is a superuser (admin)
 }
 
 interface RoleContextType {
@@ -61,6 +62,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
       const profile = await apiClient.getMyProfile();
       
+      // Check if user is a superuser
+      let isSuperuser = false;
+      try {
+        const superuserCheck = await apiClient.amISuperuser();
+        isSuperuser = superuserCheck.is_superuser;
+      } catch (error) {
+        console.error('Failed to check superuser status:', error);
+      }
+      
       // Determine user role based on profile
       // Check if user is an osztályfőnök (teacher)
       const isTeacher = profile.osztalyom 
@@ -80,6 +90,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(avatarSeed)}`,
         class: profile.osztalyom?.nev,
         profile,
+        isSuperuser,
       };
 
       setUser(userData);

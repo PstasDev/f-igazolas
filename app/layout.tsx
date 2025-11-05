@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { Noto_Sans, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import PageTransition from "./components/PageTransition";
+import { FrontendConfigProvider } from "./context/FrontendConfigContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { HeadingFontProvider } from "./context/HeadingFontContext";
 import { RoleProvider } from "./context/RoleContext";
+import { SystemMessageProvider } from "./context/SystemMessageContext";
 import { Toaster } from "@/components/ui/sonner";
-import DebugInfo from "@/components/DebugInfo";
 
 const notoSans = Noto_Sans({
   variable: "--font-noto-sans",
@@ -57,12 +59,18 @@ export default function RootLayout({
       <body
         className={`${notoSans.variable} ${playfair.variable} antialiased`}
       >
-        <ThemeProvider>
-          <RoleProvider>
-            <PageTransition>{children}</PageTransition>
-            <Toaster position="top-right" />
-          </RoleProvider>
-        </ThemeProvider>
+        <FrontendConfigProvider>
+          <ThemeProvider>
+            <HeadingFontProvider>
+              <RoleProvider>
+                <SystemMessageProvider>
+                  <PageTransition>{children}</PageTransition>
+                  <Toaster position="top-right" />
+                </SystemMessageProvider>
+              </RoleProvider>
+            </HeadingFontProvider>
+          </ThemeProvider>
+        </FrontendConfigProvider>
       </body>
     </html>
   );

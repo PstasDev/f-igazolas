@@ -16,6 +16,7 @@
 :root {
   --hover-brown: #A86E43;
   --radius: 0.625rem;
+  --heading-font-family: "Playfair Display", Georgia, serif;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -98,7 +99,8 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-playfair), serif;
+  font-family: var(--heading-font-family);
+  transition: font-family 0.2s ease;
 }
 
 @keyframes fadeIn {

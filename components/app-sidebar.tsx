@@ -5,6 +5,8 @@ import {
   IconPlus,
   IconFileText,
   IconUsers,
+  IconCalendarEvent,
+  IconSettings,
 } from "@tabler/icons-react"
 import Link from "next/link"
 import { Logo } from "@/components/Logo"
@@ -31,6 +33,7 @@ export function AppSidebar({ onViewChange, currentView, ...props }: AppSidebarPr
   const { user } = useRole()
   
   const isTeacher = user?.role === 'teacher'
+  const isSuperuser = user?.isSuperuser || false
   
   // Student navigation
   const studentNavMain = [
@@ -45,6 +48,17 @@ export function AppSidebar({ onViewChange, currentView, ...props }: AppSidebarPr
       url: "#igazolasok",
       icon: IconFileText,
     },
+    {
+      title: "Naptár",
+      url: "#naptar",
+      icon: IconCalendarEvent,
+    },
+    // Add Administration for superuser students
+    ...(isSuperuser ? [{
+      title: "Adminisztráció",
+      url: "#adminisztracio",
+      icon: IconSettings,
+    }] : []),
   ]
   
   // Teacher navigation  
@@ -59,6 +73,17 @@ export function AppSidebar({ onViewChange, currentView, ...props }: AppSidebarPr
       url: "#students",
       icon: IconUsers,
     },
+    {
+      title: "Naptár",
+      url: "#naptar",
+      icon: IconCalendarEvent,
+    },
+    // Add Administration for superuser teachers
+    ...(isSuperuser ? [{
+      title: "Adminisztráció",
+      url: "#adminisztracio",
+      icon: IconSettings,
+    }] : []),
   ]
 
   const userData = {

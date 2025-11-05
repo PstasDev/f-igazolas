@@ -122,6 +122,26 @@ export function DataTable<TData, TValue>({
   const [isEasyProcessingActive, setIsEasyProcessingActive] = React.useState(false)
   const isActivatingEasyProcessing = React.useRef(false)
 
+  // Check for calendar date filters on mount
+  React.useEffect(() => {
+    const storedDateFrom = sessionStorage.getItem('datatable_date_from')
+    const storedDateTo = sessionStorage.getItem('datatable_date_to')
+    const expandSearch = sessionStorage.getItem('datatable_expand_search')
+    
+    if (storedDateFrom && storedDateTo) {
+      setDateFrom(storedDateFrom)
+      setDateTo(storedDateTo)
+      // Clear after reading
+      sessionStorage.removeItem('datatable_date_from')
+      sessionStorage.removeItem('datatable_date_to')
+    }
+    
+    if (expandSearch === 'true') {
+      setIsSearchCollapsed(false)
+      sessionStorage.removeItem('datatable_expand_search')
+    }
+  }, [])
+
   // Fetch igazolas types on mount
   React.useEffect(() => {
     const fetchTypes = async () => {
