@@ -34,7 +34,7 @@ export interface FrontendConfig {
     /**
      * User's preferred theme mode
      * @values 'light' | 'dark'
-     * @default 'light'
+     * @default 'dark'
      */
     themeMode?: 'light' | 'dark';
 
@@ -77,7 +77,7 @@ export interface FrontendConfig {
 export const DEFAULT_FRONTEND_CONFIG: FrontendConfig = {
   version: 1,
   appearance: {
-    themeMode: 'light',
+    themeMode: 'dark',
     headingFont: 'serif',
   },
   experimental: {

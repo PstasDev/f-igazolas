@@ -15,6 +15,7 @@ interface FrontendConfigContextType {
   error: Error | null;
   updateConfig: (updates: Partial<FrontendConfig>) => Promise<void>;
   reloadConfig: () => Promise<void>;
+  resetConfig: () => void;
 }
 
 const FrontendConfigContext = createContext<FrontendConfigContextType | undefined>(undefined);
@@ -105,10 +106,25 @@ export function FrontendConfigProvider({ children }: { children: React.ReactNode
     await loadConfig();
   }, [loadConfig]);
 
-  // Load config on mount
+  /**
+   * Reset configuration to defaults (used on logout)
+   */
+  const resetConfig = useCallback(() => {
+    setConfig(DEFAULT_FRONTEND_CONFIG);
+    setLoading(false);
+    setError(null);
+  }, []);
+
+  // Load config on mount and when token changes (login/logout)
   useEffect(() => {
-    loadConfig();
-  }, [loadConfig]);
+    const token = apiClient.getToken();
+    if (token) {
+      loadConfig();
+    } else {
+      // No token, reset to defaults
+      resetConfig();
+    }
+  }, [loadConfig, resetConfig]);
 
   return (
     <FrontendConfigContext.Provider
@@ -118,6 +134,7 @@ export function FrontendConfigProvider({ children }: { children: React.ReactNode
         error,
         updateConfig,
         reloadConfig,
+        resetConfig,
       }}
     >
       {children}

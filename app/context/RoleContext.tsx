@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import type { Profile } from '@/lib/types';
+import { useFrontendConfig } from './FrontendConfigContext';
 
 export type UserRole = 'student' | 'teacher';
 
@@ -35,6 +36,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const { reloadConfig, resetConfig } = useFrontendConfig();
 
   // Handle authentication errors - logout and redirect
   const handleAuthError = () => {
@@ -133,6 +135,9 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       // Token is already stored in cookies by apiClient
       // Now fetch the user profile
       await fetchUserProfile();
+      
+      // Reload frontend config after successful login
+      await reloadConfig();
     } catch (error) {
       console.error('Login failed:', error);
       
@@ -150,6 +155,9 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           // Token is already stored in cookies by apiClient
           // Now fetch the user profile
           await fetchUserProfile();
+          
+          // Reload frontend config after successful login
+          await reloadConfig();
           return; // Success on retry
         } catch (retryError) {
           console.error('Login retry failed:', retryError);
@@ -168,6 +176,9 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     apiClient.logout();
     setUser(null);
+    
+    // Reset frontend config to defaults on logout
+    resetConfig();
   };
 
   const refreshProfile = async () => {

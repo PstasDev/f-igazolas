@@ -14,21 +14,21 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light');
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [theme, setTheme] = useState<Theme>('dark');
   const { config, updateConfig, loading } = useFrontendConfig();
 
-  // Initialize theme from frontend config or localStorage
+  // Update theme when frontend config changes (e.g., after login or logout)
   useEffect(() => {
-    if (loading || isInitialized) return;
+    if (loading) return;
 
-    // Try to get theme from frontend config first
+    // Get theme from frontend config
     const configTheme = config.appearance?.themeMode;
     
     if (configTheme) {
+      // Config has a theme preference, use it
       setTheme(configTheme);
     } else {
-      // Fallback to localStorage or system preference
+      // No config theme (e.g., after logout or new user), fallback to localStorage or system preference
       const savedTheme = localStorage.getItem('theme') as Theme | null;
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       
@@ -36,11 +36,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setTheme(savedTheme);
       } else if (prefersDark) {
         setTheme('dark');
+      } else {
+        // Use default (dark theme as per updated DEFAULT_FRONTEND_CONFIG)
+        setTheme('dark');
       }
     }
-    
-    setIsInitialized(true);
-  }, [config, loading, isInitialized]);
+  }, [config.appearance?.themeMode, loading]);
 
   // Apply theme class to document
   useEffect(() => {
