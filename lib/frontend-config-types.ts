@@ -68,6 +68,18 @@ export interface FrontendConfig {
      */
     ftvSync?: boolean;
   };
+
+  /**
+   * Dashboard preferences
+   */
+  dashboard?: {
+    /**
+     * Enable "Könnyű feldolgozás" smart filter mode for teachers
+     * Automatically filters pending absences up to current date, sorted by date
+     * @default false
+     */
+    smartFilter?: boolean;
+  };
 }
 
 /**
@@ -84,6 +96,9 @@ export const DEFAULT_FRONTEND_CONFIG: FrontendConfig = {
     bkkAlerts: true,
     bkkVehicleInfo: true,
     ftvSync: true,
+  },
+  dashboard: {
+    smartFilter: false,
   },
 };
 
@@ -111,6 +126,10 @@ export function mergeFrontendConfig(
     experimental: {
       ...base.experimental,
       ...updates.experimental,
+    },
+    dashboard: {
+      ...base.dashboard,
+      ...updates.dashboard,
     },
   };
 }

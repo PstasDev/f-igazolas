@@ -50,7 +50,8 @@ import {
   XCircle,
   Clapperboard,
   Download,
-  ChevronDown
+  ChevronDown,
+  Sparkles
 } from "lucide-react"
 import {
   Sheet,
@@ -85,6 +86,7 @@ import { apiClient } from "@/lib/api"
 import { toast } from "sonner"
 import { getPeriodSchedule } from "@/lib/periods"
 import * as XLSX from 'xlsx'
+import { useFrontendConfig } from "@/app/context/FrontendConfigContext"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -101,6 +103,7 @@ export function DataTable<TData, TValue>({
   onOptimisticUpdate,
   ftvSyncStatus,
 }: DataTableProps<TData, TValue>) {
+  const { config, updateConfig, loading: configLoading } = useFrontendConfig()
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -121,6 +124,16 @@ export function DataTable<TData, TValue>({
   const [igazolasTipusok, setIgazolasTipusok] = React.useState<string[]>([])
   const [isEasyProcessingActive, setIsEasyProcessingActive] = React.useState(false)
   const isActivatingEasyProcessing = React.useRef(false)
+  const hasInitializedSmartFilter = React.useRef(false)
+  const [isDataReady, setIsDataReady] = React.useState(false)
+
+  // Track when data is ready (has loaded at least once)
+  React.useEffect(() => {
+    if (data && data.length >= 0 && !isDataReady) {
+      console.log('Data is ready, length:', data.length)
+      setIsDataReady(true)
+    }
+  }, [data, isDataReady])
 
   // Check for calendar date filters on mount
   React.useEffect(() => {
@@ -154,6 +167,70 @@ export function DataTable<TData, TValue>({
     }
     fetchTypes()
   }, [])
+
+  // Debug: Log config changes
+  React.useEffect(() => {
+    console.log('Config changed:', {
+      loading: configLoading,
+      smartFilter: config.dashboard?.smartFilter,
+      fullConfig: config,
+    })
+  }, [config, configLoading])
+
+  // Initialize smart filter from FrontendConfig on mount
+  React.useEffect(() => {
+    console.log('[Smart Filter Init] Effect triggered', {
+      configLoading,
+      isDataReady,
+      hasInitialized: hasInitializedSmartFilter.current,
+      smartFilterValue: config.dashboard?.smartFilter,
+    })
+
+    // Wait for BOTH config to finish loading AND data to be ready
+    if (configLoading || !isDataReady) {
+      console.log('[Smart Filter Init] Waiting...', { configLoading, isDataReady })
+      return
+    }
+    
+    // Only initialize once
+    if (hasInitializedSmartFilter.current) {
+      console.log('[Smart Filter Init] Already initialized, skipping')
+      return
+    }
+    
+    const smartFilterEnabled = config.dashboard?.smartFilter ?? false
+    console.log('[Smart Filter Init] Ready to initialize:', {
+      smartFilterEnabled,
+      configLoading,
+      isDataReady,
+      dataLength: data.length,
+      fullDashboardConfig: config.dashboard,
+    })
+    
+    if (smartFilterEnabled) {
+      // Activate smart filter with CURRENT date
+      console.log('[Smart Filter Init] ✅ ACTIVATING smart filter on load')
+      isActivatingEasyProcessing.current = true
+      setFilterStatus("pending")
+      const today = new Date()
+      const todayStr = today.toISOString().split('T')[0]
+      setDateFrom("") // No start date - show all past
+      setDateTo(todayStr) // Up to today (CURRENT date)
+      setSorting([{ id: "date", desc: false }])
+      setIsEasyProcessingActive(true)
+      console.log('[Smart Filter Init] ✅ Filter settings applied:', {
+        filterStatus: 'pending',
+        dateFrom: '',
+        dateTo: todayStr,
+        sorting: 'date asc',
+      })
+    } else {
+      console.log('[Smart Filter Init] Smart filter is disabled in config')
+    }
+    
+    hasInitializedSmartFilter.current = true
+    console.log('[Smart Filter Init] Initialization complete')
+  }, [config, configLoading, isDataReady, data.length])
 
   // Watch for manual filter changes and deactivate easy processing mode
   React.useEffect(() => {
@@ -638,21 +715,43 @@ export function DataTable<TData, TValue>({
                   <Label className="text-sm font-semibold">Könnyű feldolgozás</Label>
                   <p className="text-xs text-muted-foreground mt-1">
                     Rendezés dátum szerint, csak <span className="text-blue-500 dark:text-blue-400">függőben</span> lévő és múltbeli igazolások
+                    <br />
+                    <span className="text-cyan-500 dark:text-cyan-400 inline-flex items-center gap-1 mt-1">
+                      {/* new icon */}
+                      <Sparkles className="
+                        size-4
+                      " />
+                      A rendszer megjegyzi a beállítást a következő látogatáskor
+                    </span>
                   </p>
                 </div>
                 <Button
                   variant={isEasyProcessingActive ? "outline" : "default"}
                   size="sm"
-                  onClick={() => {
+                  onClick={async () => {
                     if (isEasyProcessingActive) {
-                      // Deactivate - clear filters
+                      // Deactivate - clear filters and persist to backend
                       setFilterStatus("all")
                       setDateFrom("")
                       setDateTo("")
                       setSorting([])
                       setIsEasyProcessingActive(false)
+                      
+                      // Persist deactivation to backend
+                      try {
+                        console.log('Deactivating smart filter, updating backend...')
+                        await updateConfig({
+                          dashboard: {
+                            smartFilter: false,
+                          },
+                        })
+                        console.log('Smart filter deactivated and saved')
+                      } catch (error) {
+                        console.error('Failed to update smartFilter config:', error)
+                        toast.error('Nem sikerült menteni a beállítást')
+                      }
                     } else {
-                      // Activate - set filters for past (up to today)
+                      // Activate - set filters for past (up to today) and persist to backend
                       isActivatingEasyProcessing.current = true
                       setFilterStatus("pending")
                       const today = new Date()
@@ -660,6 +759,20 @@ export function DataTable<TData, TValue>({
                       setDateTo(today.toISOString().split('T')[0]) // Up to today
                       setSorting([{ id: "date", desc: false }])
                       setIsEasyProcessingActive(true)
+                      
+                      // Persist activation to backend
+                      try {
+                        console.log('Activating smart filter, updating backend...')
+                        await updateConfig({
+                          dashboard: {
+                            smartFilter: true,
+                          },
+                        })
+                        console.log('Smart filter activated and saved')
+                      } catch (error) {
+                        console.error('Failed to update smartFilter config:', error)
+                        toast.error('Nem sikerült menteni a beállítást')
+                      }
                     }
                   }}
                   className={`w-full sm:w-auto flex-shrink-0 gap-1 ${isEasyProcessingActive ? 'border-green-500 text-green-600 hover:bg-green-50 dark:border-green-600 dark:text-green-500 dark:hover:bg-green-950' : ''}`}
