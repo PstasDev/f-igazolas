@@ -153,7 +153,7 @@ class APIClient {
       // Deduplicate concurrent requests
       const pendingRequest = this.pendingRequests.get(cacheKey);
       if (pendingRequest) {
-        return pendingRequest;
+        return pendingRequest as Promise<T>;
       }
     }
     
