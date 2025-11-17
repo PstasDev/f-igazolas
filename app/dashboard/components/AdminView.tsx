@@ -17,9 +17,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { apiClient } from "@/lib/api"
 import { useRole } from "@/app/context/RoleContext"
 import type { TanevRendje, Override, TanitasiSzunet, Osztaly } from "@/lib/types"
-import { IconAlertCircle, IconPlus, IconEdit, IconTrash, IconSchool } from "@tabler/icons-react"
+import { IconAlertCircle, IconPlus, IconEdit, IconTrash, IconSchool, IconKey, IconShield, IconChartBar, IconUsers } from "@tabler/icons-react"
 import { Clapperboard } from "lucide-react"
 import { format } from "date-fns"
+import { PasswordManagement } from "@/components/admin/PasswordManagement"
+import { PermissionsManagement } from "@/components/admin/PermissionsManagement"
+import { TeacherAssignment } from "@/components/admin/TeacherAssignment"
+import { LoginStatistics } from "@/components/admin/LoginStatistics"
+import { ClassActivityHeatmap } from "@/components/admin/ClassActivityHeatmap"
+import { TeacherWorkloadDashboard } from "@/components/admin/TeacherWorkloadDashboard"
+import { ApprovalRatesAnalytics } from "@/components/admin/ApprovalRatesAnalytics"
 
 type BreakType = 'oszi' | 'teli' | 'tavaszi' | 'nyari' | 'erettsegi' | 'digitalis' | 'egyeb';
 
@@ -64,6 +71,13 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // Admin feature dialogs
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
+  const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false)
+  const [teacherDialogOpen, setTeacherDialogOpen] = useState(false)
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null)
+  const [selectedClassName, setSelectedClassName] = useState<string | null>(null)
   
   // Override dialog state
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false)
@@ -294,16 +308,74 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Adminisztráció</h2>
         <p className="text-muted-foreground">
-          Iskola-szintű beállítások és szinkronizáció kezelése
+          Iskola-szintű beállítások, felhasználó kezelés és szinkronizáció
         </p>
       </div>
 
-      <Tabs defaultValue="classes" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="classes">Osztályok</TabsTrigger>
-          <TabsTrigger value="breaks">Tanítási szünetek</TabsTrigger>
-          <TabsTrigger value="overrides">Kivételek</TabsTrigger>
+      <Tabs defaultValue={activeTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="user-mgmt" className="gap-2">
+            <IconKey className="h-4 w-4" />
+            Felhasználók
+          </TabsTrigger>
+          <TabsTrigger value="classes" className="gap-2">
+            <IconSchool className="h-4 w-4" />
+            Osztályok
+          </TabsTrigger>
+          <TabsTrigger value="breaks" className="gap-2">
+            Szünetek
+          </TabsTrigger>
+          <TabsTrigger value="overrides" className="gap-2">
+            Kivételek
+          </TabsTrigger>
+          <TabsTrigger value="stats" className="gap-2">
+            <IconChartBar className="h-4 w-4" />
+            Statisztikák
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-2">
+            <IconChartBar className="h-4 w-4" />
+            Elemzések
+          </TabsTrigger>
         </TabsList>
+
+        {/* User Management Tab */}
+        <TabsContent value="user-mgmt" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <IconKey className="h-5 w-5" />
+                  Jelszó kezelés
+                </CardTitle>
+                <CardDescription>
+                  Jelszavak generálása és visszaállítása felhasználóknak
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => setPasswordDialogOpen(true)} className="w-full">
+                  Jelszó kezelés megnyitása
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <IconShield className="h-5 w-5" />
+                  Jogosultságok
+                </CardTitle>
+                <CardDescription>
+                  Felhasználók előléptetése és lefokozása szuperfelhasználóvá
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => setPermissionsDialogOpen(true)} className="w-full">
+                  Jogosultságok kezelése
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         {/* Classes Tab */}
         <TabsContent value="classes" className="space-y-4">
@@ -313,7 +385,7 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
                 <div>
                   <CardTitle>Osztályok</CardTitle>
                   <CardDescription>
-                    Az iskola osztályainak listája és FTV szinkronizáció
+                    Az iskola osztályainak listája, tanárok hozzárendelése és FTV szinkronizáció
                   </CardDescription>
                 </div>
                 <Button 
@@ -350,10 +422,23 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
                       <div>
                         <p className="font-medium">{osztaly.nev}</p>
                         <p className="text-sm text-muted-foreground">
-                          {osztaly.tanulok.length} tanuló
+                          {osztaly.tanulok.length} tanuló • {osztaly.osztalyfonokok.length} tanár
                         </p>
                       </div>
                     </div>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedClassId(osztaly.id)
+                        setSelectedClassName(osztaly.nev)
+                        setTeacherDialogOpen(true)
+                      }}
+                      className="gap-2"
+                    >
+                      <IconUsers className="h-4 w-4" />
+                      Tanárok kezelése
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -469,7 +554,47 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Statistics Tab */}
+        <TabsContent value="stats" className="space-y-4">
+          <LoginStatistics />
+        </TabsContent>
+
+        {/* Analytics Tab - Phase 2 */}
+        <TabsContent value="analytics" className="space-y-4">
+          <Tabs defaultValue="heatmap" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="heatmap">Aktivitás Heatmap</TabsTrigger>
+              <TabsTrigger value="workload">Tanári Munkaterhelés</TabsTrigger>
+              <TabsTrigger value="approval-rates">Elfogadási Ráta</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="heatmap">
+              <ClassActivityHeatmap />
+            </TabsContent>
+
+            <TabsContent value="workload">
+              <TeacherWorkloadDashboard />
+            </TabsContent>
+
+            <TabsContent value="approval-rates">
+              <ApprovalRatesAnalytics />
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
       </Tabs>
+
+      {/* Admin Feature Dialogs */}
+      <PasswordManagement isOpen={passwordDialogOpen} onOpenChange={setPasswordDialogOpen} />
+      <PermissionsManagement isOpen={permissionsDialogOpen} onOpenChange={setPermissionsDialogOpen} />
+      {selectedClassId && (
+        <TeacherAssignment
+          classId={selectedClassId}
+          className={selectedClassName || undefined}
+          isOpen={teacherDialogOpen}
+          onOpenChange={setTeacherDialogOpen}
+        />
+      )}
 
       {/* Override Dialog */}
       <Dialog open={overrideDialogOpen} onOpenChange={setOverrideDialogOpen}>

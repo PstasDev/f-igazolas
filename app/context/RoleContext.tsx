@@ -62,16 +62,13 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const profile = await apiClient.getMyProfile();
+      // Fetch all required data in parallel to reduce loading time
+      const [profile, superuserCheck] = await Promise.all([
+        apiClient.getMyProfile(),
+        apiClient.amISuperuser().catch(() => ({ is_superuser: false }))
+      ]);
       
-      // Check if user is a superuser
-      let isSuperuser = false;
-      try {
-        const superuserCheck = await apiClient.amISuperuser();
-        isSuperuser = superuserCheck.is_superuser;
-      } catch (error) {
-        console.error('Failed to check superuser status:', error);
-      }
+      const isSuperuser = superuserCheck.is_superuser;
       
       // Determine user role based on profile
       // Check if user is an osztályfőnök (teacher)

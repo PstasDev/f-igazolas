@@ -56,9 +56,18 @@ interface APIError extends Error {
   detail?: string;
 }
 
+// Simple in-memory cache for GET requests
+interface CacheEntry {
+  data: any;
+  timestamp: number;
+}
+
 class APIClient {
   private baseUrl: string;
   private onAuthError?: () => void;
+  private cache: Map<string, CacheEntry> = new Map();
+  private cacheTTL: number = 60000; // 1 minute cache TTL
+  private pendingRequests: Map<string, Promise<any>> = new Map(); // Request deduplication
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
@@ -87,6 +96,43 @@ class APIClient {
   // Remove JWT token from cookies
   removeToken(): void {
     Cookies.remove(JWT_COOKIE_KEY, { path: '/' });
+    // Clear cache on logout
+    this.cache.clear();
+    this.pendingRequests.clear();
+  }
+  
+  // Clear cache for a specific key or all cache
+  clearCache(key?: string): void {
+    if (key) {
+      this.cache.delete(key);
+    } else {
+      this.cache.clear();
+    }
+  }
+  
+  // Check if cached data is still valid
+  private isCacheValid(entry: CacheEntry): boolean {
+    return Date.now() - entry.timestamp < this.cacheTTL;
+  }
+  
+  // Get cached data if available and valid
+  private getCachedData<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (entry && this.isCacheValid(entry)) {
+      return entry.data as T;
+    }
+    if (entry) {
+      this.cache.delete(key); // Remove stale cache
+    }
+    return null;
+  }
+  
+  // Set cached data
+  private setCachedData(key: string, data: any): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now()
+    });
   }
 
   // Generic fetch wrapper with JWT authentication
@@ -94,6 +140,23 @@ class APIClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
+    const method = options.method || 'GET';
+    const cacheKey = `${method}:${endpoint}`;
+    
+    // For GET requests, check cache first
+    if (method === 'GET') {
+      const cachedData = this.getCachedData<T>(cacheKey);
+      if (cachedData !== null) {
+        return cachedData;
+      }
+      
+      // Deduplicate concurrent requests
+      const pendingRequest = this.pendingRequests.get(cacheKey);
+      if (pendingRequest) {
+        return pendingRequest;
+      }
+    }
+    
     const token = this.getToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -115,45 +178,66 @@ class APIClient {
 
     const url = `${this.baseUrl}${endpoint}`;
     
-    try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
+    const requestPromise = (async () => {
+      try {
+        const response = await fetch(url, {
+          ...options,
+          headers,
+        });
 
-      // Handle error responses
-      if (!response.ok) {
-        // Handle authentication errors (401, 403)
-        if (response.status === 401 || response.status === 403) {
-          this.removeToken();
-          if (this.onAuthError) {
-            this.onAuthError();
+        // Handle error responses
+        if (!response.ok) {
+          // Handle authentication errors (401, 403)
+          if (response.status === 401 || response.status === 403) {
+            this.removeToken();
+            if (this.onAuthError) {
+              this.onAuthError();
+            }
           }
+
+          const errorData: ErrorResponse = await response.json().catch(() => ({
+            error: 'Request failed',
+            detail: `HTTP ${response.status}: ${response.statusText}`,
+          }));
+
+          const error = new Error(errorData.detail || errorData.error) as APIError;
+          error.status = response.status;
+          error.detail = errorData.detail;
+          throw error;
         }
 
-        const errorData: ErrorResponse = await response.json().catch(() => ({
-          error: 'Request failed',
-          detail: `HTTP ${response.status}: ${response.statusText}`,
-        }));
+        // Handle empty responses (204 No Content)
+        if (response.status === 204) {
+          return {} as T;
+        }
 
-        const error = new Error(errorData.detail || errorData.error) as APIError;
-        error.status = response.status;
-        error.detail = errorData.detail;
-        throw error;
+        const data = await response.json();
+        
+        // Cache GET requests
+        if (method === 'GET') {
+          this.setCachedData(cacheKey, data);
+        }
+        
+        return data;
+      } catch (error) {
+        if (error instanceof Error) {
+          throw error;
+        }
+        throw new Error('An unexpected error occurred');
+      } finally {
+        // Remove from pending requests
+        if (method === 'GET') {
+          this.pendingRequests.delete(cacheKey);
+        }
       }
-
-      // Handle empty responses (204 No Content)
-      if (response.status === 204) {
-        return {} as T;
-      }
-
-      return await response.json();
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('An unexpected error occurred');
+    })();
+    
+    // Store pending request for deduplication
+    if (method === 'GET') {
+      this.pendingRequests.set(cacheKey, requestPromise);
     }
+    
+    return requestPromise;
   }
 
   // Authentication endpoints
@@ -740,6 +824,111 @@ class APIClient {
     return this.fetchWithAuth<MulasztasDeleteResponse>('/mulasztas/my', {
       method: 'DELETE',
     });
+  }
+
+  // Phase 2 Admin endpoints - Analytics & Monitoring
+
+  async getClassActivityHeatmap(fromDate: string, toDate: string, metricType: 'submissions' | 'approvals' | 'logins' = 'submissions'): Promise<{
+    dates: string[];
+    classes: Array<{
+      id: number;
+      name: string;
+      data: Array<{
+        date: string;
+        value: number;
+        intensity: number;
+      }>;
+    }>;
+  }> {
+    return this.fetchWithAuth(`/admin/classes/activity-heatmap?from_date=${fromDate}&to_date=${toDate}&metric_type=${metricType}`);
+  }
+
+  async getClassesOverviewStats(): Promise<{
+    classes: Array<{
+      id: number;
+      name: string;
+      total_students: number;
+      active_students: number;
+      pending_count: number;
+      approval_rate: number;
+      last_activity: string | null;
+    }>;
+  }> {
+    return this.fetchWithAuth('/admin/classes/overview-stats');
+  }
+
+  async getTeacherWorkload(): Promise<{
+    teachers: Array<{
+      id: number;
+      name: string;
+      classes: string[];
+      total_students: number;
+      pending_count: number;
+      approved_today: number;
+      rejected_today: number;
+      avg_response_time_hours: number | null;
+    }>;
+  }> {
+    return this.fetchWithAuth('/admin/teachers/workload');
+  }
+
+  async getTeacherActivity(teacherId: number, fromDate: string, toDate: string): Promise<{
+    user: {
+      id: number;
+      username: string;
+      first_name: string;
+      last_name: string;
+      email: string;
+    };
+    login_count: number;
+    total_actions: number;
+    actions_breakdown: {
+      approved: number;
+      rejected: number;
+      commented: number;
+    };
+    activity_timeline: Array<{
+      date: string;
+      action_type: string;
+      count: number;
+    }>;
+  }> {
+    return this.fetchWithAuth(`/admin/teachers/${teacherId}/activity?from_date=${fromDate}&to_date=${toDate}`);
+  }
+
+  async getApprovalRates(fromDate: string, toDate: string, groupBy: 'teacher' | 'type' | 'class' | 'all' = 'all'): Promise<{
+    overall_rate: number;
+    by_teacher: Array<{
+      teacher_id: number;
+      teacher_name: string;
+      total: number;
+      approved: number;
+      rejected: number;
+      approval_rate: number;
+    }>;
+    by_type: Array<{
+      type_id: number;
+      type_name: string;
+      total: number;
+      approved: number;
+      rejected: number;
+      approval_rate: number;
+    }>;
+    by_class: Array<{
+      class_id: number;
+      class_name: string;
+      total: number;
+      approved: number;
+      rejected: number;
+      approval_rate: number;
+    }>;
+    trend: Array<{
+      date: string;
+      approval_rate: number;
+      total: number;
+    }>;
+  }> {
+    return this.fetchWithAuth(`/admin/analytics/approval-rates?from_date=${fromDate}&to_date=${toDate}&group_by=${groupBy}`);
   }
 }
 

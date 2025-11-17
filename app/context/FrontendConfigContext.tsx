@@ -119,12 +119,15 @@ export function FrontendConfigProvider({ children }: { children: React.ReactNode
   useEffect(() => {
     const token = apiClient.getToken();
     if (token) {
-      loadConfig();
+      // Only load if we don't have config yet (avoid redundant loads)
+      if (config === DEFAULT_FRONTEND_CONFIG) {
+        loadConfig();
+      }
     } else {
       // No token, reset to defaults
       resetConfig();
     }
-  }, [loadConfig, resetConfig]);
+  }, []); // Remove dependencies to avoid redundant loads
 
   return (
     <FrontendConfigContext.Provider

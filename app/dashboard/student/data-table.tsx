@@ -547,7 +547,7 @@ export function DataTable<TData, TValue>({
                       <TableRow key={headerGroup.id}>
                         {headerGroup.headers.map((header) => {
                           return (
-                            <TableHead key={header.id} className="font-bold text-xs uppercase tracking-wide whitespace-nowrap">
+                            <TableHead key={header.id} className="font-bold text-xs uppercase tracking-wide whitespace-nowrap align-middle">
                               {header.isPlaceholder
                                 ? null
                                 : flexRender(
@@ -570,7 +570,7 @@ export function DataTable<TData, TValue>({
                           onClick={() => handleRowClick(row.original)}
                         >
                           {row.getVisibleCells().map((cell) => (
-                            <TableCell key={cell.id} className="py-4">
+                            <TableCell key={cell.id} className="py-4 align-middle">
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </TableCell>
                           ))}

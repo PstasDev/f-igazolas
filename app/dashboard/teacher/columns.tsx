@@ -56,7 +56,7 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide"
+          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide -ml-2"
         >
           Diák
           {column.getIsSorted() === "asc" ? (
@@ -89,7 +89,7 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide"
+          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide -ml-2"
         >
           Hiányzás típusa
           {column.getIsSorted() === "asc" ? (
@@ -142,7 +142,7 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide"
+          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide -ml-2"
         >
           Dátum
           {column.getIsSorted() === "asc" ? (

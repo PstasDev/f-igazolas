@@ -170,6 +170,18 @@ export function MulasztasokView() {
     return <Badge variant="outline">Késés</Badge>;
   };
 
+  const handleCoverageBadgeClick = (mulasztas: MulasztasDetailed) => {
+    if (mulasztas.is_covered) {
+      // Store the date for filtering in the igazolasok table
+      sessionStorage.setItem('datatable_date_from', mulasztas.datum);
+      sessionStorage.setItem('datatable_date_to', mulasztas.datum);
+      sessionStorage.setItem('datatable_expand_search', 'true');
+      
+      // Navigate to igazolások view
+      window.location.hash = 'igazolasok';
+    }
+  };
+
   const getCoverageBadge = (mulasztas: MulasztasDetailed) => {
     if (mulasztas.igazolt) {
       return (
@@ -181,7 +193,11 @@ export function MulasztasokView() {
     }
     if (mulasztas.is_covered) {
       return (
-        <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+        <Badge 
+          className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+          onClick={() => handleCoverageBadgeClick(mulasztas)}
+          title="Kattints a lefedő igazolás megtekintéséhez"
+        >
           <CheckCircle2 className="w-3 h-3 mr-1" />
           Lefedve igazolással
         </Badge>

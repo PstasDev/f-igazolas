@@ -10,16 +10,21 @@ import { SystemMessageProvider } from "./context/SystemMessageContext";
 import { ExperimentalFeaturesProvider } from "./context/ExperimentalFeaturesContext";
 import { Toaster } from "@/components/ui/sonner";
 
+// Optimize font loading
 const notoSans = Noto_Sans({
   variable: "--font-noto-sans",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  display: 'swap', // Add font-display: swap for better performance
+  preload: true,
 });
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
   subsets: ["latin"],
   weight: ["400", "600", "700"],
+  display: 'swap',
+  preload: true,
 });
 
 export const metadata: Metadata = {

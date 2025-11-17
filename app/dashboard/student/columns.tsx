@@ -29,7 +29,7 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide"
+          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide -ml-2"
         >
           Hiányzás típusa
           {column.getIsSorted() === "asc" ? (
@@ -82,7 +82,7 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide"
+          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide -ml-2"
         >
           Dátum
           {column.getIsSorted() === "asc" ? (
@@ -343,7 +343,7 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide"
+          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide -ml-2"
         >
           Státusz
           {column.getIsSorted() === "asc" ? (
@@ -395,7 +395,7 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide"
+          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide -ml-2"
         >
           Beküldve
           {column.getIsSorted() === "asc" ? (

@@ -2,13 +2,15 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { useEffect, useState } from "react"
+import { useEffect, useState, lazy, Suspense } from "react"
 import { useRouter } from "next/navigation"
 import { LoginForm } from "@/components/login-form"
 import { useRole } from "@/app/context/RoleContext"
 import { useTheme } from "@/app/context/ThemeContext"
-import Hyperspeed from "@/components/Hyperspeed"
 import { Spinner } from "@/components/ui/spinner"
+
+// Lazy load Hyperspeed to reduce initial bundle size
+const Hyperspeed = lazy(() => import("@/components/Hyperspeed"))
 
 export default function LoginPage() {
   const { isAuthenticated, isLoading } = useRole()
@@ -60,6 +62,7 @@ export default function LoginPage() {
               width={32}
               height={32}
               className="w-8 h-8 md:w-8 md:h-8 transition-all"
+              priority
               style={
                 isDark
                   ? { filter: 'brightness(0) saturate(100%) invert(100%)' }
@@ -88,12 +91,14 @@ export default function LoginPage() {
       </div>
       <div className="bg-black relative hidden lg:block overflow-hidden h-full">
         <div className="absolute inset-0 w-full h-full overflow-hidden">
-          <Hyperspeed 
-            effectOptions={
-              isSpecialMode ? {
-                colors: specialModeColors
-              } : {}
-            }/>
+          <Suspense fallback={<div className="w-full h-full bg-black" />}>
+            <Hyperspeed 
+              effectOptions={
+                isSpecialMode ? {
+                  colors: specialModeColors
+                } : {}
+              }/>
+          </Suspense>
           <div className="absolute inset-0 flex h-full items-center justify-center p-10 bg-black/30 z-10">
             <div className="max-w-md text-white">
               <h2 className="text-3xl font-bold mb-4 font-serif">Szent László Gimnázium</h2>
