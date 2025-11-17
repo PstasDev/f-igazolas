@@ -7,6 +7,7 @@ import {
   IconUsers,
   IconCalendarEvent,
   IconSettings,
+  IconSchool,
 } from "@tabler/icons-react"
 import Link from "next/link"
 import { Logo } from "@/components/Logo"
@@ -23,6 +24,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useRole } from "@/app/context/RoleContext"
+import { useExperimentalFeatures } from "@/app/context/ExperimentalFeaturesContext"
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   onViewChange?: (view: string) => void
@@ -31,6 +33,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 export function AppSidebar({ onViewChange, currentView, ...props }: AppSidebarProps) {
   const { user } = useRole()
+  const { ekretaMulasztasokEnabled } = useExperimentalFeatures()
   
   const isTeacher = user?.role === 'teacher'
   const isSuperuser = user?.isSuperuser || false
@@ -48,6 +51,13 @@ export function AppSidebar({ onViewChange, currentView, ...props }: AppSidebarPr
       url: "#igazolasok",
       icon: IconFileText,
     },
+    // Add Mulasztások menu item if experimental feature is enabled
+    ...(ekretaMulasztasokEnabled ? [{
+      title: "Mulasztások",
+      url: "#mulasztasok",
+      icon: IconSchool,
+      isExperimental: true,
+    }] : []),
     {
       title: "Naptár",
       url: "#naptar",

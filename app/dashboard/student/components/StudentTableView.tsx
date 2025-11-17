@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { DataTable } from '../data-table';
 import { studentColumns } from '../columns';
 import { apiClient } from '@/lib/api';
@@ -13,6 +14,7 @@ import { useFTVSync } from '@/hooks/use-ftv-sync';
 import { isAttendanceRequired } from '@/lib/attendance-utils';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { Plus } from 'lucide-react';
 
 interface StudentTableViewProps {
   studentId?: string;
@@ -171,11 +173,20 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
   return (
     <Card>
       <CardHeader>
-        <div>
-          <CardTitle><h1 className='text-xl'>{getFilterTitle()}</h1></CardTitle>
-          <CardDescription>
-            {getFilterDescription()}
-          </CardDescription>
+        <div className="flex flex-col md:flex-row items-start justify-between gap-4">
+          <div className="flex-1">
+            <CardTitle><h1 className='text-xl'>{getFilterTitle()}</h1></CardTitle>
+            <CardDescription>
+              {getFilterDescription()}
+            </CardDescription>
+          </div>
+          <Button 
+            onClick={() => window.location.hash = 'new'}
+            className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white dark:text-white transition-all duration-200 ease-in-out hover:transform hover:scale-[1.02] active:scale-[0.98] w-full md:w-min"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Új igazolás
+          </Button>
         </div>
       </CardHeader>
       <CardContent>

@@ -321,3 +321,48 @@ export interface SuperuserCheckResponse {
   is_superuser: boolean;
   username: string;
 }
+
+// Mulasztás (Absence) types - EXPERIMENTAL eKréta integration
+
+export interface MulasztasDetailed {
+  id: number;
+  datum: string; // ISO date string (YYYY-MM-DD)
+  ora: number; // Lesson number (1-8)
+  tantargy: string; // Subject name
+  tema: string; // Topic/theme
+  tipus: string; // 'Hiányzás' or 'Késés'
+  igazolt: boolean; // Justified in eKréta
+  tanorai_celu_mulasztas: boolean; // Lesson-purpose absence
+  igazolas_tipusa: string | null; // Justification type from eKréta
+  rogzites_datuma: string; // ISO date string - when registered in eKréta
+  mulasztas_ok: string | null; // Absence reason
+  mulasztas_statusz: string | null; // Absence status
+  uploaded_at: string; // ISO datetime string - when uploaded to system
+  matched_igazolas_id: number | null; // ID of matching igazolás (if covered)
+  is_covered: boolean; // Whether covered by an accepted igazolás
+}
+
+export interface MulasztasAnalysis {
+  total_mulasztasok: number;
+  igazolt_count: number; // Already justified in eKréta
+  nem_igazolt_count: number; // Not justified in eKréta
+  covered_by_igazolas: number; // Covered by accepted igazolások
+  not_covered: number; // NOT covered by any igazolás
+  mulasztasok: MulasztasDetailed[];
+}
+
+export interface MulasztasUploadResponse {
+  success: boolean;
+  message: string;
+  total_processed: number;
+  created_count: number;
+  updated_count: number;
+  error_count: number;
+  errors: string[]; // Max 10 error messages
+  analysis: MulasztasAnalysis;
+}
+
+export interface MulasztasDeleteResponse {
+  message: string;
+  deleted_count: number;
+}

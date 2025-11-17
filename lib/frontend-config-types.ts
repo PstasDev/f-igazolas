@@ -67,6 +67,13 @@ export interface FrontendConfig {
      * @default true
      */
     ftvSync?: boolean;
+
+    /**
+     * Enable eKréta mulasztások (absences) import and analysis
+     * EXPERIMENTAL FEATURE - Student only
+     * @default false
+     */
+    ekretaMulasztasok?: boolean;
   };
 
   /**
@@ -96,6 +103,7 @@ export const DEFAULT_FRONTEND_CONFIG: FrontendConfig = {
     bkkAlerts: true,
     bkkVehicleInfo: true,
     ftvSync: true,
+    ekretaMulasztasok: false,
   },
   dashboard: {
     smartFilter: false,

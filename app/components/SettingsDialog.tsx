@@ -96,6 +96,7 @@ import { Switch } from "@/components/ui/switch"
 import { useTheme } from "../context/ThemeContext"
 import { useRole } from "../context/RoleContext"
 import { useHeadingFont } from "../context/HeadingFontContext"
+import { useExperimentalFeatures } from "../context/ExperimentalFeaturesContext"
 import { apiClient } from "@/lib/api"
 import type { IgazolasTipus, Osztaly } from "@/lib/types"
 import { getIgazolasType } from "@/app/dashboard/types"
@@ -131,6 +132,7 @@ export function SettingsDialog() {
   const { theme, toggleTheme } = useTheme()
   const { headingFont, setHeadingFont } = useHeadingFont()
   const { user } = useRole()
+  const { ekretaMulasztasokEnabled, setEkretaMulasztasokEnabled } = useExperimentalFeatures()
   const [igazolasTipusok, setIgazolasTipusok] = React.useState<IgazolasTipus[]>([])
   const [myClass, setMyClass] = React.useState<Osztaly | null>(null)
   const [loading, setLoading] = React.useState(false)
@@ -496,19 +498,6 @@ export function SettingsDialog() {
         return (
           <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
             <h2 className="text-lg font-semibold">Kísérleti funkciók</h2>
-            {/* <div className="">
-              <Empty>
-                <EmptyHeader>
-                  <EmptyMedia variant="icon" className="bg-teal-500/30 dark:bg-teal-300/30 text-teal-500 dark:text-teal-300">
-                    <FlaskConicalOff className="" />
-                  </EmptyMedia>
-                  <EmptyTitle>Nincsenek kísérleti funkciók</EmptyTitle>
-                  <EmptyDescription>
-                    Jelenleg nincsenek elérhető kísérleti funkciók a számodra.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            </div> */}
             <ItemGroup className="gap-4">
               <Item variant="outline" className="bg-teal-50 dark:bg-teal-950/30 border-teal-200 dark:border-teal-800">
                 <ItemContent>
@@ -556,6 +545,41 @@ export function SettingsDialog() {
                   <Switch checked={true} disabled />
                 </ItemActions>
               </Item>
+
+              {!isTeacher && (
+                <Item variant="outline" className="bg-teal-50 dark:bg-teal-950/30 border-teal-200 dark:border-teal-800">
+                  <ItemContent>
+                    <ItemMedia className="mb-2">
+                      <div className="inline-flex items-center gap-1">
+                        <FlaskConical className="text-teal-500 drop-shadow-md shadow-teal-500 size-5" />
+                        <img 
+                          src="https://75a37cbe8a.clvaw-cdnwnd.com/8058bbc8c881bdb6799fafe8ef3094b7/200002106-716d2716d4/kr%C3%A9ta4.jpg?ph=75a37cbe8a" 
+                          alt="eKréta" 
+                          className="w-5 h-5 rounded object-cover"
+                        />
+                      </div>
+                    </ItemMedia>
+                    <ItemTitle>Mulasztások Importálása eKréta ellenőrzőből</ItemTitle>
+                    <ItemDescription>
+                      Töltsd fel az eKrétából exportált mulasztásaidat XLSX formátumban, és hasonlítsd össze a benyújtott igazolásaiddal.
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <Switch 
+                      checked={ekretaMulasztasokEnabled} 
+                      onCheckedChange={async (checked) => {
+                        try {
+                          await setEkretaMulasztasokEnabled(checked);
+                          toast.success(checked ? 'Mulasztások funkció bekapcsolva' : 'Mulasztások funkció kikapcsolva');
+                        } catch (error) {
+                          console.error('Failed to toggle eKréta mulasztások:', error);
+                          toast.error('Nem sikerült megváltoztatni a beállítást');
+                        }
+                      }}
+                    />
+                  </ItemActions>
+                </Item>
+              )}
 
             </ItemGroup>
           </div>

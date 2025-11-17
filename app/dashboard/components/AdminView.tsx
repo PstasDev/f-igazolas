@@ -53,7 +53,11 @@ const BREAK_TYPE_COLORS: Record<BreakType, string> = {
   egyeb: 'bg-gray-100 dark:bg-gray-900/30 border-gray-300',
 }
 
-export function AdminView() {
+interface AdminViewProps {
+  activeTab?: string
+}
+
+export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
   const { user } = useRole()
   const [schedule, setSchedule] = useState<TanevRendje | null>(null)
   const [classes, setClasses] = useState<Osztaly[]>([])

@@ -1,6 +1,7 @@
 "use client"
 
 import { useRole } from "@/app/context/RoleContext"
+import { useExperimentalFeatures } from "@/app/context/ExperimentalFeaturesContext"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Spinner } from "@/components/ui/spinner"
@@ -14,12 +15,14 @@ import { StudentTableView } from "./student/components/StudentTableView"
 import { TeacherTableView } from "./teacher/components/TeacherTableView"
 import { StudentsManagementView } from "./teacher/components/StudentsManagementView"
 import { MultiStepIgazolasForm } from "./student/components/MultiStepIgazolasForm"
+import { MulasztasokView } from "./student/components/MulasztasokView"
 import { CalendarView } from "./components/CalendarView"
 import { AdminView } from "./components/AdminView"
 import { SystemMessageBanner } from "@/app/components/SystemMessageBanner"
 
 export default function Page() {
   const { isAuthenticated, user, isLoading } = useRole()
+  const { ekretaMulasztasokEnabled } = useExperimentalFeatures()
   const router = useRouter()
   const [currentView, setCurrentView] = useState<string>('igazolasok')
 
@@ -72,6 +75,7 @@ export default function Page() {
       switch (currentView) {
         case 'igazolasok': return 'Igazolásaim'
         case 'new': return 'Új igazolás'
+        case 'mulasztasok': return 'Mulasztások (eKréta)'
         default: return 'Irányítópult'
       }
     }
@@ -129,6 +133,11 @@ export default function Page() {
               {currentView === 'new' && (
                 <div>
                   <MultiStepIgazolasForm />
+                </div>
+              )}
+              {currentView === 'mulasztasok' && ekretaMulasztasokEnabled && (
+                <div>
+                  <MulasztasokView />
                 </div>
               )}
             </>

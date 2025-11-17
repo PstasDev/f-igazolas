@@ -60,7 +60,52 @@ export function MultiStepIgazolasForm() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showBKKSelector, setShowBKKSelector] = useState(false);
+  const [prefilledFromMulasztasok, setPrefilledFromMulasztasok] = useState(false);
+  const [coveredMulasztasok, setCoveredMulasztasok] = useState<Array<{id: number, datum: string, ora: number, tantargy: string}>>([]);
   const router = useRouter();
+
+  // Load prefill data from sessionStorage
+  useEffect(() => {
+    const prefillData = sessionStorage.getItem('prefill_igazolas');
+    if (prefillData) {
+      try {
+        const parsed = JSON.parse(prefillData);
+        if (parsed.from_mulasztasok) {
+          // Extract date and period range from the prefilled datetime strings
+          const startDate = new Date(parsed.eleje);
+          const endDate = new Date(parsed.vege);
+          const dateStr = startDate.toISOString().split('T')[0];
+          
+          // Calculate period range from times
+          const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+          const endMinutes = endDate.getHours() * 60 + endDate.getMinutes();
+          const startPeriod = Math.max(0, Math.floor((startMinutes - 8 * 60) / 45));
+          const endPeriod = Math.min(8, Math.floor((endMinutes - 8 * 60) / 45));
+          
+          setFormData({
+            ...INITIAL_FORM_DATA,
+            date: dateStr,
+            periodRange: [startPeriod, endPeriod],
+            megjegyzes_diak: parsed.megjegyzes_diak || '',
+          });
+          
+          setPrefilledFromMulasztasok(true);
+          
+          // Load covered mulasztasok if available
+          if (parsed.covered_mulasztasok) {
+            setCoveredMulasztasok(parsed.covered_mulasztasok);
+          }
+          
+          toast.success('Űrlap kitöltve a kiválasztott mulasztásokból', { duration: 5000 });
+        }
+        
+        // Clear sessionStorage after loading
+        sessionStorage.removeItem('prefill_igazolas');
+      } catch (error) {
+        console.error('Failed to parse prefill data:', error);
+      }
+    }
+  }, []);
 
   // Load igazolás types on component mount
   useEffect(() => {
@@ -266,6 +311,73 @@ export function MultiStepIgazolasForm() {
     updateFormData({ periodRange: value });
   };
 
+  // Swipeable period selection
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<number | null>(null);
+
+  const handlePeriodMouseDown = (period: number) => {
+    setIsDragging(true);
+    setDragStart(period);
+    updateFormData({ periodRange: [period, period] });
+  };
+
+  const handlePeriodMouseEnter = (period: number) => {
+    if (isDragging && dragStart !== null) {
+      const start = Math.min(dragStart, period);
+      const end = Math.max(dragStart, period);
+      updateFormData({ periodRange: [start, end] });
+    }
+  };
+
+  const handlePeriodMouseUp = () => {
+    setIsDragging(false);
+    setDragStart(null);
+  };
+
+  const handlePeriodTouchStart = (period: number) => {
+    setIsDragging(true);
+    setDragStart(period);
+    updateFormData({ periodRange: [period, period] });
+  };
+
+  const handlePeriodTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || dragStart === null) return;
+    
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    const periodAttr = element?.getAttribute('data-period');
+    
+    if (periodAttr) {
+      const period = parseInt(periodAttr);
+      const start = Math.min(dragStart, period);
+      const end = Math.max(dragStart, period);
+      updateFormData({ periodRange: [start, end] });
+    }
+  };
+
+  const handlePeriodTouchEnd = () => {
+    setIsDragging(false);
+    setDragStart(null);
+  };
+
+  useEffect(() => {
+    // Add global mouse up listener to handle drag end outside periods
+    const handleGlobalMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        setDragStart(null);
+      }
+    };
+
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    document.addEventListener('touchend', handleGlobalMouseUp);
+    
+    return () => {
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.removeEventListener('touchend', handleGlobalMouseUp);
+    };
+  }, [isDragging]);
+
   const resetForm = () => {
     setFormData(INITIAL_FORM_DATA);
   };
@@ -336,6 +448,38 @@ export function MultiStepIgazolasForm() {
         <CardDescription>
           Töltsd ki a mezőket az igazolás beküldéséhez
         </CardDescription>
+        {prefilledFromMulasztasok && (
+          <div className="mt-4 p-4 bg-teal-50 dark:bg-teal-950 border border-teal-200 dark:border-teal-800 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center flex-shrink-0">
+                <Check className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-teal-900 dark:text-teal-100">
+                  ✨ Űrlap előre kitöltve mulasztásokból
+                </p>
+                <p className="text-sm text-teal-700 dark:text-teal-300 mt-1">
+                  Az időpontok és megjegyzés automatikusan ki lettek töltve a kiválasztott {coveredMulasztasok.length} mulasztás alapján.
+                  Ellenőrizd az adatokat és válaszd ki az igazolás típusát.
+                </p>
+                {coveredMulasztasok.length > 0 && (
+                  <details className="mt-2">
+                    <summary className="text-sm text-teal-600 dark:text-teal-400 cursor-pointer hover:underline">
+                      Lefedett mulasztások megtekintése ({coveredMulasztasok.length})
+                    </summary>
+                    <div className="mt-2 space-y-1 pl-4 border-l-2 border-teal-300 dark:border-teal-700">
+                      {coveredMulasztasok.map((m) => (
+                        <div key={m.id} className="text-xs text-teal-700 dark:text-teal-300">
+                          📅 {m.datum} • {m.ora}. óra • {m.tantargy}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-6">
@@ -452,8 +596,18 @@ export function MultiStepIgazolasForm() {
                 />
               </Field>
               
+              <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <p className="text-xs text-blue-700 dark:text-blue-300 text-center">
+                  💡 <strong>Alternatív módszer:</strong> Kattints és húzd az egérmutatót/ujjadat a tanórák fölött az időszak kiválasztásához (nincs rés!)
+                </p>
+              </div>
+              
               <TooltipProvider>
-                <div className="flex flex-wrap gap-2 justify-center">
+                <div 
+                  className="flex flex-wrap gap-2 justify-center select-none"
+                  onTouchMove={handlePeriodTouchMove}
+                  onTouchEnd={handlePeriodTouchEnd}
+                >
                   {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((h) => {
                     const isInRange = h >= formData.periodRange[0] && h <= formData.periodRange[1];
                     
@@ -471,7 +625,11 @@ export function MultiStepIgazolasForm() {
                       <Tooltip key={h}>
                         <TooltipTrigger asChild>
                           <span
-                            className={`inline-flex items-center justify-center w-10 h-10 text-sm font-bold rounded-lg cursor-help transition-all duration-500 ease-in-out transform ${bgColor} ${isInRange ? glowColor : ''} hover:scale-110`}
+                            data-period={h}
+                            onMouseDown={() => handlePeriodMouseDown(h)}
+                            onMouseEnter={() => handlePeriodMouseEnter(h)}
+                            onTouchStart={() => handlePeriodTouchStart(h)}
+                            className={`inline-flex items-center justify-center w-10 h-10 text-sm font-bold rounded-lg cursor-pointer transition-all duration-200 ease-in-out transform ${bgColor} ${isInRange ? glowColor : ''} hover:scale-110 active:scale-95 touch-none`}
                           >
                             {h}
                           </span>

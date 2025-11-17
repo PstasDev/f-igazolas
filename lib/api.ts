@@ -39,6 +39,9 @@ import type {
   SuperuserCheckResponse,
   TanitasiSzunet,
   Override,
+  MulasztasAnalysis,
+  MulasztasUploadResponse,
+  MulasztasDeleteResponse,
 } from './types';
 import { SystemMessage } from './system-message-types';
 
@@ -522,6 +525,135 @@ class APIClient {
     });
   }
 
+  // Phase 1 Admin endpoints - Password Management
+
+  async generatePassword(userId: number, sendEmail: boolean = false): Promise<{
+    password?: string;
+    message: string;
+    email_sent: boolean;
+  }> {
+    return this.fetchWithAuth(`/admin/users/${userId}/generate-password?send_email=${sendEmail}`, {
+      method: 'POST',
+    });
+  }
+
+  async resetPassword(userId: number, newPassword: string, sendEmail: boolean = false): Promise<{
+    message: string;
+    email_sent: boolean;
+  }> {
+    return this.fetchWithAuth(`/admin/users/${userId}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ new_password: newPassword, send_email: sendEmail }),
+    });
+  }
+
+  // Phase 1 Admin endpoints - Teacher Assignment
+
+  async assignTeacherToClass(classId: number, teacherId: number): Promise<{
+    message: string;
+    teacher: { id: number; username: string; name: string; is_superuser: boolean };
+    class_info: { id: number; name: string };
+  }> {
+    return this.fetchWithAuth(`/admin/classes/${classId}/assign-teacher`, {
+      method: 'POST',
+      body: JSON.stringify({ teacher_id: teacherId }),
+    });
+  }
+
+  async removeTeacherFromClass(classId: number, teacherId: number): Promise<{
+    message: string;
+    removed: boolean;
+  }> {
+    return this.fetchWithAuth(`/admin/classes/${classId}/remove-teacher/${teacherId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async moveOsztalyfonokToClass(classId: number): Promise<{
+    message: string;
+    previous_class: { id: number; name: string };
+    new_class: { id: number; name: string };
+  }> {
+    return this.fetchWithAuth('/admin/users/osztalyfonok/move-to-class', {
+      method: 'POST',
+      body: JSON.stringify({ class_id: classId }),
+    });
+  }
+
+  async getTeachersForClass(classId: number): Promise<{
+    teachers: Array<{
+      id: number;
+      username: string;
+      name: string;
+      is_superuser: boolean;
+      assigned_date: string | null;
+    }>;
+  }> {
+    return this.fetchWithAuth(`/admin/classes/${classId}/teachers`);
+  }
+
+  // Phase 1 Admin endpoints - Permissions Management
+
+  async promoteToSuperuser(userId: number): Promise<{
+    message: string;
+    user: { id: number; username: string; is_superuser: boolean };
+  }> {
+    return this.fetchWithAuth(`/admin/users/${userId}/promote-superuser`, {
+      method: 'POST',
+    });
+  }
+
+  async demoteFromSuperuser(userId: number): Promise<{
+    message: string;
+    user: { id: number; username: string; is_superuser: boolean };
+  }> {
+    return this.fetchWithAuth(`/admin/users/${userId}/demote-superuser`, {
+      method: 'POST',
+    });
+  }
+
+  async getUserPermissions(userId: number): Promise<{
+    user_id: number;
+    username: string;
+    is_superuser: boolean;
+    is_staff: boolean;
+    permissions: unknown[];
+    change_history: Array<{
+      changed_by: string;
+      changed_at: string;
+      action: 'promoted' | 'demoted';
+      previous_value: boolean;
+      new_value: boolean;
+    }>;
+  }> {
+    return this.fetchWithAuth(`/admin/users/${userId}/permissions`);
+  }
+
+  // Phase 1 Admin endpoints - Login Statistics
+
+  async getStudentLoginStats(): Promise<{
+    summary: {
+      total: number;
+      logged_in: number;
+      never_logged_in: number;
+    };
+    per_class: Array<{
+      class_id: number;
+      class_name: string;
+      total: number;
+      logged_in: number;
+      never_logged_in: number;
+      students: Array<{
+        id: number;
+        name: string;
+        last_login: string | null;
+        login_count: number;
+      }>;
+    }>;
+  }> {
+    return this.fetchWithAuth('/admin/students/login-stats');
+  }
+
   // System Messages endpoints (no authentication required)
 
   async getActiveSystemMessages(): Promise<SystemMessage[]> {
@@ -547,6 +679,67 @@ class APIClient {
       console.error('Error fetching system messages:', error);
       return [];
     }
+  }
+
+  // Mulasztások (eKréta Absences) endpoints - EXPERIMENTAL
+
+  /**
+   * Upload eKréta XLSX file and create/update Mulasztás records
+   * @param file - XLSX file from eKréta export
+   * @returns Upload response with analysis
+   */
+  async uploadEkretaMulasztasok(file: File): Promise<MulasztasUploadResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Use custom fetch for file upload (no JSON content-type)
+    const token = this.getToken();
+    const headers: Record<string, string> = {};
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${this.baseUrl}/mulasztas/upload-ekreta`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      const error = new Error(errorData.detail || 'Failed to upload file') as APIError;
+      error.status = response.status;
+      error.detail = errorData.detail;
+      throw error;
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get my uploaded mulasztások with analysis
+   * @param includeIgazolt - Include absences already justified in eKréta (default: false)
+   * @returns Analysis with mulasztások list
+   */
+  async getMyMulasztasok(includeIgazolt: boolean = false): Promise<MulasztasAnalysis> {
+    const params = new URLSearchParams();
+    if (includeIgazolt) {
+      params.append('include_igazolt', 'true');
+    }
+    
+    const url = `/mulasztas/my${params.toString() ? `?${params.toString()}` : ''}`;
+    return this.fetchWithAuth<MulasztasAnalysis>(url);
+  }
+
+  /**
+   * Delete all my uploaded mulasztások
+   * @returns Deletion response with count
+   */
+  async deleteMyMulasztasok(): Promise<MulasztasDeleteResponse> {
+    return this.fetchWithAuth<MulasztasDeleteResponse>('/mulasztas/my', {
+      method: 'DELETE',
+    });
   }
 }
 

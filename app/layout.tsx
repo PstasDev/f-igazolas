@@ -7,6 +7,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { HeadingFontProvider } from "./context/HeadingFontContext";
 import { RoleProvider } from "./context/RoleContext";
 import { SystemMessageProvider } from "./context/SystemMessageContext";
+import { ExperimentalFeaturesProvider } from "./context/ExperimentalFeaturesContext";
 import { Toaster } from "@/components/ui/sonner";
 
 const notoSans = Noto_Sans({
@@ -63,12 +64,14 @@ export default function RootLayout({
         <FrontendConfigProvider>
           <ThemeProvider>
             <HeadingFontProvider>
-              <RoleProvider>
-                <SystemMessageProvider>
-                  <PageTransition>{children}</PageTransition>
-                  <Toaster position="top-right" />
-                </SystemMessageProvider>
-              </RoleProvider>
+              <ExperimentalFeaturesProvider>
+                <RoleProvider>
+                  <SystemMessageProvider>
+                    <PageTransition>{children}</PageTransition>
+                    <Toaster position="top-right" />
+                  </SystemMessageProvider>
+                </RoleProvider>
+              </ExperimentalFeaturesProvider>
             </HeadingFontProvider>
           </ThemeProvider>
         </FrontendConfigProvider>
