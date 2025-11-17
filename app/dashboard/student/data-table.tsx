@@ -150,16 +150,19 @@ export function DataTable<TData, TValue>({
     if (dateFrom || dateTo) {
       filtered = filtered.filter((item) => {
         const itemDate = new Date(item.submittedAt);
+        // Normalize to midnight for date-only comparison
+        itemDate.setHours(0, 0, 0, 0);
         let isValid = true;
         
         if (dateFrom) {
           const fromDate = new Date(dateFrom);
+          fromDate.setHours(0, 0, 0, 0);
           isValid = isValid && itemDate >= fromDate;
         }
         
         if (dateTo) {
           const toDate = new Date(dateTo);
-          toDate.setHours(23, 59, 59, 999); // Include the entire end date
+          toDate.setHours(0, 0, 0, 0);
           isValid = isValid && itemDate <= toDate;
         }
         

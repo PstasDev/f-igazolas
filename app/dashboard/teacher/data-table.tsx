@@ -291,21 +291,20 @@ export function DataTable<TData, TValue>({
       filtered = filtered.filter((item) => {
         // Use the absence start date (startDate) instead of submission date
         const itemDate = new Date(item.startDate);
+        // Normalize to midnight for date-only comparison
+        itemDate.setHours(0, 0, 0, 0);
         let isValid = true;
         
         if (dateFrom) {
           const fromDate = new Date(dateFrom);
           fromDate.setHours(0, 0, 0, 0);
-          itemDate.setHours(0, 0, 0, 0);
           isValid = isValid && itemDate >= fromDate;
         }
         
         if (dateTo) {
           const toDate = new Date(dateTo);
-          toDate.setHours(23, 59, 59, 999);
-          const compareDate = new Date(item.startDate);
-          compareDate.setHours(0, 0, 0, 0);
-          isValid = isValid && compareDate <= toDate;
+          toDate.setHours(0, 0, 0, 0);
+          isValid = isValid && itemDate <= toDate;
         }
         
         return isValid;
