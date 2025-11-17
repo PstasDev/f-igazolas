@@ -12,12 +12,6 @@ const nextConfig: NextConfig = {
   // Performance optimizations
   compress: true, // Enable gzip compression
   
-  // Optimize fonts
-  optimizeFonts: true,
-  
-  // Enable SWC minification for faster builds and smaller bundles
-  swcMinify: true,
-  
   // Optimize production bundle
   productionBrowserSourceMaps: false, // Disable source maps in production for faster builds
   
