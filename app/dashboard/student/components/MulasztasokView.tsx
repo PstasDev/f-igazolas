@@ -834,7 +834,7 @@ export function MulasztasokView() {
                     {/* Preview of covered mulasztások */}
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                       <div className="flex items-start gap-3 mb-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-blue-500 dark:bg-blue-400 flex items-center justify-center flex-shrink-0">
                           <CheckCircle2 className="w-5 h-5 text-white" />
                         </div>
                         <div className="flex-1">

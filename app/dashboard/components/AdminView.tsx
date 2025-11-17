@@ -25,7 +25,6 @@ import { PermissionsManagement } from "@/components/admin/PermissionsManagement"
 import { TeacherAssignment } from "@/components/admin/TeacherAssignment"
 import { LoginStatistics } from "@/components/admin/LoginStatistics"
 import { ClassActivityHeatmap } from "@/components/admin/ClassActivityHeatmap"
-import { TeacherWorkloadDashboard } from "@/components/admin/TeacherWorkloadDashboard"
 import { ApprovalRatesAnalytics } from "@/components/admin/ApprovalRatesAnalytics"
 
 type BreakType = 'oszi' | 'teli' | 'tavaszi' | 'nyari' | 'erettsegi' | 'digitalis' | 'egyeb';
@@ -313,28 +312,34 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
       </div>
 
       <Tabs defaultValue={activeTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="user-mgmt" className="gap-2">
-            <IconKey className="h-4 w-4" />
-            Felhasználók
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-1">
+          <TabsTrigger value="user-mgmt" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <IconKey className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden xs:inline">Felhasználók</span>
+            <span className="xs:hidden">Felhaszn.</span>
           </TabsTrigger>
-          <TabsTrigger value="classes" className="gap-2">
-            <IconSchool className="h-4 w-4" />
-            Osztályok
+          <TabsTrigger value="classes" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <IconSchool className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden xs:inline">Osztályok</span>
+            <span className="xs:hidden">Oszt.</span>
           </TabsTrigger>
-          <TabsTrigger value="breaks" className="gap-2">
-            Szünetek
+          <TabsTrigger value="breaks" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <span className="hidden xs:inline">Szünetek</span>
+            <span className="xs:hidden">Szün.</span>
           </TabsTrigger>
-          <TabsTrigger value="overrides" className="gap-2">
-            Kivételek
+          <TabsTrigger value="overrides" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <span className="hidden xs:inline">Kivételek</span>
+            <span className="xs:hidden">Kivét.</span>
           </TabsTrigger>
-          <TabsTrigger value="stats" className="gap-2">
-            <IconChartBar className="h-4 w-4" />
-            Statisztikák
+          <TabsTrigger value="stats" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <IconChartBar className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Statisztikák</span>
+            <span className="sm:hidden">Stat.</span>
           </TabsTrigger>
-          <TabsTrigger value="analytics" className="gap-2">
-            <IconChartBar className="h-4 w-4" />
-            Elemzések
+          <TabsTrigger value="analytics" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <IconChartBar className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Elemzések</span>
+            <span className="sm:hidden">Elem.</span>
           </TabsTrigger>
         </TabsList>
 
@@ -381,8 +386,8 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
         <TabsContent value="classes" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div className="flex-1">
                   <CardTitle>Osztályok</CardTitle>
                   <CardDescription>
                     Az iskola osztályainak listája, tanárok hozzárendelése és FTV szinkronizáció
@@ -392,7 +397,7 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
                   onClick={handleFullFTVSync} 
                   disabled={syncing}
                   variant="default"
-                  className="gap-2 bg-neutral-900/5 hover:bg-neutral-900/10 dark:bg-neutral-50/5 dark:hover:bg-neutral-50/10"
+                  className="gap-2 bg-neutral-900/5 hover:bg-neutral-900/10 dark:bg-neutral-50/5 dark:hover:bg-neutral-50/10 w-full sm:w-auto flex-shrink-0"
                 >
                   {syncing ? (
                     <>
@@ -416,11 +421,11 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
             <CardContent>
               <div className="space-y-2">
                 {[...classes].sort((a, b) => a.nev.localeCompare(b.nev, 'hu')).map((osztaly) => (
-                  <div key={osztaly.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <IconSchool className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{osztaly.nev}</p>
+                  <div key={osztaly.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <IconSchool className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{osztaly.nev}</p>
                         <p className="text-sm text-muted-foreground">
                           {osztaly.tanulok.length} tanuló • {osztaly.osztalyfonokok.length} tanár
                         </p>
@@ -434,10 +439,11 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
                         setSelectedClassName(osztaly.nev)
                         setTeacherDialogOpen(true)
                       }}
-                      className="gap-2"
+                      className="gap-2 w-full sm:w-auto flex-shrink-0"
                     >
                       <IconUsers className="h-4 w-4" />
-                      Tanárok kezelése
+                      <span className="hidden sm:inline">Tanárok kezelése</span>
+                      <span className="sm:hidden">Tanárok</span>
                     </Button>
                   </div>
                 ))}
@@ -466,21 +472,21 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
             <CardContent>
               <div className="space-y-2">
                 {schedule?.tanitasi_szunetek.map((szunet) => (
-                  <div key={szunet.id} className={`flex items-center justify-between p-3 border rounded-lg ${BREAK_TYPE_COLORS[szunet.type]}`}>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                  <div key={szunet.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg gap-3 ${BREAK_TYPE_COLORS[szunet.type]}`}>
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-2xl">{BREAK_TYPE_EMOJIS[szunet.type]}</span>
                         <Badge variant="outline">{BREAK_TYPE_LABELS[szunet.type]}</Badge>
-                        <p className="font-medium">{szunet.name || BREAK_TYPE_LABELS[szunet.type]}</p>
+                        <p className="font-medium break-words">{szunet.name || BREAK_TYPE_LABELS[szunet.type]}</p>
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {format(new Date(szunet.from_date), 'yyyy. MM. dd.')} - {format(new Date(szunet.to_date), 'yyyy. MM. dd.')}
                       </p>
                       {szunet.description && (
-                        <p className="text-sm text-muted-foreground">{szunet.description}</p>
+                        <p className="text-sm text-muted-foreground break-words">{szunet.description}</p>
                       )}
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-shrink-0">
                       <Button size="sm" variant="ghost" onClick={() => openBreakDialog(szunet)}>
                         <IconEdit className="h-4 w-4" />
                       </Button>
@@ -520,9 +526,9 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
             <CardContent>
               <div className="space-y-2">
                 {schedule?.overrides.map((override) => (
-                  <div key={override.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                  <div key={override.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg gap-3">
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="outline" className={override.is_required ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}>
                           {override.is_required ? 'Kötelező' : 'Nem kötelező'}
                         </Badge>
@@ -533,9 +539,9 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
                           <Badge variant="secondary">Minden osztály</Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">{override.reason}</p>
+                      <p className="text-sm text-muted-foreground break-words">{override.reason}</p>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-shrink-0">
                       <Button size="sm" variant="ghost" onClick={() => openOverrideDialog(override)}>
                         <IconEdit className="h-4 w-4" />
                       </Button>
@@ -563,18 +569,13 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
         {/* Analytics Tab - Phase 2 */}
         <TabsContent value="analytics" className="space-y-4">
           <Tabs defaultValue="heatmap" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="heatmap">Aktivitás Heatmap</TabsTrigger>
-              <TabsTrigger value="workload">Tanári Munkaterhelés</TabsTrigger>
-              <TabsTrigger value="approval-rates">Elfogadási Ráta</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 gap-1">
+              <TabsTrigger value="heatmap" className="text-xs sm:text-sm">Aktivitás Heatmap</TabsTrigger>
+              <TabsTrigger value="approval-rates" className="text-xs sm:text-sm">Elfogadási Ráta</TabsTrigger>
             </TabsList>
 
             <TabsContent value="heatmap">
               <ClassActivityHeatmap />
-            </TabsContent>
-
-            <TabsContent value="workload">
-              <TeacherWorkloadDashboard />
             </TabsContent>
 
             <TabsContent value="approval-rates">

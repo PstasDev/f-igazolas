@@ -96,15 +96,15 @@ export function ApprovalRatesAnalytics() {
   }
 
   const getRateColor = (rate: number) => {
-    if (rate >= 80) return 'text-green-500'
-    if (rate >= 60) return 'text-yellow-500'
-    return 'text-red-500'
+    if (rate >= 80) return 'text-green-500 dark:text-green-400'
+    if (rate >= 60) return 'text-yellow-500 dark:text-yellow-400'
+    return 'text-red-500 dark:text-red-400'
   }
 
   const getRateIcon = (rate: number) => {
-    if (rate >= 80) return <TrendingUp className="h-4 w-4 text-green-500" />
-    if (rate >= 60) return <Minus className="h-4 w-4 text-yellow-500" />
-    return <TrendingDown className="h-4 w-4 text-red-500" />
+    if (rate >= 80) return <TrendingUp className="h-4 w-4 text-green-500 dark:text-green-400" />
+    if (rate >= 60) return <Minus className="h-4 w-4 text-yellow-500 dark:text-yellow-400" />
+    return <TrendingDown className="h-4 w-4 text-red-500 dark:text-red-400" />
   }
 
   return (
@@ -165,7 +165,7 @@ export function ApprovalRatesAnalytics() {
             {/* By Teacher */}
             <TabsContent value="teacher" className="space-y-2">
               {data.by_teacher.map((teacher) => (
-                <div key={teacher.teacher_id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition">
+                <div key={teacher.teacher_id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 dark:hover:bg-accent/30 transition">
                   <div className="flex-1">
                     <p className="font-medium">{teacher.teacher_name}</p>
                     <p className="text-sm text-muted-foreground">
@@ -188,7 +188,7 @@ export function ApprovalRatesAnalytics() {
             {/* By Type */}
             <TabsContent value="type" className="space-y-2">
               {data.by_type.map((type) => (
-                <div key={type.type_id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition">
+                <div key={type.type_id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 dark:hover:bg-accent/30 transition">
                   <div className="flex-1">
                     <p className="font-medium">{type.type_name}</p>
                     <p className="text-sm text-muted-foreground">
@@ -211,7 +211,7 @@ export function ApprovalRatesAnalytics() {
             {/* By Class */}
             <TabsContent value="class" className="space-y-2">
               {data.by_class.map((cls) => (
-                <div key={cls.class_id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition">
+                <div key={cls.class_id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 dark:hover:bg-accent/30 transition">
                   <div className="flex-1">
                     <p className="font-medium">{cls.class_name}</p>
                     <p className="text-sm text-muted-foreground">

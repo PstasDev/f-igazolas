@@ -930,6 +930,209 @@ class APIClient {
   }> {
     return this.fetchWithAuth(`/admin/analytics/approval-rates?from_date=${fromDate}&to_date=${toDate}&group_by=${groupBy}`);
   }
+
+  // Feature #10: Database Statistics
+  async getDatabaseStats(): Promise<unknown> {
+    return this.fetchWithAuth('/admin/system/database-stats');
+  }
+
+  // Feature #12: Storage Usage Monitoring
+  async getStorageStats(): Promise<unknown> {
+    return this.fetchWithAuth('/admin/system/storage-stats');
+  }
+
+  // Feature #19: Maintenance Mode
+  async getMaintenanceStatus(): Promise<unknown> {
+    return this.fetchWithAuth('/admin/maintenance/status');
+  }
+
+  async toggleMaintenanceMode(data: { message?: string }): Promise<unknown> {
+    return this.fetchWithAuth('/admin/maintenance/toggle', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Feature #11: API Performance Metrics
+  async getAPIMetrics(fromDate?: string, toDate?: string): Promise<unknown> {
+    const params = new URLSearchParams();
+    if (fromDate) params.append('from_date', fromDate);
+    if (toDate) params.append('to_date', toDate);
+    const query = params.toString();
+    return this.fetchWithAuth(`/admin/system/api-metrics${query ? `?${query}` : ''}`);
+  }
+
+  async refreshAPIMetrics(): Promise<unknown> {
+    return this.fetchWithAuth('/admin/system/api-metrics/refresh', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
+  // Feature #15: Manual Attendance Management
+  async createAttendance(data: unknown): Promise<unknown> {
+    return this.fetchWithAuth('/admin/attendance/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateAttendance(attendanceId: number, data: unknown): Promise<unknown> {
+    return this.fetchWithAuth(`/admin/attendance/${attendanceId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteAttendance(attendanceId: number): Promise<unknown> {
+    return this.fetchWithAuth(`/admin/attendance/${attendanceId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getStudentAttendance(studentId: number, fromDate?: string, toDate?: string): Promise<unknown> {
+    const params = new URLSearchParams();
+    if (fromDate) params.append('from_date', fromDate);
+    if (toDate) params.append('to_date', toDate);
+    const query = params.toString();
+    return this.fetchWithAuth(`/admin/attendance/student/${studentId}${query ? `?${query}` : ''}`);
+  }
+
+  // Feature #20: User Impersonation
+  async startImpersonation(userId: number): Promise<unknown> {
+    return this.fetchWithAuth('/admin/impersonate/start', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId }),
+    });
+  }
+
+  async stopImpersonation(): Promise<unknown> {
+    return this.fetchWithAuth('/admin/impersonate/stop', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
+  async getImpersonationStatus(): Promise<unknown> {
+    return this.fetchWithAuth('/admin/impersonate/status');
+  }
+
+  // Feature #28: Permission Matrix
+  async getPermissionMatrix(): Promise<unknown> {
+    return this.fetchWithAuth('/admin/igazolas-types/permission-matrix');
+  }
+
+  async updatePermission(data: { class_id: number; type_id: number; allowed: boolean }): Promise<unknown> {
+    return this.fetchWithAuth('/admin/igazolas-types/update-permission', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async bulkUpdatePermissions(data: { updates: Array<{ class_id: number; type_id: number; allowed: boolean }> }): Promise<unknown> {
+    return this.fetchWithAuth('/admin/igazolas-types/bulk-update-permissions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Feature #8: Multiple Class Support
+  async assignClassesToTeacher(teacherId: number, data: { class_ids: number[]; is_primary: boolean; delegation_end_date?: string }): Promise<unknown> {
+    return this.fetchWithAuth(`/admin/teachers/${teacherId}/assign-classes`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getTeacherClasses(teacherId: number): Promise<unknown> {
+    return this.fetchWithAuth(`/admin/teachers/${teacherId}/classes`);
+  }
+
+  // Feature #25: Group Absences
+  async getGroupEnabledTypes(): Promise<unknown> {
+    return this.fetchWithAuth('/igazolastipus/group-enabled');
+  }
+
+  async getEligibleClassmates(): Promise<unknown> {
+    return this.fetchWithAuth('/students/classmates-eligible');
+  }
+
+  async createGroupIgazolas(data: unknown): Promise<unknown> {
+    return this.fetchWithAuth('/igazolasok/create-group', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getGroupMembers(igazolasId: number): Promise<unknown> {
+    return this.fetchWithAuth(`/igazolasok/${igazolasId}/group-members`);
+  }
+
+  // Feature #27: Period Configuration
+  async getPeriodConfig(classId: number): Promise<unknown> {
+    return this.fetchWithAuth(`/classes/${classId}/period-config`);
+  }
+
+  async updatePeriodConfig(classId: number, data: { enabled_periods: number[] }): Promise<unknown> {
+    return this.fetchWithAuth(`/classes/${classId}/period-config`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getPeriodUsageAnalysis(classId: number): Promise<unknown> {
+    return this.fetchWithAuth(`/classes/${classId}/period-usage-analysis`);
+  }
+
+  // Feature #14: Academic Year Archival
+  async archiveAcademicYear(data: { year_start: number; archive_classes: boolean; archive_igazolasok: boolean }): Promise<unknown> {
+    return this.fetchWithAuth('/admin/academic-year/archive', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getArchivedYears(): Promise<unknown> {
+    return this.fetchWithAuth('/admin/academic-year/archived');
+  }
+
+  async getArchivedYearData(year: string): Promise<unknown> {
+    return this.fetchWithAuth(`/admin/academic-year/${year}/data`);
+  }
+
+  // Feature #9: Bulk Assignment
+  async createClassWithStudents(data: { tagozat: string; kezdes_eve: number; teacher_email: string; student_emails: string[] }): Promise<unknown> {
+    return this.fetchWithAuth('/admin/academic-year/create-class', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async bulkCreateStudents(data: { emails: string[]; class_id: number }): Promise<unknown> {
+    return this.fetchWithAuth('/admin/bulk/create-students-with-passwords', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Feature #26: Teacher-Created Igazolások
+  async getEligibleStudentsForIgazolas(): Promise<unknown> {
+    return this.fetchWithAuth('/teachers/students/eligible-for-igazolas');
+  }
+
+  async createIgazolasForStudent(data: unknown): Promise<unknown> {
+    return this.fetchWithAuth('/teachers/igazolasok/create-for-student', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async bulkCreateIgazolasForStudents(data: unknown): Promise<unknown> {
+    return this.fetchWithAuth('/teachers/igazolasok/create-bulk', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 // Export singleton instance

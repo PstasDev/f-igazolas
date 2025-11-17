@@ -105,18 +105,18 @@ export function LoginStatistics() {
         <CardContent>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-600">Összes diák</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Összes diák</p>
               <p className="text-3xl font-bold">{stats.summary.total}</p>
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-medium text-green-600">Bejelentkezett</p>
-              <p className="text-3xl font-bold text-green-600">{stats.summary.logged_in}</p>
-              <p className="text-xs text-gray-600">{loggedInPercentage}%</p>
+              <p className="text-sm font-medium text-green-600 dark:text-green-400">Bejelentkezett</p>
+              <p className="text-3xl font-bold text-green-600 dark:text-green-400">{stats.summary.logged_in}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">{loggedInPercentage}%</p>
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-medium text-red-600">Sohasem bejelentkezett</p>
-              <p className="text-3xl font-bold text-red-600">{stats.summary.never_logged_in}</p>
-              <p className="text-xs text-gray-600">
+              <p className="text-sm font-medium text-red-600 dark:text-red-400">Még soha nem jelentkezett be</p>
+              <p className="text-3xl font-bold text-red-600 dark:text-red-400">{stats.summary.never_logged_in}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 {stats.summary.total > 0
                   ? Math.round((stats.summary.never_logged_in / stats.summary.total) * 100)
                   : 0}%
@@ -130,9 +130,9 @@ export function LoginStatistics() {
               <span>Bejelentkezési arány</span>
               <span className="font-medium">{loggedInPercentage}%</span>
             </div>
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div
-                className="h-full bg-green-500 transition-all"
+                className="h-full bg-green-500 dark:bg-green-400 transition-all"
                 style={{ width: `${loggedInPercentage}%` }}
               />
             </div>
@@ -147,7 +147,7 @@ export function LoginStatistics() {
         {stats.per_class.map((classStats) => (
           <Card key={classStats.class_id}>
             <CardHeader
-              className="cursor-pointer hover:bg-gray-50 transition-colors"
+              className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               onClick={() =>
                 setExpandedClass(expandedClass === classStats.class_id ? null : classStats.class_id)
               }
@@ -161,12 +161,12 @@ export function LoginStatistics() {
                 </div>
                 <div className="flex gap-4 text-sm">
                   <div className="text-right">
-                    <p className="text-gray-600">Bejelentkezett</p>
-                    <p className="text-lg font-bold text-green-600">{classStats.logged_in}</p>
+                    <p className="text-gray-600 dark:text-gray-400">Bejelentkezett</p>
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">{classStats.logged_in}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-gray-600">Nem bejelentkezett</p>
-                    <p className="text-lg font-bold text-red-600">{classStats.never_logged_in}</p>
+                    <p className="text-gray-600 dark:text-gray-400">Nem bejelentkezett</p>
+                    <p className="text-lg font-bold text-red-600 dark:text-red-400">{classStats.never_logged_in}</p>
                   </div>
                 </div>
               </div>
@@ -183,13 +183,13 @@ export function LoginStatistics() {
                       .map((student) => (
                         <div
                           key={student.id}
-                          className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg"
+                          className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg"
                         >
                           <div className="flex-1">
                             <p className="font-medium text-sm">{student.name}</p>
-                            <p className="text-xs text-red-600">Sohasem bejelentkezett</p>
+                            <p className="text-xs text-red-600 dark:text-red-400">Még soha nem jelentkezett be</p>
                           </div>
-                          <span className="text-xs text-gray-600">ID: {student.id}</span>
+                          <span className="text-xs text-gray-600 dark:text-gray-400">ID: {student.id}</span>
                         </div>
                       ))}
 
@@ -199,11 +199,11 @@ export function LoginStatistics() {
                       .map((student) => (
                         <div
                           key={student.id}
-                          className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"
+                          className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900/50 rounded-lg"
                         >
                           <div className="flex-1">
                             <p className="font-medium text-sm">{student.name}</p>
-                            <p className="text-xs text-gray-600">
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
                               {student.last_login && (
                                 <>
                                   Utolsó bejelentkezés:{" "}
@@ -215,14 +215,14 @@ export function LoginStatistics() {
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-xs text-gray-600">Bejelentkezések</p>
-                            <p className="text-sm font-bold text-green-600">{student.login_count}</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">Bejelentkezések</p>
+                            <p className="text-sm font-bold text-green-600 dark:text-green-400">{student.login_count}</p>
                           </div>
                         </div>
                       ))}
                   </div>
                 ) : (
-                  <p className="text-center text-gray-600 py-4">Nincs diák ebben az osztályban</p>
+                  <p className="text-center text-gray-600 dark:text-gray-400 py-4">Nincs diák ebben az osztályban</p>
                 )}
               </CardContent>
             )}

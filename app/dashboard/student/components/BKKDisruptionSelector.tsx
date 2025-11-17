@@ -621,7 +621,7 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
                   {!userLocation && (
                     <Alert className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
                       <div className={`flex items-center gap-3 ${isMobile ? 'flex-col text-center' : ''}`}>
-                        <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center">
                           <Navigation className="h-4 w-4 text-white" />
                         </div>
                         <AlertDescription className={`${isMobile ? 'w-full' : 'flex items-center justify-between flex-1'}`}>
@@ -637,7 +637,7 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
                             onClick={requestLocation} 
                             disabled={isLoadingLocation}
                             size="sm"
-                            className="bg-blue-600 hover:bg-blue-700 text-white ml-4"
+                            className="bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white ml-4"
                           >
                             {isLoadingLocation ? (
                               <>
@@ -659,7 +659,7 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
                   {locationError && (
                     <Alert variant="destructive" className={!userLocation ? 'mt-3' : ''}>
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full bg-red-600 dark:bg-red-500 flex items-center justify-center">
                           <AlertTriangle className="h-4 w-4 text-white" />
                         </div>
                         <AlertDescription>
@@ -690,7 +690,7 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
                       <Button 
                         onClick={requestLocation} 
                         disabled={isLoadingLocation}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        className="bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white"
                       >
                         {isLoadingLocation ? (
                           <>

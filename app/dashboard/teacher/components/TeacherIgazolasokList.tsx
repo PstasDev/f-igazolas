@@ -246,7 +246,7 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
                   </p>
                   <div className="flex gap-2 mt-2">
                     {selectedIgazolas.tipus.iskolaerdeku && (
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700">Iskolai</Badge>
+                      <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">Iskolai</Badge>
                     )}
                     {selectedIgazolas.tipus.beleszamit && (
                       <Badge variant="outline" className="bg-amber-50 text-amber-700">Beleszámít</Badge>

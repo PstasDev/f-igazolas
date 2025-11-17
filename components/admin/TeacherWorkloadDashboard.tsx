@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * @deprecated This component has been removed from the Analytics section in the Administration menu.
+ * It is no longer actively maintained and may be removed in a future version.
+ * Last used: November 2025
+ */
+
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -76,9 +82,9 @@ export function TeacherWorkloadDashboard() {
 
   const getPendingColor = (pending: number, total: number) => {
     const ratio = total > 0 ? pending / total : 0
-    if (ratio > 0.3) return 'text-red-500'
-    if (ratio > 0.1) return 'text-yellow-500'
-    return 'text-green-500'
+    if (ratio > 0.3) return 'text-red-500 dark:text-red-400'
+    if (ratio > 0.1) return 'text-yellow-500 dark:text-yellow-400'
+    return 'text-green-500 dark:text-green-400'
   }
 
   return (
@@ -176,7 +182,7 @@ export function TeacherWorkloadDashboard() {
                 : 0
 
               return (
-                <div key={teacher.id} className="border rounded-lg p-4 hover:bg-accent/50 transition">
+                <div key={teacher.id} className="border rounded-lg p-4 hover:bg-accent/50 dark:hover:bg-accent/30 transition">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">

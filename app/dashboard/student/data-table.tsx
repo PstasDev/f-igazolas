@@ -355,19 +355,19 @@ export function DataTable<TData, TValue>({
                     </SelectItem>
                     <SelectItem value="pending">
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                        <div className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400"></div>
                         Függőben
                       </div>
                     </SelectItem>
                     <SelectItem value="approved">
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        <div className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400"></div>
                         Jóváhagyva
                       </div>
                     </SelectItem>
                     <SelectItem value="rejected">
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                        <div className="w-2 h-2 rounded-full bg-red-500 dark:bg-red-400"></div>
                         Elutasítva
                       </div>
                     </SelectItem>
@@ -821,7 +821,7 @@ export function DataTable<TData, TValue>({
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div className="p-3 rounded-lg bg-white/60 dark:bg-slate-800/60 border border-blue-200 dark:border-blue-700">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                    <div className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 animate-pulse"></div>
                                     <Label className="text-xs font-bold text-blue-900 dark:text-blue-200 uppercase">Státusz</Label>
                                   </div>
                                   <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Médiatanár által visszaigazolva</p>

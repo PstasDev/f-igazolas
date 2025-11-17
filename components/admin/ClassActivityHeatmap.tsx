@@ -25,12 +25,12 @@ interface HeatmapData {
 }
 
 const INTENSITY_COLORS = [
-  'bg-gray-100 dark:bg-gray-800',
-  'bg-green-100 dark:bg-green-900/30',
-  'bg-green-200 dark:bg-green-800/40',
-  'bg-green-300 dark:bg-green-700/50',
-  'bg-green-400 dark:bg-green-600/60',
-  'bg-green-500 dark:bg-green-500/70',
+  'bg-gray-100 dark:bg-gray-800/50 border-gray-300 dark:border-gray-700',
+  'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-800',
+  'bg-green-200 dark:bg-green-800/40 border-green-400 dark:border-green-700',
+  'bg-green-300 dark:bg-green-700/50 border-green-500 dark:border-green-600',
+  'bg-green-400 dark:bg-green-600/60 border-green-600 dark:border-green-500',
+  'bg-green-500 dark:bg-green-500/70 border-green-700 dark:border-green-400',
 ]
 
 export function ClassActivityHeatmap() {
@@ -156,7 +156,7 @@ export function ClassActivityHeatmap() {
                     {classData.data.map((point) => (
                       <div
                         key={point.date}
-                        className={`w-3 h-3 rounded-sm ${INTENSITY_COLORS[point.intensity]} border cursor-pointer transition-transform hover:scale-150 hover:z-10 relative`}
+                        className={`w-3 h-3 rounded-sm ${INTENSITY_COLORS[point.intensity]} cursor-pointer transition-transform hover:scale-150 hover:z-10 relative`}
                         onMouseEnter={() => setHoveredCell({ classId: classData.id, date: point.date, value: point.value })}
                         onMouseLeave={() => setHoveredCell(null)}
                         title={`${format(new Date(point.date), 'yyyy. MM. dd.', { locale: hu })}\n${metricLabels[metricType]}: ${point.value}`}

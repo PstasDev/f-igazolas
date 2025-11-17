@@ -908,7 +908,7 @@ export function SettingsDialog() {
           <Settings className="h-5 w-5" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="overflow-hidden p-0 md:max-h-[500px] md:max-w-[700px] lg:max-w-[800px]">
+      <DialogContent className="overflow-hidden p-0 md:max-w-[700px] lg:max-w-[800px]">
         <DialogTitle className="sr-only">Beállítások</DialogTitle>
         <DialogDescription className="sr-only">
           Itt tudod testreszabni a beállításokat.
@@ -962,7 +962,7 @@ export function SettingsDialog() {
                 ))}
             </SidebarContent>
           </Sidebar>
-          <main className="flex h-[480px] flex-1 flex-col overflow-hidden">
+          <main className="flex h-auto max-h-[80vh] md:h-[480px] flex-1 flex-col overflow-hidden">
             <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
               <div className="flex items-center gap-2 px-4 w-full">
                 {/* Mobile dropdown selector */}
