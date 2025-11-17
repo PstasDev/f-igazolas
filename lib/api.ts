@@ -58,7 +58,7 @@ interface APIError extends Error {
 
 // Simple in-memory cache for GET requests
 interface CacheEntry {
-  data: any;
+  data: unknown;
   timestamp: number;
 }
 
@@ -67,7 +67,7 @@ class APIClient {
   private onAuthError?: () => void;
   private cache: Map<string, CacheEntry> = new Map();
   private cacheTTL: number = 60000; // 1 minute cache TTL
-  private pendingRequests: Map<string, Promise<any>> = new Map(); // Request deduplication
+  private pendingRequests: Map<string, Promise<unknown>> = new Map(); // Request deduplication
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
@@ -128,7 +128,7 @@ class APIClient {
   }
   
   // Set cached data
-  private setCachedData(key: string, data: any): void {
+  private setCachedData(key: string, data: unknown): void {
     this.cache.set(key, {
       data,
       timestamp: Date.now()
