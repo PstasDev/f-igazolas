@@ -43,8 +43,9 @@ export function DatabaseStatistics() {
       const response = await apiClient.getDatabaseStats() as unknown as DatabaseStats
       setStats(response)
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } }
-      setError(error.response?.data?.detail || 'Failed to fetch database statistics')
+      console.error('Database stats fetch error:', err)
+      const error = err as { response?: { data?: { detail?: string } }; message?: string }
+      setError(error.response?.data?.detail || error.message || 'Failed to fetch database statistics')
     } finally {
       setLoading(false)
     }
@@ -89,6 +90,25 @@ export function DatabaseStatistics() {
   }
 
   if (!stats) return null
+
+  // Safety check for stats structure
+  if (!stats.total_counts) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <IconDatabase className="h-5 w-5" />
+            Database Statistics
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertDescription>Invalid stats data received from server</AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    )
+  }
 
   const chartData = [
     { name: 'Users', count: stats.total_counts.users },
@@ -139,7 +159,7 @@ export function DatabaseStatistics() {
             </div>
             <div className="p-3 sm:p-4 border rounded-lg">
               <div className="text-xs sm:text-sm text-muted-foreground">Database Size</div>
-              <div className="text-xl sm:text-2xl font-bold">{stats.database_size_mb.toFixed(2)} MB</div>
+              <div className="text-xl sm:text-2xl font-bold">{(stats.database_size_mb || 0).toFixed(2)} MB</div>
             </div>
           </div>
 
@@ -204,13 +224,13 @@ export function DatabaseStatistics() {
           <div>
             <h3 className="text-sm font-semibold mb-3">Largest Tables</h3>
             <div className="space-y-2">
-              {stats.largest_tables.map((table) => (
-                <div key={table.table} className="flex flex-col xs:flex-row xs:items-center justify-between p-3 border rounded-lg gap-2">
+              {stats.largest_tables.map((table, index) => (
+                <div key={table.name || index} className="flex flex-col xs:flex-row xs:items-center justify-between p-3 border rounded-lg gap-2">
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium truncate">{table.table}</div>
-                    <div className="text-xs sm:text-sm text-muted-foreground">{table.rows.toLocaleString()} rows</div>
+                    <div className="font-medium truncate">{table.name}</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground">{(table.count || 0).toLocaleString()} rows</div>
                   </div>
-                  <div className="text-sm font-semibold flex-shrink-0">{table.size_estimate_mb.toFixed(2)} MB</div>
+                  <div className="text-sm font-semibold flex-shrink-0">{(table.percentage || 0).toFixed(2)}%</div>
                 </div>
               ))}
             </div>

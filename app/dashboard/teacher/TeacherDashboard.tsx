@@ -11,11 +11,13 @@ import { DashboardHeader } from '@/app/dashboard/student/components/DashboardHea
 import { TeacherStatsCards } from '@/app/dashboard/teacher/components/TeacherStatsCards';
 import { TeacherTableView } from '@/app/dashboard/teacher/components/TeacherTableView';
 import { StudentsManagementView } from '@/app/dashboard/teacher/components/StudentsManagementView';
+import { TeacherCreateIgazolasView } from '@/app/dashboard/teacher/components/TeacherCreateIgazolasView';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PeriodConfiguration } from '@/components/admin/PeriodConfiguration';
 
 export default function TeacherDashboard() {
   const { user } = useRole();
-  const [selectedView, setSelectedView] = useState<'overview' | 'pending' | 'approved' | 'all' | 'students'>('overview');
+  const [selectedView, setSelectedView] = useState<'overview' | 'pending' | 'approved' | 'all' | 'students' | 'create' | 'periods'>('overview');
 
   return (
     <SidebarProvider
@@ -64,6 +66,15 @@ export default function TeacherDashboard() {
           )}
           {selectedView === 'students' && (
             <StudentsManagementView />
+          )}
+          {selectedView === 'create' && (
+            <TeacherCreateIgazolasView />
+          )}
+          {selectedView === 'periods' && user?.osztalyom && (
+            <PeriodConfiguration 
+              classId={user.osztalyom.id} 
+              className={user.osztalyom.nev}
+            />
           )}
         </div>
       </SidebarInset>

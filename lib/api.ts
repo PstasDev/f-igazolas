@@ -309,6 +309,10 @@ class APIClient {
     return this.fetchWithAuth<IgazolasTipus[]>('/igazolas-tipus');
   }
 
+  async getCategorizedIgazolasTipus(): Promise<{ categories: Array<{ key: string; name: string; emoji: string; types: IgazolasTipus[] }>; total_types: number }> {
+    return this.fetchWithAuth('/igazolas-tipus/categorized');
+  }
+
   async getIgazolasTipus(tipusId: number): Promise<IgazolasTipus> {
     return this.fetchWithAuth<IgazolasTipus>(`/igazolas-tipus/${tipusId}`);
   }
@@ -857,21 +861,6 @@ class APIClient {
     return this.fetchWithAuth('/admin/classes/overview-stats');
   }
 
-  async getTeacherWorkload(): Promise<{
-    teachers: Array<{
-      id: number;
-      name: string;
-      classes: string[];
-      total_students: number;
-      pending_count: number;
-      approved_today: number;
-      rejected_today: number;
-      avg_response_time_hours: number | null;
-    }>;
-  }> {
-    return this.fetchWithAuth('/admin/teachers/workload');
-  }
-
   async getTeacherActivity(teacherId: number, fromDate: string, toDate: string): Promise<{
     user: {
       id: number;
@@ -959,7 +948,7 @@ class APIClient {
     if (fromDate) params.append('from_date', fromDate);
     if (toDate) params.append('to_date', toDate);
     const query = params.toString();
-    return this.fetchWithAuth(`/admin/system/api-metrics${query ? `?${query}` : ''}`);
+    return this.fetchWithAuth(`/api/admin/system/api-metrics${query ? `?${query}` : ''}`);
   }
 
   async refreshAPIMetrics(): Promise<unknown> {
@@ -996,25 +985,6 @@ class APIClient {
     if (toDate) params.append('to_date', toDate);
     const query = params.toString();
     return this.fetchWithAuth(`/admin/attendance/student/${studentId}${query ? `?${query}` : ''}`);
-  }
-
-  // Feature #20: User Impersonation
-  async startImpersonation(userId: number): Promise<unknown> {
-    return this.fetchWithAuth('/admin/impersonate/start', {
-      method: 'POST',
-      body: JSON.stringify({ user_id: userId }),
-    });
-  }
-
-  async stopImpersonation(): Promise<unknown> {
-    return this.fetchWithAuth('/admin/impersonate/stop', {
-      method: 'POST',
-      body: JSON.stringify({}),
-    });
-  }
-
-  async getImpersonationStatus(): Promise<unknown> {
-    return this.fetchWithAuth('/admin/impersonate/status');
   }
 
   // Feature #28: Permission Matrix

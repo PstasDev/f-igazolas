@@ -51,6 +51,23 @@ export interface IgazolasTipus {
   beleszamit: boolean;
   iskolaerdeku: boolean;
   nem_fogado_osztalyok?: OsztalySimple[];
+  // Categorization fields
+  category: string;
+  category_emoji?: string;
+  has_sub_form: boolean;
+  sub_form_schema?: {
+    fields: Array<{
+      name: string;
+      type: 'text' | 'select' | 'textarea' | 'number';
+      label: string;
+      required: boolean;
+      placeholder?: string;
+      options?: Array<{ value: string; label: string }>;
+    }>;
+  };
+  display_order: number;
+  supports_group_absence: boolean;
+  requires_studios: boolean;
 }
 
 export interface Igazolas {
@@ -70,6 +87,7 @@ export interface Igazolas {
   diak_extra_ido_utana?: number;
   imgDriveURL?: string;
   bkk_verification?: object; // BKKVerification object
+  sub_form_data?: Record<string, string | number>; // New field
   allapot: 'Függőben' | 'Elfogadva' | 'Elutasítva';
   megjegyzes_tanar?: string;
   kretaban_rogzitettem: boolean;
@@ -86,6 +104,7 @@ export interface IgazolasCreateRequest {
   diak_extra_ido_utana?: number;
   imgDriveURL?: string;
   bkk_verification?: object; // BKKVerification object
+  sub_form_data?: Record<string, string | number>; // New field
 }
 
 export interface LoginRequest {

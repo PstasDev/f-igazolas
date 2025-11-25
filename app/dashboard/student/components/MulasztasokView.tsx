@@ -383,25 +383,50 @@ export function MulasztasokView() {
     },
   } satisfies ChartConfig;
 
-  // Radar chart for subjects
+  // Radar chart for subjects - separate by igazolt, covered, and not_covered
   const subjectData = useMemo(() => {
     if (!analysis) return [];
-    const subjectMap = new Map<string, number>();
+    
+    const subjectMap = new Map<string, { igazolt: number; covered: number; not_covered: number }>();
+    
     analysis.mulasztasok.forEach(m => {
-      if (!m.igazolt && !m.is_covered) {
-        subjectMap.set(m.tantargy, (subjectMap.get(m.tantargy) || 0) + 1);
+      if (!subjectMap.has(m.tantargy)) {
+        subjectMap.set(m.tantargy, { igazolt: 0, covered: 0, not_covered: 0 });
+      }
+      const stats = subjectMap.get(m.tantargy)!;
+      
+      if (m.igazolt) {
+        stats.igazolt += 1;
+      } else if (m.is_covered) {
+        stats.covered += 1;
+      } else {
+        stats.not_covered += 1;
       }
     });
+    
     return Array.from(subjectMap.entries())
-      .map(([subject, count]) => ({ subject, count }))
-      .sort((a, b) => b.count - a.count)
+      .map(([subject, stats]) => ({ 
+        subject, 
+        igazolt: stats.igazolt,
+        covered: stats.covered,
+        not_covered: stats.not_covered,
+      }))
+      .sort((a, b) => (b.igazolt + b.covered + b.not_covered) - (a.igazolt + a.covered + a.not_covered))
       .slice(0, 8); // Top 8 subjects
   }, [analysis]);
 
   const subjectChartConfig = {
-    count: {
-      label: "Mulasztások",
+    igazolt: {
+      label: "eKrétában igazolt",
+      color: "hsl(142, 76%, 36%)",
+    },
+    covered: {
+      label: "Lefedve igazolással",
       color: "hsl(221, 83%, 53%)",
+    },
+    not_covered: {
+      label: "Nincs lefedve",
+      color: "hsl(0, 84%, 60%)",
     },
   } satisfies ChartConfig;
 
@@ -634,7 +659,9 @@ export function MulasztasokView() {
               <Card className="lg:col-span-3">
                 <CardHeader className="items-center pb-4">
                   <CardTitle>Tantárgyak szerint</CardTitle>
-                  <CardDescription>Lefedetlen mulasztások megoszlása</CardDescription>
+                  <CardDescription>
+                    Mulasztások megoszlása tantárgyanként
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="pb-0">
                   <ChartContainer
@@ -642,21 +669,46 @@ export function MulasztasokView() {
                     className="mx-auto aspect-square max-h-[250px]"
                   >
                     <RadarChart data={subjectData}>
-                      <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                      <PolarGrid gridType="circle" />
+                      <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent indicator="line" />}
+                      />
                       <PolarAngleAxis dataKey="subject" />
+                      <PolarGrid radialLines={false} />
                       <Radar
-                        dataKey="count"
-                        fill="var(--color-count)"
-                        fillOpacity={0.6}
-                        dot={{ r: 4, fillOpacity: 1 }}
+                        dataKey="igazolt"
+                        fill="var(--color-igazolt)"
+                        fillOpacity={0}
+                        stroke="var(--color-igazolt)"
+                        strokeWidth={2}
+                      />
+                      <Radar
+                        dataKey="covered"
+                        fill="var(--color-covered)"
+                        fillOpacity={0}
+                        stroke="var(--color-covered)"
+                        strokeWidth={2}
+                      />
+                      <Radar
+                        dataKey="not_covered"
+                        fill="var(--color-not_covered)"
+                        fillOpacity={0}
+                        stroke="var(--color-not_covered)"
+                        strokeWidth={2}
                       />
                     </RadarChart>
                   </ChartContainer>
                 </CardContent>
                 <CardFooter className="flex-col gap-2 text-sm pt-4">
-                  <div className="text-muted-foreground text-center leading-none">
-                    Top {subjectData.length} tantárgy lefedetlen mulasztásokkal
+                  <div className="flex items-center gap-2 leading-none font-medium">
+                    {subjectData[0] && subjectData[0].not_covered > 0 && (
+                      <>
+                        Legtöbb lefedetlen: {subjectData[0].subject} <TrendingUp className="h-4 w-4 text-red-600" />
+                      </>
+                    )}
+                  </div>
+                  <div className="text-muted-foreground flex items-center gap-2 leading-none">
+                    Top {subjectData.length} tantárgy
                   </div>
                 </CardFooter>
               </Card>

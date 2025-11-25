@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Clock, CheckCircle2, FileText, Settings, Users } from 'lucide-react';
+import { Home, Clock, CheckCircle2, FileText, Settings, Users, FilePlus, Clock3 } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -19,7 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Image from 'next/image';
 
 interface TeacherSidebarProps {
-  onViewChange: (view: 'overview' | 'pending' | 'approved' | 'all' | 'students') => void;
+  onViewChange: (view: 'overview' | 'pending' | 'approved' | 'all' | 'students' | 'create' | 'periods') => void;
   currentView: string;
 }
 
@@ -34,7 +34,9 @@ export function TeacherSidebar({ onViewChange, currentView }: TeacherSidebarProp
   ];
 
   const secondaryNav = [
+    { title: 'Igazolás létrehozása', icon: FilePlus, view: 'create' as const },
     { title: 'Diákok', icon: Users, view: 'students' as const },
+    { title: 'Órák konfigurálása', icon: Clock3, view: 'periods' as const },
     { title: 'Beállítások', icon: Settings, view: 'settings' as const },
   ];
 
@@ -102,8 +104,8 @@ export function TeacherSidebar({ onViewChange, currentView }: TeacherSidebarProp
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       onClick={() => {
-                        if (item.view === 'students') {
-                          onViewChange('students');
+                        if (item.view !== 'settings') {
+                          onViewChange(item.view);
                         }
                       }}
                       isActive={currentView === item.view}

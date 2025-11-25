@@ -42,8 +42,9 @@ export function StorageUsageMonitoring() {
       const response = await apiClient.getStorageStats() as unknown as StorageStats
       setStats(response)
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } }
-      setError(error.response?.data?.detail || 'Failed to fetch storage statistics')
+      console.error('Storage stats fetch error:', err)
+      const error = err as { response?: { data?: { detail?: string } }; message?: string }
+      setError(error.response?.data?.detail || error.message || 'Failed to fetch storage statistics')
     } finally {
       setLoading(false)
     }
@@ -89,6 +90,25 @@ export function StorageUsageMonitoring() {
 
   if (!stats) return null
 
+  // Safety check for stats structure
+  if (!stats.breakdown) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <IconFileDatabase className="h-5 w-5" />
+            Storage Usage Monitoring
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertDescription>Invalid storage stats data received from server</AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    )
+  }
+
   const pieData = [
     { name: 'Images', value: stats.breakdown.images_mb },
     { name: 'BKK Data', value: stats.breakdown.bkk_data_mb },
@@ -115,9 +135,9 @@ export function StorageUsageMonitoring() {
           {/* Total Storage */}
           <div className="p-6 border rounded-lg bg-muted/50">
             <div className="text-sm text-muted-foreground mb-1">Total Storage Used</div>
-            <div className="text-4xl font-bold">{stats.total_storage_mb.toFixed(2)} MB</div>
+            <div className="text-4xl font-bold">{(stats.total_storage_mb || 0).toFixed(2)} MB</div>
             <div className="text-sm text-muted-foreground mt-1">
-              ≈ {(stats.total_storage_mb / 1024).toFixed(2)} GB
+              ≈ {((stats.total_storage_mb || 0) / 1024).toFixed(2)} GB
             </div>
           </div>
 
@@ -128,9 +148,9 @@ export function StorageUsageMonitoring() {
                 <IconPhoto className="h-4 w-4 text-blue-500" />
                 <div className="text-sm text-muted-foreground">Images</div>
               </div>
-              <div className="text-2xl font-bold">{stats.breakdown.images_mb.toFixed(2)} MB</div>
+              <div className="text-2xl font-bold">{(stats.breakdown.images_mb || 0).toFixed(2)} MB</div>
               <div className="text-xs text-muted-foreground mt-1">
-                {((stats.breakdown.images_mb / stats.total_storage_mb) * 100).toFixed(1)}% of total
+                {(stats.total_storage_mb && stats.breakdown.images_mb ? ((stats.breakdown.images_mb / stats.total_storage_mb) * 100).toFixed(1) : '0.0')}% of total
               </div>
             </div>
             <div className="p-4 border rounded-lg">
@@ -138,9 +158,9 @@ export function StorageUsageMonitoring() {
                 <IconFileText className="h-4 w-4 text-green-500" />
                 <div className="text-sm text-muted-foreground">BKK Data</div>
               </div>
-              <div className="text-2xl font-bold">{stats.breakdown.bkk_data_mb.toFixed(2)} MB</div>
+              <div className="text-2xl font-bold">{(stats.breakdown.bkk_data_mb || 0).toFixed(2)} MB</div>
               <div className="text-xs text-muted-foreground mt-1">
-                {((stats.breakdown.bkk_data_mb / stats.total_storage_mb) * 100).toFixed(1)}% of total
+                {(stats.total_storage_mb && stats.breakdown.bkk_data_mb ? ((stats.breakdown.bkk_data_mb / stats.total_storage_mb) * 100).toFixed(1) : '0.0')}% of total
               </div>
             </div>
             <div className="p-4 border rounded-lg">
@@ -148,9 +168,9 @@ export function StorageUsageMonitoring() {
                 <IconFileDatabase className="h-4 w-4 text-yellow-500" />
                 <div className="text-sm text-muted-foreground">Database</div>
               </div>
-              <div className="text-2xl font-bold">{stats.breakdown.database_mb.toFixed(2)} MB</div>
+              <div className="text-2xl font-bold">{(stats.breakdown.database_mb || 0).toFixed(2)} MB</div>
               <div className="text-xs text-muted-foreground mt-1">
-                {((stats.breakdown.database_mb / stats.total_storage_mb) * 100).toFixed(1)}% of total
+                {(stats.total_storage_mb && stats.breakdown.database_mb ? ((stats.breakdown.database_mb / stats.total_storage_mb) * 100).toFixed(1) : '0.0')}% of total
               </div>
             </div>
           </div>
