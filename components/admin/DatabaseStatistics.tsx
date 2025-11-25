@@ -225,12 +225,12 @@ export function DatabaseStatistics() {
             <h3 className="text-sm font-semibold mb-3">Largest Tables</h3>
             <div className="space-y-2">
               {stats.largest_tables.map((table, index) => (
-                <div key={table.name || index} className="flex flex-col xs:flex-row xs:items-center justify-between p-3 border rounded-lg gap-2">
+                <div key={table.table || index} className="flex flex-col xs:flex-row xs:items-center justify-between p-3 border rounded-lg gap-2">
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium truncate">{table.name}</div>
-                    <div className="text-xs sm:text-sm text-muted-foreground">{(table.count || 0).toLocaleString()} rows</div>
+                    <div className="font-medium truncate">{table.table}</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground">{table.rows.toLocaleString()} rows</div>
                   </div>
-                  <div className="text-sm font-semibold flex-shrink-0">{(table.percentage || 0).toFixed(2)}%</div>
+                  <div className="text-sm font-semibold flex-shrink-0">{table.size_estimate_mb.toFixed(2)} MB</div>
                 </div>
               ))}
             </div>
