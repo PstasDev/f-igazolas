@@ -70,10 +70,10 @@ export default function TeacherDashboard() {
           {selectedView === 'create' && (
             <TeacherCreateIgazolasView />
           )}
-          {selectedView === 'periods' && user?.osztalyom && (
+          {selectedView === 'periods' && user?.profile?.osztalyom && (
             <PeriodConfiguration 
-              classId={user.osztalyom.id} 
-              className={user.osztalyom.nev}
+              classId={user.profile.osztalyom.id} 
+              className={user.profile.osztalyom.nev}
             />
           )}
         </div>
