@@ -173,7 +173,7 @@ export function PermissionMatrix() {
 
   // Filter classes and types based on search
   const filteredClasses = data.classes.filter(cls => 
-    (cls.name || cls.nev || `${cls.kezdes_eve}${cls.tagozat}`).toLowerCase().includes(searchTerm.toLowerCase())
+    (cls.name || `${cls.kezdes_eve}${cls.tagozat}`).toLowerCase().includes(searchTerm.toLowerCase())
   )
   const filteredTypes = data.types.filter(type =>
     type.nev.toLowerCase().includes(searchTerm.toLowerCase())
@@ -288,7 +288,7 @@ export function PermissionMatrix() {
                   {filteredClasses.map(cls => (
                     <tr key={cls.id} className="hover:bg-muted/50">
                       <td className="p-3 font-medium sticky left-0 bg-background border-r">
-                        <span>{cls.name || cls.nev || `${cls.kezdes_eve}${cls.tagozat}`}</span>
+                        <span>{cls.name || `${cls.kezdes_eve}${cls.tagozat}`}</span>
                       </td>
                       {filteredTypes.map(type => {
                         const allowed = data.matrix[cls.id]?.[type.id] ?? true
