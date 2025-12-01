@@ -519,23 +519,43 @@ export function MultiStepIgazolasForm() {
               <Label htmlFor="date" className="text-sm">
                 {formData.isMultiDay ? 'Kezdő dátum' : 'Dátum'}
               </Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={(e) => {
-                  const newDate = e.target.value;
-                  updateFormData({ 
-                    date: newDate,
-                    // If multi-day and end date is before start date, update end date
-                    endDate: formData.isMultiDay && formData.endDate && formData.endDate < newDate 
-                      ? newDate 
-                      : formData.endDate
-                  });
-                }}
-                required
-                className="w-full"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="date"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => {
+                    const newDate = e.target.value;
+                    updateFormData({ 
+                      date: newDate,
+                      // If multi-day and end date is before start date, update end date
+                      endDate: formData.isMultiDay && formData.endDate && formData.endDate < newDate 
+                        ? newDate 
+                        : formData.endDate
+                    });
+                  }}
+                  required
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const today = new Date().toISOString().split('T')[0];
+                    updateFormData({ 
+                      date: today,
+                      // If multi-day and end date is before today, update end date
+                      endDate: formData.isMultiDay && formData.endDate && formData.endDate < today 
+                        ? today 
+                        : formData.endDate
+                    });
+                  }}
+                  className="px-3 whitespace-nowrap"
+                >
+                  Ma
+                </Button>
+              </div>
             </div>
             
             {formData.isMultiDay && (
@@ -575,31 +595,6 @@ export function MultiStepIgazolasForm() {
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-blue-500" />
                 <Label className="text-lg font-medium">Tanórák kiválasztása</Label>
-              </div>
-              
-              <Field>
-                <FieldTitle>Óraválasztó</FieldTitle>
-                <FieldDescription>
-                  Válaszd ki az időszakot: {" "}
-                  <span className="font-medium">{BELL_SCHEDULE[formData.periodRange[0]]?.name}</span> -{" "}
-                  <span className="font-medium">{BELL_SCHEDULE[formData.periodRange[1]]?.name}</span>
-                  {" "}({getConsecutivePeriods().map(i => BELL_SCHEDULE[i]?.name).join(', ')})
-                </FieldDescription>
-                <Slider
-                  value={formData.periodRange}
-                  onValueChange={handlePeriodRangeChange}
-                  max={BELL_SCHEDULE.length - 1}
-                  min={0}
-                  step={1}
-                  className="mt-4 w-full"
-                  aria-label="Period Range"
-                />
-              </Field>
-              
-              <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <p className="text-xs text-blue-700 dark:text-blue-300 text-center">
-                  💡 <strong>Alternatív módszer:</strong> Kattints és húzd az egérmutatót/ujjadat a tanórák fölött az időszak kiválasztásához (nincs rés!)
-                </p>
               </div>
               
               <TooltipProvider>
@@ -642,7 +637,7 @@ export function MultiStepIgazolasForm() {
                   })}
                 </div>
               </TooltipProvider>
-              
+
               <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
                 <p className="text-sm text-blue-800 dark:text-blue-200">
                   <strong>Kiválasztott órák:</strong>{' '}
