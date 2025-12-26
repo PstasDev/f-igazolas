@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '@/lib/api';
 import type { MulasztasAnalysis, MulasztasDetailed } from '@/lib/types';
+import { BELL_SCHEDULE } from '@/lib/periods';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -275,18 +276,28 @@ export function MulasztasokView() {
     // Get selected mulasztások and calculate time range
     const selected = analysis!.mulasztasok.filter(m => selectedMulasztasok.has(m.id));
     
-    // Calculate lesson start and end times
+    // Calculate lesson start and end times using actual bell schedule
     const getTimeForLesson = (date: string, ora: number) => {
-      const startMinutes = 8 * 60 + (ora - 1) * 45;
-      const endMinutes = startMinutes + 45;
+      // ora is the lesson number (0-8)
+      if (ora < 0 || ora >= BELL_SCHEDULE.length) {
+        // Invalid lesson number, fallback to rough estimate
+        const startMinutes = 8 * 60 + ora * 45;
+        const endMinutes = startMinutes + 45;
+        
+        const startHour = Math.floor(startMinutes / 60);
+        const startMin = startMinutes % 60;
+        const endHour = Math.floor(endMinutes / 60);
+        const endMin = endMinutes % 60;
+        
+        const startTime = `${date}T${startHour.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')}:00`;
+        const endTime = `${date}T${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}:00`;
+        
+        return { start: startTime, end: endTime };
+      }
       
-      const startHour = Math.floor(startMinutes / 60);
-      const startMin = startMinutes % 60;
-      const endHour = Math.floor(endMinutes / 60);
-      const endMin = endMinutes % 60;
-      
-      const startTime = `${date}T${startHour.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')}:00`;
-      const endTime = `${date}T${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}:00`;
+      const period = BELL_SCHEDULE[ora];
+      const startTime = `${date}T${period.start}:00`;
+      const endTime = `${date}T${period.end}:00`;
       
       return { start: startTime, end: endTime };
     };

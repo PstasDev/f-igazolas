@@ -126,6 +126,7 @@ export function DataTable<TData, TValue>({
   const isActivatingEasyProcessing = React.useRef(false)
   const hasInitializedSmartFilter = React.useRef(false)
   const [isDataReady, setIsDataReady] = React.useState(false)
+  const [searchValue, setSearchValue] = React.useState<string>("")
 
   // Track when data is ready (has loaded at least once)
   React.useEffect(() => {
@@ -252,13 +253,16 @@ export function DataTable<TData, TValue>({
     const igazolasokData = data as unknown as IgazolasTableRow[]
     let filtered = [...igazolasokData]
 
-    // Apply search filter from column filters
-    const nameFilter = columnFilters.find(f => f.id === "studentName")
-    const searchValue = nameFilter?.value as string
-    if (searchValue) {
+    // Apply search filter
+    if (searchValue && searchValue.trim()) {
+      const searchLower = searchValue.toLowerCase().trim()
       filtered = filtered.filter((item) =>
-        item.studentName.toLowerCase().includes(searchValue.toLowerCase()) ||
-        item.status?.toLowerCase().includes(searchValue.toLowerCase())
+        item.studentName.toLowerCase().includes(searchLower) ||
+        item.studentClass?.toLowerCase().includes(searchLower) ||
+        item.type.toLowerCase().includes(searchLower) ||
+        item.status?.toLowerCase().includes(searchLower) ||
+        item.allapot.toLowerCase().includes(searchLower) ||
+        item.teacherNote?.toLowerCase().includes(searchLower)
       )
     }
 
@@ -312,7 +316,7 @@ export function DataTable<TData, TValue>({
     }
 
     return filtered
-  }, [data, filterStatus, filterType, filterFTV, columnFilters, dateFrom, dateTo])
+  }, [data, filterStatus, filterType, filterFTV, searchValue, dateFrom, dateTo])
 
   const table = useReactTable({
     data: getFilteredData as TData[],
@@ -796,11 +800,9 @@ export function DataTable<TData, TValue>({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <Input
-                  placeholder="Diák neve vagy indoklás alapján..."
-                  value={(table.getColumn("studentName")?.getFilterValue() as string) ?? ""}
-                  onChange={(event) =>
-                    table.getColumn("studentName")?.setFilterValue(event.target.value)
-                  }
+                  placeholder="Diák neve, osztály, típus, státusz vagy megjegyzés alapján..."
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -904,9 +906,20 @@ export function DataTable<TData, TValue>({
             </div>
 
             {/* Active Filters */}
-            {(filterStatus !== "all" || filterType !== "all" || filterFTV !== "all" || dateFrom || dateTo) && (
+            {(filterStatus !== "all" || filterType !== "all" || filterFTV !== "all" || dateFrom || dateTo || searchValue) && (
               <div className="flex flex-wrap gap-2 items-center pt-4 border-t">
                 <span className="text-sm font-medium text-muted-foreground">Aktív szűrők:</span>
+                {searchValue && (
+                  <Badge variant="outline" className="gap-2">
+                    Keresés: {searchValue}
+                    <button 
+                      onClick={() => setSearchValue("")} 
+                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
+                    >
+                      <X className="h-3 w-3 cursor-pointer" />
+                    </button>
+                  </Badge>
+                )}
                 {filterStatus !== "all" && (
                   <Badge variant="outline" className="gap-2">
                     Státusz: {filterStatus === "pending" ? "Függőben" : filterStatus === "approved" ? "Jóváhagyva" : "Elutasítva"}
@@ -971,6 +984,7 @@ export function DataTable<TData, TValue>({
                     setFilterFTV("all")
                     setDateFrom("")
                     setDateTo("")
+                    setSearchValue("")
                   }}
                   className="h-7 px-2 text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 cursor-pointer"
                 >

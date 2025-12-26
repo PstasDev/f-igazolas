@@ -93,6 +93,8 @@ export function DataTable<TData, TValue>({
   const [isSearchCollapsed, setIsSearchCollapsed] = React.useState(true)
   const [selectedRow, setSelectedRow] = React.useState<IgazolasTableRow | null>(null)
   const [isOpen, setIsOpen] = React.useState(false)
+  const [searchValue, setSearchValue] = React.useState<string>("")
+  const [igazolasTipusok, setIgazolasTipusok] = React.useState<string[]>([])
 
   // Check for calendar date filters on mount
   React.useEffect(() => {
@@ -114,20 +116,33 @@ export function DataTable<TData, TValue>({
     }
   }, [])
 
+  // Fetch igazolas types on mount
+  React.useEffect(() => {
+    const fetchTypes = async () => {
+      try {
+        const { apiClient } = await import('@/lib/api')
+        const types = await apiClient.listIgazolasTipus()
+        setIgazolasTipusok(types.map(t => t.nev))
+      } catch (error) {
+        console.error('Failed to fetch igazolas types:', error)
+      }
+    }
+    fetchTypes()
+  }, [])
+
   // Get filtered data based on all filters
   const getFilteredData = React.useMemo(() => {
     const igazolasokData = data as unknown as IgazolasTableRow[]
     let filtered = [...igazolasokData]
 
-    // Apply search filter from column filters
-    const nameFilter = columnFilters.find(f => f.id === "date")
-    const searchValue = nameFilter?.value as string
-    if (searchValue) {
+    // Apply search filter
+    if (searchValue && searchValue.trim()) {
+      const searchLower = searchValue.toLowerCase().trim()
       filtered = filtered.filter((item) =>
-        item.date.toLowerCase().includes(searchValue.toLowerCase()) ||
-        item.type.toLowerCase().includes(searchValue.toLowerCase()) ||
-        item.status?.toLowerCase().includes(searchValue.toLowerCase()) ||
-        item.allapot.toLowerCase().includes(searchValue.toLowerCase())
+        item.date.toLowerCase().includes(searchLower) ||
+        item.type.toLowerCase().includes(searchLower) ||
+        item.status?.toLowerCase().includes(searchLower) ||
+        item.allapot.toLowerCase().includes(searchLower)
       )
     }
 
@@ -171,7 +186,7 @@ export function DataTable<TData, TValue>({
     }
 
     return filtered
-  }, [data, filterStatus, filterType, columnFilters, dateFrom, dateTo])
+  }, [data, filterStatus, filterType, searchValue, dateFrom, dateTo])
 
   // Helper function to display hours (visual period display like in table columns)
   const getHoursDisplay = (igazolas: IgazolasTableRow) => {
@@ -329,10 +344,8 @@ export function DataTable<TData, TValue>({
                 </svg>
                 <Input
                   placeholder="Keresés dátum, típus, indoklás vagy státusz alapján..."
-                  value={(table.getColumn("date")?.getFilterValue() as string) ?? ""}
-                  onChange={(event) =>
-                    table.getColumn("date")?.setFilterValue(event.target.value)
-                  }
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -383,12 +396,11 @@ export function DataTable<TData, TValue>({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Minden típus</SelectItem>
-                    <SelectItem value="studiós távollét">🎬 Studiós</SelectItem>
-                    <SelectItem value="médiás távollét">📺 Médiás</SelectItem>
-                    <SelectItem value="orvosi igazolás">🏥 Orvosi</SelectItem>
-                    <SelectItem value="családi okok">👨‍👩‍👧‍👦 Családi</SelectItem>
-                    <SelectItem value="közlekedés">🚇 Közlekedés</SelectItem>
-                    <SelectItem value="egyéb">📝 Egyéb</SelectItem>
+                    {igazolasTipusok.map((tipus) => (
+                      <SelectItem key={tipus} value={tipus}>
+                        {tipus}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -418,9 +430,20 @@ export function DataTable<TData, TValue>({
             </div>
 
             {/* Active Filters */}
-            {(filterStatus !== "all" || filterType !== "all" || dateFrom || dateTo) && (
+            {(filterStatus !== "all" || filterType !== "all" || dateFrom || dateTo || searchValue) && (
               <div className="flex flex-wrap gap-2 items-center pt-4 border-t">
                 <span className="text-sm font-medium text-muted-foreground">Aktív szűrők:</span>
+                {searchValue && (
+                  <Badge variant="outline" className="gap-2">
+                    Keresés: {searchValue}
+                    <button 
+                      onClick={() => setSearchValue("")} 
+                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
+                    >
+                      <X className="h-3 w-3 cursor-pointer" />
+                    </button>
+                  </Badge>
+                )}
                 {filterStatus !== "all" && (
                   <Badge variant="outline" className="gap-2">
                     Státusz: {filterStatus === "pending" ? "Függőben" : filterStatus === "approved" ? "Jóváhagyva" : "Elutasítva"}
@@ -473,6 +496,7 @@ export function DataTable<TData, TValue>({
                     setFilterType("all")
                     setDateFrom("")
                     setDateTo("")
+                    setSearchValue("")
                   }}
                   className="h-7 px-2 text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 cursor-pointer"
                 >
