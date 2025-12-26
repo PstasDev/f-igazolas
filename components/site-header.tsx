@@ -1,14 +1,13 @@
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { SettingsDialog } from "@/app/components/SettingsDialog"
-import packageJson from "@/../package.json"
 
 interface SiteHeaderProps {
   title?: string
 }
 
 export function SiteHeader({ title = "Igazoláskezelő" }: SiteHeaderProps) {
-  const version = packageJson?.version
+  const version = process.env.NEXT_PUBLIC_APP_VERSION
   
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
