@@ -207,13 +207,17 @@ export function MulasztasokView() {
       const allIgazolasok = await apiClient.getMyIgazolas();
       
       // Filter igazolások that cover this specific day
+      // Normalize dates to compare at day level (ignore time component)
+      const mulasztasDateStr = mulasztas.datum; // Format: YYYY-MM-DD
+      
       const relevantIgazolasok = allIgazolasok.filter((igazolas: Igazolas) => {
-        const igazolasStart = new Date(igazolas.eleje);
-        const igazolasEnd = new Date(igazolas.vege);
-        const mulasztasDate = new Date(mulasztas.datum);
+        // Extract date portion from datetime strings
+        const igazolasStartDate = igazolas.eleje.split('T')[0]; // Get YYYY-MM-DD part
+        const igazolasEndDate = igazolas.vege.split('T')[0]; // Get YYYY-MM-DD part
         
         // Check if the mulasztás date falls within the igazolás date range
-        return mulasztasDate >= igazolasStart && mulasztasDate <= igazolasEnd;
+        // Simple string comparison works for YYYY-MM-DD format
+        return mulasztasDateStr >= igazolasStartDate && mulasztasDateStr <= igazolasEndDate;
       });
       
       setDrawerIgazolasok(relevantIgazolasok);
