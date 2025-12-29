@@ -41,14 +41,7 @@ export function AdminUserSelector({
   const [searchTerm, setSearchTerm] = useState("")
   const [filteredUsers, setFilteredUsers] = useState<Profile[]>([])
 
-  // Load users on first open
-  useEffect(() => {
-    if (open && users.length === 0) {
-      loadUsers()
-    }
-  }, [open])
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -64,16 +57,23 @@ export function AdminUserSelector({
         // Students have a class
         filtered = profiles.filter(p => p.osztalyom)
       }
-      
+
       setUsers(filtered)
       setFilteredUsers(filtered)
-    } catch (err: unknown) {
-      const error = err as { detail?: string; message?: string }
-      setError(error.detail || error.message || "Hiba a felhasználók betöltése közben")
+    } catch (err) {
+      setError("Nem sikerült betölteni a felhasználókat")
+      console.error("Failed to load users:", err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [filterRole])
+
+  // Load users on first open
+  useEffect(() => {
+    if (open && users.length === 0) {
+      loadUsers()
+    }
+  }, [open, users.length, loadUsers])
 
   // Filter users based on search term
   useEffect(() => {

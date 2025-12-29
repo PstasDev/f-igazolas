@@ -127,7 +127,8 @@ export function FrontendConfigProvider({ children }: { children: React.ReactNode
       // No token, reset to defaults
       resetConfig();
     }
-  }, []); // Remove dependencies to avoid redundant loads
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally empty - only run on mount
 
   return (
     <FrontendConfigContext.Provider

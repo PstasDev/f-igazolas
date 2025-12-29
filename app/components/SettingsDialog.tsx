@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import {
   User,
   Paintbrush,
@@ -552,10 +553,12 @@ export function SettingsDialog() {
                     <ItemMedia className="mb-2">
                       <div className="inline-flex items-center gap-1">
                         <FlaskConical className="text-teal-500 drop-shadow-md shadow-teal-500 size-5" />
-                        <img 
+                        <Image 
                           src="https://75a37cbe8a.clvaw-cdnwnd.com/8058bbc8c881bdb6799fafe8ef3094b7/200002106-716d2716d4/kr%C3%A9ta4.jpg?ph=75a37cbe8a" 
                           alt="eKréta" 
                           className="w-5 h-5 rounded object-cover"
+                          width={20}
+                          height={20}
                         />
                       </div>
                     </ItemMedia>

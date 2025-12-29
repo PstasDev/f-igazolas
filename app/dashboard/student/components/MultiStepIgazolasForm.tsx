@@ -10,8 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
-import { Slider } from '@/components/ui/slider';
-import { Field, FieldDescription, FieldTitle } from '@/components/ui/field';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Calendar, Clock, FileText, Check, HelpCircle, ExternalLink, Folder, Share, Copy, Paperclip } from 'lucide-react';
@@ -307,10 +305,6 @@ export function MultiStepIgazolasForm() {
     }
   };
 
-  const handlePeriodRangeChange = (value: number[]) => {
-    updateFormData({ periodRange: value });
-  };
-
   // Swipeable period selection
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<number | null>(null);
@@ -327,11 +321,6 @@ export function MultiStepIgazolasForm() {
       const end = Math.max(dragStart, period);
       updateFormData({ periodRange: [start, end] });
     }
-  };
-
-  const handlePeriodMouseUp = () => {
-    setIsDragging(false);
-    setDragStart(null);
   };
 
   const handlePeriodTouchStart = (period: number) => {

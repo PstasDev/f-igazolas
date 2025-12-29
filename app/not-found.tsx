@@ -1,5 +1,3 @@
-import { SearchIcon } from "lucide-react"
-
 import {
   Empty,
   EmptyContent,
@@ -7,12 +5,6 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty"
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group"
-import { Kbd } from "@/components/ui/kbd"
 
 export default function NotFound() {
   return (

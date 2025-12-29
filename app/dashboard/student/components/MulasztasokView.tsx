@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '@/lib/api';
-import type { MulasztasAnalysis, MulasztasDetailed } from '@/lib/types';
-import { BELL_SCHEDULE } from '@/lib/periods';
+import type { MulasztasAnalysis, MulasztasDetailed, Igazolas } from '@/lib/types';
+import { BELL_SCHEDULE, getPeriodSchedule } from '@/lib/periods';
+import { getIgazolasType, isMultiDayAbsence, buildCalendarGrid, getDayOfWeekShort } from '@/app/dashboard/types';
+import type { IgazolasTableRow } from '@/app/dashboard/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -31,6 +33,11 @@ import {
   ChevronRight,
   TrendingUp,
   TrendingDown,
+  User,
+  ExternalLink,
+  Clapperboard,
+  RotateCcw,
+  FileText,
 } from 'lucide-react';
 import {
   Table,
@@ -44,6 +51,17 @@ import {
   Collapsible,
   CollapsibleContent,
 } from '@/components/ui/collapsible';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { BKKAlertVerificationCard } from '@/components/ui/BKKAlertVerificationCard';
+import { Label as UILabel } from '@/components/ui/label';
 import { ChartConfig, ChartContainer, ChartStyle, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Label, Pie, PieChart, Sector, PolarGrid, PolarRadiusAxis, RadialBar, RadialBarChart, PolarAngleAxis, Radar, RadarChart } from 'recharts';
 import { PieSectorDataItem } from 'recharts/types/polar/Pie';
@@ -72,6 +90,13 @@ export function MulasztasokView() {
   // Quick create igazolás state
   const [selectedMulasztasok, setSelectedMulasztasok] = useState<Set<number>>(new Set());
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+
+  // Drawer state for showing igazolások
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [drawerMulasztas, setDrawerMulasztas] = useState<MulasztasDetailed | null>(null);
+  const [drawerIgazolasok, setDrawerIgazolasok] = useState<Igazolas[]>([]);
+  const [drawerLoading, setDrawerLoading] = useState(false);
+  const [selectedIgazolas, setSelectedIgazolas] = useState<Igazolas | null>(null);
 
   // Fetch existing mulasztások on mount
   useEffect(() => {
@@ -171,15 +196,40 @@ export function MulasztasokView() {
     return <Badge variant="outline">Késés</Badge>;
   };
 
+  const fetchIgazolasokForDay = async (mulasztas: MulasztasDetailed) => {
+    setDrawerLoading(true);
+    setDrawerMulasztas(mulasztas);
+    setIsDrawerOpen(true);
+    setSelectedIgazolas(null);
+    
+    try {
+      // Fetch all igazolások for the student
+      const allIgazolasok = await apiClient.getMyIgazolas();
+      
+      // Filter igazolások that cover this specific day
+      const relevantIgazolasok = allIgazolasok.filter((igazolas: Igazolas) => {
+        const igazolasStart = new Date(igazolas.eleje);
+        const igazolasEnd = new Date(igazolas.vege);
+        const mulasztasDate = new Date(mulasztas.datum);
+        
+        // Check if the mulasztás date falls within the igazolás date range
+        return mulasztasDate >= igazolasStart && mulasztasDate <= igazolasEnd;
+      });
+      
+      setDrawerIgazolasok(relevantIgazolasok);
+    } catch (error) {
+      console.error('Failed to fetch igazolások:', error);
+      toast.error('Nem sikerült betölteni az igazolásokat');
+      setDrawerIgazolasok([]);
+    } finally {
+      setDrawerLoading(false);
+    }
+  };
+
   const handleCoverageBadgeClick = (mulasztas: MulasztasDetailed) => {
     if (mulasztas.is_covered) {
-      // Store the date for filtering in the igazolasok table
-      sessionStorage.setItem('datatable_date_from', mulasztas.datum);
-      sessionStorage.setItem('datatable_date_to', mulasztas.datum);
-      sessionStorage.setItem('datatable_expand_search', 'true');
-      
-      // Navigate to igazolások view
-      window.location.hash = 'igazolasok';
+      // Open drawer with igazolások for this day
+      fetchIgazolasokForDay(mulasztas);
     }
   };
 
@@ -1050,6 +1100,587 @@ export function MulasztasokView() {
           </CardContent>
         </Card>
       )}
+
+      {/* Drawer for showing igazolások */}
+      <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+        <SheetContent className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-4xl overflow-y-auto">
+          {drawerMulasztas && (
+            <>
+              <SheetHeader className="border-b pb-4 mb-6">
+                <SheetTitle className="text-2xl font-bold">
+                  {drawerMulasztas.datum} - Lefedő igazolások
+                </SheetTitle>
+                <SheetDescription className="text-sm text-muted-foreground">
+                  {drawerMulasztas.ora}. óra • {drawerMulasztas.tantargy}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="flex-1 overflow-y-auto">
+                <ScrollArea className="h-full">
+                  {drawerLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Spinner />
+                    </div>
+                  ) : selectedIgazolas ? (
+                    // Show detailed igazolás view
+                    <div className="p-6 space-y-6">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedIgazolas(null)}
+                        className="mb-4"
+                      >
+                        ← Vissza a listához
+                      </Button>
+
+                      {(() => {
+                        const row = mapIgazolasToTableRow(selectedIgazolas);
+                        return (
+                          <>
+                            {/* Student Data Section */}
+                            <Card className="border-2">
+                              <CardHeader className="bg-muted/50 pb-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="p-2 rounded-lg bg-primary/10">
+                                    <User className="h-5 w-5 text-primary" />
+                                  </div>
+                                  <div>
+                                    <CardTitle className="text-lg">Beküldött adatok</CardTitle>
+                                    <CardDescription className="text-xs">Az általad megadott információk</CardDescription>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              
+                              <CardContent className="pt-6 space-y-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div className="space-y-2 p-3 rounded-lg bg-muted/30">
+                                    <UILabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Neved</UILabel>
+                                    <p className="font-semibold text-lg">{row.studentName}</p>
+                                  </div>
+                                  <div className="space-y-2 p-3 rounded-lg bg-muted/30">
+                                    <UILabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Osztályod</UILabel>
+                                    <p className="font-semibold text-lg">{row.studentClass}</p>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div className="space-y-2 p-3 rounded-lg bg-muted/30">
+                                    <UILabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Hiányzás típusa</UILabel>
+                                    {(() => {
+                                      const typeInfo = getIgazolasType(row.type);
+                                      return (
+                                        <Badge 
+                                          variant="outline" 
+                                          className={`${typeInfo.color} inline-flex items-center gap-1.5 font-medium`}
+                                        >
+                                          <span className="text-sm">{typeInfo.emoji}</span>
+                                          {typeInfo.name}
+                                        </Badge>
+                                      );
+                                    })()}
+                                  </div>
+                                  <div className="space-y-2 p-3 rounded-lg bg-muted/30">
+                                    <UILabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                                      <Calendar className="h-3 w-3" />
+                                      Dátum
+                                    </UILabel>
+                                    {isMultiDayAbsence(row.startDate, row.endDate) ? (
+                                      <div className="space-y-1">
+                                        <p className="text-sm font-semibold">{new Date(row.startDate).toLocaleDateString('hu-HU')}</p>
+                                        <p className="text-xs text-muted-foreground">→</p>
+                                        <p className="text-sm font-semibold">{new Date(row.endDate).toLocaleDateString('hu-HU')}</p>
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                          {Math.ceil((new Date(row.endDate).getTime() - new Date(row.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} nap
+                                        </p>
+                                      </div>
+                                    ) : (
+                                      <p className="font-semibold text-base">{row.date}</p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="space-y-3 p-4 rounded-lg bg-muted/30">
+                                  <UILabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                    {isMultiDayAbsence(row.startDate, row.endDate) ? 'Érintett napok' : 'Érintett órák'}
+                                  </UILabel>
+                                  {isMultiDayAbsence(row.startDate, row.endDate) ? (
+                                    <div className="flex flex-col gap-1 w-fit">
+                                      {/* Day headers */}
+                                      <div className="grid grid-cols-7 gap-1">
+                                        {[1, 2, 3, 4, 5, 6, 0].map((dayIndex) => (
+                                          <div
+                                            key={dayIndex}
+                                            className="flex items-center justify-center text-[10px] font-semibold text-muted-foreground uppercase h-5 w-9"
+                                          >
+                                            {getDayOfWeekShort(dayIndex)}
+                                          </div>
+                                        ))}
+                                      </div>
+                                      
+                                      {/* Calendar weeks */}
+                                      {buildCalendarGrid(row.startDate, row.endDate).map((week, weekIndex) => (
+                                        <div key={weekIndex} className="grid grid-cols-7 gap-1">
+                                          {week.map((day, dayIndex) => {
+                                            let bgColor = "period-inactive";
+                                            let glowColor = "";
+                                            let tooltipText = `${day.date.toLocaleDateString('hu-HU', { weekday: 'long' })}\n${day.date.toLocaleDateString('hu-HU')}`;
+                                            
+                                            if (day.isInRange) {
+                                              if (row.allapot === 'Függőben') {
+                                                bgColor = "period-pending";
+                                                glowColor = "period-glow-blue";
+                                                tooltipText += "\nEllenőrzésre vár";
+                                              } else if (row.allapot === 'Elfogadva') {
+                                                bgColor = "period-approved";
+                                                glowColor = "period-glow-green";
+                                                tooltipText += "\nJóváhagyva";
+                                              } else if (row.allapot === 'Elutasítva') {
+                                                bgColor = "period-rejected";
+                                                glowColor = "period-glow-red";
+                                                tooltipText += "\nElutasítva";
+                                              }
+                                            } else {
+                                              tooltipText = `${day.date.toLocaleDateString('hu-HU', { weekday: 'long' })}\n${day.date.toLocaleDateString('hu-HU')}\nNem érintett`;
+                                            }
+                                            
+                                            return (
+                                              <TooltipProvider key={dayIndex}>
+                                                <Tooltip>
+                                                  <TooltipTrigger asChild>
+                                                    <span
+                                                      className={`inline-flex items-center justify-center w-9 h-9 text-xs font-bold rounded-full cursor-help transition-all duration-300 ease-in-out transform ${bgColor} ${day.isInRange ? glowColor : ''} hover:scale-110`}
+                                                    >
+                                                      {day.dayOfMonth}
+                                                    </span>
+                                                  </TooltipTrigger>
+                                                  <TooltipContent className="bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 border-slate-600 dark:border-slate-400 font-medium text-xs whitespace-pre-line max-w-xs shadow-lg">
+                                                    {tooltipText}
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              </TooltipProvider>
+                                            );
+                                          })}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    getHoursDisplay(row)
+                                  )}
+                                </div>
+
+                                {row.fromFTV && (
+                                  <Card className="border-2 border-blue-300 dark:border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/50 dark:to-cyan-950/50">
+                                    <CardHeader className="pb-4 bg-blue-100/50 dark:bg-blue-900/30">
+                                      <div className="flex items-start gap-3">
+                                        <div className="p-3 rounded-xl bg-blue-600 dark:bg-blue-500 shadow-lg">
+                                          <Clapperboard className="h-6 w-6 text-white" />
+                                        </div>
+                                        <div className="flex-1">
+                                          <CardTitle className="text-xl text-blue-900 dark:text-blue-200 flex items-center gap-2">
+                                            FTV Sync
+                                            <Badge variant="outline" className="bg-blue-200 text-blue-900 border-blue-400 dark:bg-blue-800 dark:text-blue-100 dark:border-blue-600 text-xs">
+                                              Médiatanár által igazolva
+                                            </Badge>
+                                          </CardTitle>
+                                          <CardDescription className="text-blue-700 dark:text-blue-400 mt-1">
+                                            Forgatásszervezői Platform - Automatikus szinkronizálás
+                                          </CardDescription>
+                                        </div>
+                                      </div>
+                                    </CardHeader>
+                                    <CardContent className="pt-4 space-y-4">
+                                      {/* Main FTV Info */}
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div className="p-3 rounded-lg bg-white/60 dark:bg-slate-800/60 border border-blue-200 dark:border-blue-700">
+                                          <div className="flex items-center gap-2 mb-1">
+                                            <div className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 animate-pulse"></div>
+                                            <UILabel className="text-xs font-bold text-blue-900 dark:text-blue-200 uppercase">Státusz</UILabel>
+                                          </div>
+                                          <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Médiatanár által visszaigazolva</p>
+                                        </div>
+                                        <div className="p-3 rounded-lg bg-white/60 dark:bg-slate-800/60 border border-blue-200 dark:border-blue-700">
+                                          <div className="flex items-center gap-2 mb-1">
+                                            <Clapperboard className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                            <UILabel className="text-xs font-bold text-blue-900 dark:text-blue-200 uppercase">Forrás</UILabel>
+                                          </div>
+                                          <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">FTV Forgatásszervező Platform</p>
+                                        </div>
+                                      </div>
+
+                                      {/* Important Note */}
+                                      <Alert className="border-cyan-300 dark:border-cyan-600 bg-cyan-50/50 dark:bg-cyan-900/20">
+                                        <AlertCircle className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                                        <AlertTitle className="text-cyan-900 dark:text-cyan-300 font-semibold">Fontos információ</AlertTitle>
+                                        <AlertDescription className="text-cyan-800 dark:text-cyan-400 text-sm">
+                                          Ez az igazolás közvetlenül a Forgatásszervezői Platformról került importálásra. 
+                                          A médiatanár már visszaigazolta a jelenléted a forgatáson.
+                                        </AlertDescription>
+                                      </Alert>
+
+                                      {/* Student Correction Section - Only show if there are extra minutes */}
+                                      {((row.minutesBefore ?? 0) > 0 || (row.minutesAfter ?? 0) > 0) && (
+                                        <div className="p-4 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-2 border-purple-300 dark:border-purple-600">
+                                          <div className="flex items-center gap-2 mb-3">
+                                            <div className="p-2 rounded-lg bg-purple-600 dark:bg-purple-500">
+                                              <User className="h-4 w-4 text-white" />
+                                            </div>
+                                            <div>
+                                              <p className="font-bold text-purple-900 dark:text-purple-200">Általad megadott extra időszak</p>
+                                              <p className="text-xs text-purple-700 dark:text-purple-400">Osztályfőnöki jóváhagyásra vár</p>
+                                            </div>
+                                          </div>
+                                          <div className="space-y-2">
+                                            {(row.minutesBefore ?? 0) > 0 && (
+                                              <div className="flex items-center gap-3 p-2 rounded-md bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-700">
+                                                <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-purple-600 dark:bg-purple-500 text-white font-bold text-lg">
+                                                  {row.minutesBefore}
+                                                </div>
+                                                <div>
+                                                  <p className="text-sm font-semibold text-purple-900 dark:text-purple-200">Forgatás előtt</p>
+                                                  <p className="text-xs text-purple-700 dark:text-purple-400">Utazási idő, előkészület</p>
+                                                </div>
+                                              </div>
+                                            )}
+                                            {(row.minutesAfter ?? 0) > 0 && (
+                                              <div className="flex items-center gap-3 p-2 rounded-md bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-700">
+                                                <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-purple-600 dark:bg-purple-500 text-white font-bold text-lg">
+                                                  {row.minutesAfter}
+                                                </div>
+                                                <div>
+                                                  <p className="text-sm font-semibold text-purple-900 dark:text-purple-200">Forgatás után</p>
+                                                  <p className="text-xs text-purple-700 dark:text-purple-400">Hazautazás, lezárás</p>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="mt-3 p-2 rounded bg-purple-200/50 dark:bg-purple-800/30">
+                                            <p className="text-xs text-purple-800 dark:text-purple-300">
+                                              <strong>Összesen:</strong> {(row.minutesBefore ?? 0) + (row.minutesAfter ?? 0)} perc extra időszak
+                                            </p>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </CardContent>
+                                  </Card>
+                                )}
+
+                                {/* Indoklás / Korrekció section - only show if there's content */}
+                                {((row.correctedHours && row.correctedHours.length > 0) || (!row.fromFTV && row.status)) && (
+                                  <div className="space-y-2 p-4 rounded-lg bg-muted/30">
+                                    {row.correctedHours && row.correctedHours.length > 0 ? (
+                                      <>
+                                        <UILabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Korrekció indoklása</UILabel>
+                                        <p className="text-sm leading-relaxed">{row.status || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <UILabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Indoklás</UILabel>
+                                        <p className="text-sm leading-relaxed">{row.status || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+
+                                {(row.imageUrl || row.imgDriveURL) && (
+                                  <div className="space-y-2">
+                                    <UILabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                                      <svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" className="h-3 w-3">
+                                        <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+                                        <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+                                        <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+                                        <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+                                        <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+                                        <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+                                      </svg>
+                                      Mellékelt kép (Google Drive)
+                                    </UILabel>
+                                    <Button 
+                                      variant="outline" 
+                                      size="lg" 
+                                      className="w-full h-auto py-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border-emerald-300"
+                                      onClick={() => {
+                                        const imageUrl = row.imageUrl || row.imgDriveURL;
+                                        if (imageUrl) {
+                                          window.open(imageUrl, '_blank', 'noopener,noreferrer');
+                                        }
+                                      }}
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                                          <svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
+                                            <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+                                            <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+                                            <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+                                            <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+                                            <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+                                            <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+                                          </svg>
+                                        </div>
+                                        <div className="text-left">
+                                          <p className="font-medium">Kép megtekintése Google Drive-on</p>
+                                          <p className="text-xs text-muted-foreground">Kattints a megnyitáshoz</p>
+                                        </div>
+                                        <ExternalLink className="h-4 w-4 ml-auto text-muted-foreground" />
+                                      </div>
+                                    </Button>
+                                  </div>
+                                )}
+
+                                <div className="space-y-2 p-3 rounded-lg bg-muted/30 border">
+                                  <UILabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                                    {row.fromFTV ? (
+                                      <>
+                                        <RotateCcw className="h-3 w-3" />
+                                        Utoljára szinkronizálva
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Clock className="h-3 w-3" />
+                                        Rögzítés dátuma
+                                      </>
+                                    )}
+                                  </UILabel>
+                                  <p className="text-sm font-medium">
+                                    {new Date(row.submittedAt).toLocaleString('hu-HU', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric',
+                                    })}
+                                  </p>
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            {/* BKK Verification Section */}
+                            {row.bkk_verification && (
+                              <BKKAlertVerificationCard bkkVerificationJson={row.bkk_verification} />
+                            )}
+
+                            {/* Teacher Note Section - if exists */}
+                            {row.teacherNote && (
+                              <Card className="border-2 border-primary/20">
+                                <CardHeader className="bg-primary/5 pb-4">
+                                  <CardTitle className="text-lg">Osztályfőnök megjegyzése</CardTitle>
+                                </CardHeader>
+                                <CardContent className="pt-6">
+                                  <p className="text-sm leading-relaxed">{row.teacherNote}</p>
+                                </CardContent>
+                              </Card>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    // Show list of igazolások
+                    <div className="p-6 space-y-4">
+                      {drawerIgazolasok.length === 0 ? (
+                        <div className="text-center py-12">
+                          <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                          <h3 className="text-lg font-semibold mb-2">Nincsenek igazolások</h3>
+                          <p className="text-muted-foreground">
+                            Erre a napra még nincsenek beküldött igazolások.
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="mb-4">
+                            <h3 className="text-lg font-semibold">
+                              {drawerIgazolasok.length} igazolás található erre a napra
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              Kattints egy igazolásra a részletek megtekintéséhez
+                            </p>
+                          </div>
+
+                          <div className="space-y-3">
+                            {drawerIgazolasok.map((igazolas) => {
+                              const typeInfo = getIgazolasType(igazolas.tipus.nev);
+                              const getStatusBadge = (allapot: string) => {
+                                if (allapot === 'Függőben') {
+                                  return <Badge variant="pending">Függőben</Badge>;
+                                } else if (allapot === 'Elfogadva') {
+                                  return <Badge variant="approved">Elfogadva</Badge>;
+                                } else if (allapot === 'Elutasítva') {
+                                  return <Badge variant="rejected">Elutasítva</Badge>;
+                                }
+                                return <Badge variant="secondary">Ismeretlen</Badge>;
+                              };
+
+                              return (
+                                <Card
+                                  key={igazolas.id}
+                                  className="cursor-pointer hover:bg-muted/50 transition-colors border-2"
+                                  onClick={() => setSelectedIgazolas(igazolas)}
+                                >
+                                  <CardContent className="p-4">
+                                    <div className="flex items-start justify-between gap-4">
+                                      <div className="flex-1 space-y-2">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <Badge 
+                                            variant="outline" 
+                                            className={`${typeInfo.color} inline-flex items-center gap-1.5`}
+                                          >
+                                            <span>{typeInfo.emoji}</span>
+                                            {typeInfo.name}
+                                          </Badge>
+                                          {getStatusBadge(igazolas.allapot)}
+                                          {igazolas.ftv && (
+                                            <Badge variant="outline" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                              <Clapperboard className="w-3 h-3 mr-1" />
+                                              FTV
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                          <Calendar className="w-4 h-4" />
+                                          {new Date(igazolas.eleje).toLocaleDateString('hu-HU')}
+                                          {isMultiDayAbsence(igazolas.eleje, igazolas.vege) && (
+                                            <>
+                                              {' → '}
+                                              {new Date(igazolas.vege).toLocaleDateString('hu-HU')}
+                                            </>
+                                          )}
+                                        </div>
+                                        {(igazolas.megjegyzes_diak || igazolas.megjegyzes) && (
+                                          <p className="text-sm text-muted-foreground line-clamp-2">
+                                            {igazolas.megjegyzes_diak || igazolas.megjegyzes}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
+
+// Helper function to map Igazolas to IgazolasTableRow format for display
+function mapIgazolasToTableRow(igazolas: Igazolas): IgazolasTableRow {
+  const startDate = new Date(igazolas.eleje);
+  
+  return {
+    id: String(igazolas.id),
+    studentId: String(igazolas.profile.user.id),
+    date: startDate.toLocaleDateString('hu-HU'),
+    startDate: igazolas.eleje,
+    endDate: igazolas.vege,
+    hours: [],
+    type: igazolas.tipus.nev,
+    status: igazolas.megjegyzes_diak || igazolas.megjegyzes || '',
+    allapot: igazolas.allapot,
+    studentName: `${igazolas.profile.user.last_name} ${igazolas.profile.user.first_name}`,
+    studentClass: igazolas.profile.osztalyom?.nev || 'N/A',
+    teacherNote: igazolas.megjegyzes_tanar,
+    submittedAt: igazolas.rogzites_datuma,
+    imageUrl: igazolas.imgDriveURL,
+    imgDriveURL: igazolas.imgDriveURL,
+    fromFTV: igazolas.ftv,
+    correctedHours: igazolas.korrigalt ? [1] : [],
+    minutesBefore: igazolas.diak_extra_ido_elotte,
+    minutesAfter: igazolas.diak_extra_ido_utana,
+    bkk_verification: igazolas.bkk_verification,
+  };
+}
+
+// Helper function to get hours display
+function getHoursDisplay(row: IgazolasTableRow) {
+  const startDate = new Date(row.startDate);
+  const endDate = new Date(row.endDate);
+  const dateForSchedule = startDate.getTime();
+  const schedule = getPeriodSchedule(dateForSchedule);
+  
+  if (!schedule || typeof schedule === 'string') {
+    const startHours = startDate.getHours();
+    const startMins = startDate.getMinutes();
+    const endHours = endDate.getHours();
+    const endMins = endDate.getMinutes();
+    
+    return (
+      <div className="flex items-center gap-1">
+        <Clock className="w-4 h-4" />
+        <span className="text-sm font-semibold">
+          {String(startHours).padStart(2, '0')}:{String(startMins).padStart(2, '0')} - {String(endHours).padStart(2, '0')}:{String(endMins).padStart(2, '0')}
+        </span>
+      </div>
+    );
+  }
+
+  const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+  const endMinutes = endDate.getHours() * 60 + endDate.getMinutes();
+  
+  const affectedPeriods: number[] = [];
+  Object.entries(schedule).forEach(([key, period]) => {
+    if (key === 'date' || key === 'overrides' || key === 'tanitasi_szunetek') return;
+    
+    const periodNum = parseInt(key);
+    if (isNaN(periodNum) || !period || typeof period === 'string') return;
+    
+    const periodData = period as { start: string; end: string };
+    const [startHour, startMin] = periodData.start.split(':').map(Number);
+    const [endHour, endMin] = periodData.end.split(':').map(Number);
+    const periodStart = startHour * 60 + startMin;
+    const periodEnd = endHour * 60 + endMin;
+    
+    if (startMinutes < periodEnd && endMinutes > periodStart) {
+      affectedPeriods.push(periodNum);
+    }
+  });
+
+  let bgColor = "period-inactive";
+  let glowColor = "";
+  if (row.allapot === 'Függőben') {
+    bgColor = "period-pending";
+    glowColor = "period-glow-blue";
+  } else if (row.allapot === 'Elfogadva') {
+    bgColor = "period-approved";
+    glowColor = "period-glow-green";
+  } else if (row.allapot === 'Elutasítva') {
+    bgColor = "period-rejected";
+    glowColor = "period-glow-red";
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {affectedPeriods.map((period) => {
+        const periodData = schedule[period] as { start: string; end: string };
+        if (!periodData) return null;
+        
+        const tooltipText = `${period}. óra\n${periodData.start} - ${periodData.end}`;
+        
+        return (
+          <TooltipProvider key={period}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className={`inline-flex items-center justify-center w-10 h-10 text-sm font-bold rounded-full cursor-help transition-all duration-300 ease-in-out transform ${bgColor} ${glowColor} hover:scale-110`}
+                >
+                  {period}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 border-slate-600 dark:border-slate-400 font-medium text-xs whitespace-pre-line">
+                {tooltipText}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      })}
+    </div>
+  );
+}
+
+

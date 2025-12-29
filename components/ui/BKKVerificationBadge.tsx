@@ -3,7 +3,6 @@ import { Badge } from '@/components/ui/badge';
 import BKKLogo from '@/components/icons/BKKLogo';
 import VehicleIcon from '@/components/ui/VehicleIcon';
 import { BKKVerification, BKKVehicleVerification, validateBKKVerification } from '@/lib/bkk-verification-schema';
-import { getBKKColors } from '@/lib/bkk-types';
 
 interface BKKVerificationBadgeProps {
   bkkVerificationJson?: string | object;
@@ -57,7 +56,6 @@ export function BKKVerificationBadge({
     />
   );
 
-  const colors = getBKKColors(vehicleType);
 
   return (
     <Badge 

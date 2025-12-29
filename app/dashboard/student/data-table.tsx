@@ -142,6 +142,7 @@ export function DataTable<TData, TValue>({
         item.date.toLowerCase().includes(searchLower) ||
         item.type.toLowerCase().includes(searchLower) ||
         item.status?.toLowerCase().includes(searchLower) ||
+        item.reason?.toLowerCase().includes(searchLower) ||
         item.allapot.toLowerCase().includes(searchLower)
       )
     }
