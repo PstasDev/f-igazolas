@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
-import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import {
   Upload,
@@ -29,7 +28,6 @@ import {
   BookOpen,
   FlaskConical,
   Plus,
-  ChevronDown,
   ChevronRight,
   TrendingUp,
   TrendingDown,
@@ -38,6 +36,7 @@ import {
   Clapperboard,
   RotateCcw,
   FileText,
+  BarChart3,
 } from 'lucide-react';
 import {
   Table,
@@ -48,9 +47,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Collapsible,
-  CollapsibleContent,
-} from '@/components/ui/collapsible';
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 import {
   Sheet,
   SheetContent,
@@ -72,13 +73,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-// Helper to group mulasztások by date
-interface DayGroup {
-  date: string;
-  mulasztasok: MulasztasDetailed[];
-  allSelected: boolean;
-}
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown } from 'lucide-react';
 
 export function MulasztasokView() {
   const [file, setFile] = useState<File | null>(null);
@@ -86,10 +82,13 @@ export function MulasztasokView() {
   const [loading, setLoading] = useState(true);
   const [analysis, setAnalysis] = useState<MulasztasAnalysis | null>(null);
   const [includeIgazolt, setIncludeIgazolt] = useState(false);
+  const [activeTab, setActiveTab] = useState<'table' | 'stats'>('table');
+  const [statsFilter, setStatsFilter] = useState<'all' | 'uncovered'>('all');
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   
   // Quick create igazolás state
   const [selectedMulasztasok, setSelectedMulasztasok] = useState<Set<number>>(new Set());
-  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
 
   // Drawer state for showing igazolások
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -101,13 +100,54 @@ export function MulasztasokView() {
   // Fetch existing mulasztások on mount
   useEffect(() => {
     fetchMulasztasok();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [includeIgazolt]);
+  }, []);
+
+  // Load selection from sessionStorage on mount
+  useEffect(() => {
+    const savedSelection = sessionStorage.getItem('mulasztasok_selection');
+    if (savedSelection) {
+      try {
+        const ids = JSON.parse(savedSelection) as number[];
+        setSelectedMulasztasok(new Set(ids));
+        if (ids.length > 0) {
+          toast.info(`${ids.length} mulasztás visszatöltve`);
+        }
+      } catch (e) {
+        console.error('Failed to parse saved selection:', e);
+      }
+    }
+  }, []);
+
+  // Save selection to sessionStorage on change
+  useEffect(() => {
+    if (selectedMulasztasok.size > 0) {
+      sessionStorage.setItem('mulasztasok_selection', JSON.stringify(Array.from(selectedMulasztasok)));
+    } else {
+      sessionStorage.removeItem('mulasztasok_selection');
+    }
+  }, [selectedMulasztasok]);
+
+  // Keyboard shortcuts for selection (Ctrl/Cmd+A to select all uncovered)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd+A to select all uncovered
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a' && analysis) {
+        e.preventDefault();
+        const uncovered = analysis.mulasztasok.filter(m => !m.igazolt && !m.is_covered);
+        const allUncoveredIds = new Set(uncovered.map(m => m.id));
+        setSelectedMulasztasok(allUncoveredIds);
+        toast.info(`${uncovered.length} mulasztás kiválasztva`);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [analysis]);
 
   const fetchMulasztasok = async () => {
     setLoading(true);
     try {
-      const data = await apiClient.getMyMulasztasok(includeIgazolt);
+      const data = await apiClient.getMyMulasztasok(true); // Always fetch all data
       setAnalysis(data);
     } catch (error) {
       console.error('Failed to fetch mulasztások:', error);
@@ -266,61 +306,6 @@ export function MulasztasokView() {
     );
   };
 
-  // Group uncovered mulasztások by date
-  const groupByDate = (): DayGroup[] => {
-    if (!analysis) return [];
-    
-    const uncovered = analysis.mulasztasok.filter(m => !m.igazolt && !m.is_covered);
-    const grouped = new Map<string, MulasztasDetailed[]>();
-    
-    uncovered.forEach(m => {
-      if (!grouped.has(m.datum)) {
-        grouped.set(m.datum, []);
-      }
-      grouped.get(m.datum)!.push(m);
-    });
-    
-    return Array.from(grouped.entries())
-      .map(([date, mulasztasok]) => ({
-        date,
-        mulasztasok: mulasztasok.sort((a, b) => a.ora - b.ora),
-        allSelected: mulasztasok.every(m => selectedMulasztasok.has(m.id)),
-      }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  };
-
-  const toggleDaySelection = (dayGroup: DayGroup) => {
-    const newSelected = new Set(selectedMulasztasok);
-    if (dayGroup.allSelected) {
-      // Deselect all from this day
-      dayGroup.mulasztasok.forEach(m => newSelected.delete(m.id));
-    } else {
-      // Select all from this day
-      dayGroup.mulasztasok.forEach(m => newSelected.add(m.id));
-    }
-    setSelectedMulasztasok(newSelected);
-  };
-
-  const toggleMulasztasSelection = (id: number) => {
-    const newSelected = new Set(selectedMulasztasok);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedMulasztasok(newSelected);
-  };
-
-  const toggleDayExpanded = (date: string) => {
-    const newExpanded = new Set(expandedDays);
-    if (newExpanded.has(date)) {
-      newExpanded.delete(date);
-    } else {
-      newExpanded.add(date);
-    }
-    setExpandedDays(newExpanded);
-  };
-
   const handleQuickCreateIgazolas = () => {
     if (selectedMulasztasok.size === 0) {
       toast.error('Válassz ki legalább egy mulasztást!');
@@ -329,6 +314,13 @@ export function MulasztasokView() {
 
     // Get selected mulasztások and calculate time range
     const selected = analysis!.mulasztasok.filter(m => selectedMulasztasok.has(m.id));
+    
+    // Sort by date and lesson number to ensure correct order
+    const sortedSelected = [...selected].sort((a, b) => {
+      const dateCompare = a.datum.localeCompare(b.datum);
+      if (dateCompare !== 0) return dateCompare;
+      return a.ora - b.ora;
+    });
     
     // Calculate lesson start and end times using actual bell schedule
     const getTimeForLesson = (date: string, ora: number) => {
@@ -356,22 +348,18 @@ export function MulasztasokView() {
       return { start: startTime, end: endTime };
     };
 
-    // Find earliest start and latest end
-    let earliestStart = '';
-    let latestEnd = '';
+    // Get earliest start (from first lesson) and latest end (from last lesson)
+    const firstLesson = sortedSelected[0];
+    const lastLesson = sortedSelected[sortedSelected.length - 1];
     
-    selected.forEach(m => {
-      const times = getTimeForLesson(m.datum, m.ora);
-      if (!earliestStart || times.start < earliestStart) {
-        earliestStart = times.start;
-      }
-      if (!latestEnd || times.end > latestEnd) {
-        latestEnd = times.end;
-      }
-    });
+    const earliestTimes = getTimeForLesson(firstLesson.datum, firstLesson.ora);
+    const latestTimes = getTimeForLesson(lastLesson.datum, lastLesson.ora);
+    
+    const earliestStart = earliestTimes.start;
+    const latestEnd = latestTimes.end;
 
     // Prepare covered mulasztasok info
-    const coveredInfo = selected.map(m => ({
+    const coveredInfo = sortedSelected.map(m => ({
       id: m.id,
       datum: m.datum,
       ora: m.ora,
@@ -382,12 +370,12 @@ export function MulasztasokView() {
     sessionStorage.setItem('prefill_igazolas', JSON.stringify({
       eleje: earliestStart,
       vege: latestEnd,
-      megjegyzes_diak: `Mulasztások lefedése (${selected.length} óra):\n${selected.map(m => `📅 ${m.datum} • ${m.ora}. óra • ${m.tantargy}`).join('\n')}`,
+      megjegyzes_diak: `Mulasztások lefedése (${sortedSelected.length} óra):\n${sortedSelected.map(m => `📅 ${m.datum} • ${m.ora}. óra • ${m.tantargy}`).join('\n')}`,
       from_mulasztasok: true,
       covered_mulasztasok: coveredInfo,
     }));
 
-    toast.success(`${selected.length} mulasztás adatai átadva az űrlapnak`, { duration: 3000 });
+    toast.success(`${sortedSelected.length} mulasztás adatai átadva az űrlapnak`, { duration: 3000 });
 
     // Navigate to new igazolás form
     window.location.hash = 'new';
@@ -414,12 +402,46 @@ export function MulasztasokView() {
   const pieChartId = "pie-coverage";
   const [activeCoverage, setActiveCoverage] = useState("covered");
   
-  // Pie chart data
-  const pieData = useMemo(() => analysis ? [
-    { category: "igazolt", value: analysis.igazolt_count, fill: "var(--color-igazolt)" },
-    { category: "covered", value: analysis.covered_by_igazolas, fill: "var(--color-covered)" },
-    { category: "not_covered", value: analysis.not_covered, fill: "var(--color-not_covered)" },
-  ] : [], [analysis]);
+  // Filter analysis based on statsFilter
+  // Filter for table display based on includeIgazolt toggle
+  const filteredTableAnalysis = useMemo(() => {
+    if (!analysis) return null;
+    if (includeIgazolt) return analysis;
+    
+    // Filter out igazolt and covered mulasztások for table
+    const filteredMulasztasok = analysis.mulasztasok.filter(m => !m.igazolt && !m.is_covered);
+    
+    return {
+      ...analysis,
+      mulasztasok: filteredMulasztasok,
+      total_mulasztasok: filteredMulasztasok.length,
+    };
+  }, [analysis, includeIgazolt]);
+
+  // Filter for stats display based on statsFilter dropdown
+  const filteredStatsAnalysis = useMemo(() => {
+    if (!analysis) return null;
+    if (statsFilter === 'all') return analysis;
+    
+    // Filter to only uncovered mulasztások for stats
+    const filteredMulasztasok = analysis.mulasztasok.filter(m => !m.igazolt && !m.is_covered);
+    
+    return {
+      ...analysis,
+      mulasztasok: filteredMulasztasok,
+      total_mulasztasok: filteredMulasztasok.length,
+      igazolt_count: 0,
+      covered_by_igazolas: 0,
+      not_covered: filteredMulasztasok.length,
+    };
+  }, [analysis, statsFilter]);
+  
+  // Pie chart data for stats (uses filteredStatsAnalysis)
+  const pieData = useMemo(() => filteredStatsAnalysis ? [
+    { category: "igazolt", value: filteredStatsAnalysis?.igazolt_count ?? 0, fill: "var(--color-igazolt)" },
+    { category: "covered", value: filteredStatsAnalysis?.covered_by_igazolas ?? 0, fill: "var(--color-covered)" },
+    { category: "not_covered", value: filteredStatsAnalysis?.not_covered ?? 0, fill: "var(--color-not_covered)" },
+  ] : [], [filteredStatsAnalysis]);
 
   const pieChartConfig = {
     value: { label: "Mulasztások" },
@@ -450,11 +472,11 @@ export function MulasztasokView() {
 
   // Radar chart for subjects - separate by igazolt, covered, and not_covered
   const subjectData = useMemo(() => {
-    if (!analysis) return [];
+    if (!filteredStatsAnalysis) return [];
     
     const subjectMap = new Map<string, { igazolt: number; covered: number; not_covered: number }>();
     
-    analysis.mulasztasok.forEach(m => {
+    filteredStatsAnalysis.mulasztasok.forEach(m => {
       if (!subjectMap.has(m.tantargy)) {
         subjectMap.set(m.tantargy, { igazolt: 0, covered: 0, not_covered: 0 });
       }
@@ -478,7 +500,7 @@ export function MulasztasokView() {
       }))
       .sort((a, b) => (b.igazolt + b.covered + b.not_covered) - (a.igazolt + a.covered + a.not_covered))
       .slice(0, 8); // Top 8 subjects
-  }, [analysis]);
+  }, [filteredStatsAnalysis]);
 
   const subjectChartConfig = {
     igazolt: {
@@ -495,23 +517,21 @@ export function MulasztasokView() {
     },
   } satisfies ChartConfig;
 
-  const dayGroups = groupByDate();
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 px-2 md:px-0">
       {/* Header with experimental badge */}
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+          <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img 
               src="https://75a37cbe8a.clvaw-cdnwnd.com/8058bbc8c881bdb6799fafe8ef3094b7/200002106-716d2716d4/kr%C3%A9ta4.jpg?ph=75a37cbe8a" 
               alt="eKréta" 
-              className="w-8 h-8 rounded object-cover"
+              className="w-6 h-6 md:w-8 md:h-8 rounded object-cover"
             />
             Mulasztások eKrétából
           </h2>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-xs md:text-sm text-muted-foreground mt-1">
             Töltsd fel az eKrétából exportált mulasztásaidat és elemezd az igazolásokkal való lefedettséget.
           </p>
           <Badge className="mt-2 bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
@@ -521,34 +541,88 @@ export function MulasztasokView() {
         </div>
       </div>
 
-      {/* Instructions */}
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Használati útmutató</AlertTitle>
-        <AlertDescription className="space-y-2">
-          <ol className="list-decimal list-inside space-y-1 text-sm">
-            <li>Jelentkezz be az eKréta ellenőrzőbe</li>
-            <li>Navigálj a Mulasztások menüponthoz</li>
-            <li>Exportáld ki a mulasztásokat XLSX formátumban</li>
-            <li>Töltsd fel az exportált fájlt ide</li>
-            <li>Elemezd az eredményeket és hasonlítsd össze a benyújtott igazolásokkal</li>
-          </ol>
-        </AlertDescription>
-      </Alert>
+      {/* Instructions - Collapsible */}
+      <Collapsible open={isGuideOpen} onOpenChange={setIsGuideOpen}>
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardHeader className="pb-3">
+            <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <CardTitle className="text-base md:text-lg">Használati útmutató</CardTitle>
+              </div>
+              <ChevronDown className={`h-5 w-5 transition-transform ${isGuideOpen ? 'rotate-180' : ''}`} />
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div>
+                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                    <Upload className="w-4 h-4" />
+                    Fájl feltöltése
+                  </h4>
+                  <ol className="list-decimal list-inside space-y-1 text-xs md:text-sm text-muted-foreground">
+                    <li>Jelentkezz be az eKréta ellenőrzőbe</li>
+                    <li>Navigálj a Mulasztások menüponthoz</li>
+                    <li>Exportáld ki a mulasztásokat XLSX formátumban</li>
+                    <li>Töltsd fel az exportált fájlt ide</li>
+                  </ol>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    Statisztikák
+                  </h4>
+                  <p className="text-xs md:text-sm text-muted-foreground mb-2">
+                    Az elemzés automatikusan kategorizálja a mulasztásokat státusz szerint:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      eKrétában igazolt
+                    </Badge>
+                    <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      Lefedve igazolással
+                    </Badge>  
+                    <Badge variant="destructive">
+                      <XCircle className="w-3 h-3 mr-1" />
+                      Nincs lefedve
+                    </Badge>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Gyors igazolás létrehozása
+                  </h4>
+                  <p className="text-xs md:text-sm text-muted-foreground">
+                    Jelölj ki egyes mulasztásokat (Shift+kattintással tartományokat is kijelölhetsz), 
+                    majd a <span className="font-semibold text-violet-600 dark:text-violet-400">Kijelöltek Igazolása</span> gombbal 
+                    automatikusan kitöltött űrlapon készíthetsz igazolást.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Upload section */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5" />
+        <CardHeader className="pb-3 md:pb-6">
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Upload className="w-4 h-4 md:w-5 md:h-5" />
             Fájl feltöltése
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs md:text-sm">
             Válaszd ki az eKrétából exportált .xlsx fájlt
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
+        <CardContent className="space-y-3 md:space-y-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4">
             <input
               id="file-upload"
               type="file"
@@ -558,14 +632,16 @@ export function MulasztasokView() {
             />
             <Button
               variant="outline"
+              size="sm"
               onClick={() => document.getElementById('file-upload')?.click()}
               disabled={uploading}
+              className="w-full md:w-auto text-xs md:text-sm"
             >
-              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              <FileSpreadsheet className="w-3 h-3 md:w-4 md:h-4 mr-2" />
               {file ? 'Másik fájl választása' : 'Fájl kiválasztása'}
             </Button>
             {file && (
-              <span className="text-sm text-muted-foreground">
+              <span className="text-xs md:text-sm text-muted-foreground truncate max-w-full">
                 {file.name} ({(file.size / 1024).toFixed(1)} KB)
               </span>
             )}
@@ -598,500 +674,1034 @@ export function MulasztasokView() {
         </Card>
       ) : analysis && analysis.total_mulasztasok > 0 ? (
         <>
-          {/* Statistics Overview with Interactive Charts */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            {/* Interactive Pie Chart - Coverage */}
-            <Card data-chart={pieChartId} className="flex flex-col lg:col-span-4">
-              <ChartStyle id={pieChartId} config={pieChartConfig} />
-              <CardHeader className="flex-row items-start space-y-0 pb-0">
-                <div className="grid gap-1 flex-1">
-                  <CardTitle>Lefedettség</CardTitle>
-                  <CardDescription>
-                    Összes mulasztás: {analysis.total_mulasztasok}
-                  </CardDescription>
-                </div>
-                <Select value={activeCoverage} onValueChange={setActiveCoverage}>
-                  <SelectTrigger
-                    className="ml-auto h-7 w-[160px] rounded-lg pl-2.5"
-                    aria-label="Válassz kategóriát"
-                  >
-                    <SelectValue placeholder="Kategória" />
-                  </SelectTrigger>
-                  <SelectContent align="end" className="rounded-xl">
-                    {pieData.map((item) => {
-                      const config = pieChartConfig[item.category as keyof typeof pieChartConfig];
-                      if (!config) return null;
-                      return (
-                        <SelectItem
-                          key={item.category}
-                          value={item.category}
-                          className="rounded-lg [&_span]:flex"
-                        >
-                          <div className="flex items-center gap-2 text-xs">
-                            <span
-                              className="flex h-3 w-3 shrink-0 rounded-sm"
-                              style={{ backgroundColor: `var(--color-${item.category})` }}
-                            />
-                            {config?.label}
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </CardHeader>
-              <CardContent className="flex flex-1 justify-center pb-0">
-                <ChartContainer
-                  id={pieChartId}
-                  config={pieChartConfig}
-                  className="mx-auto aspect-square w-full max-w-[300px]"
-                >
-                  <PieChart>
-                    <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                    <Pie
-                      data={pieData}
-                      dataKey="value"
-                      nameKey="category"
-                      innerRadius={60}
-                      strokeWidth={5}
-                      activeIndex={activeIndex}
-                      activeShape={(props: PieSectorDataItem) => {
-                        const outerRadius = props.outerRadius || 0;
-                        return (
-                          <g>
-                            <Sector {...props} outerRadius={outerRadius + 10} />
-                            <Sector
-                              {...props}
-                              outerRadius={outerRadius + 25}
-                              innerRadius={outerRadius + 12}
-                            />
-                          </g>
-                        );
-                      }}
-                    >
-                      <Label
-                        content={({ viewBox }) => {
-                          if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                            return (
-                              <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
-                                <tspan
-                                  x={viewBox.cx}
-                                  y={viewBox.cy}
-                                  className="fill-foreground text-3xl font-bold"
-                                >
-                                  {pieData[activeIndex]?.value.toLocaleString()}
-                                </tspan>
-                                <tspan
-                                  x={viewBox.cx}
-                                  y={(viewBox.cy || 0) + 24}
-                                  className="fill-muted-foreground text-sm"
-                                >
-                                  {coveragePercentage}% lefedve
-                                </tspan>
-                              </text>
-                            );
-                          }
-                        }}
-                      />
-                    </Pie>
-                  </PieChart>
-                </ChartContainer>
-              </CardContent>
-              <CardFooter className="flex-col gap-2 text-sm pt-4">
-                <div className="flex items-center gap-2 leading-none font-medium">
-                  {coveragePercentage >= 80 ? (
-                    <>
-                      Kiváló lefedettség! <TrendingUp className="h-4 w-4 text-green-600" />
-                    </>
-                  ) : coveragePercentage >= 50 ? (
-                    <>
-                      Jó úton vagy <TrendingUp className="h-4 w-4 text-blue-600" />
-                    </>
-                  ) : (
-                    <>
-                      Javításra szorul <TrendingDown className="h-4 w-4 text-red-600" />
-                    </>
-                  )}
-                </div>
-                <div className="text-muted-foreground leading-none text-center">
-                  {analysis.covered_by_igazolas + analysis.igazolt_count} mulasztás rendezve {analysis.total_mulasztasok}-ból
-                </div>
-              </CardFooter>
-            </Card>
+        {/* Mobile Tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'table' | 'stats')} className="w-full md:hidden">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="table" className="gap-2">
+              <FileSpreadsheet className="w-4 h-4" />
+              Táblázat
+            </TabsTrigger>
+            <TabsTrigger value="stats" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Statisztikák
+            </TabsTrigger>
+          </TabsList>
 
-            {/* Radar Chart - Subject Statistics */}
-            {subjectData.length > 0 && (
-              <Card className="lg:col-span-3">
-                <CardHeader className="items-center pb-4">
-                  <CardTitle>Tantárgyak szerint</CardTitle>
-                  <CardDescription>
-                    Mulasztások megoszlása tantárgyanként
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pb-0">
-                  <ChartContainer
-                    config={subjectChartConfig}
-                    className="mx-auto aspect-square max-h-[250px]"
-                  >
-                    <RadarChart data={subjectData}>
-                      <ChartTooltip
-                        cursor={false}
-                        content={<ChartTooltipContent indicator="line" />}
-                      />
-                      <PolarAngleAxis dataKey="subject" />
-                      <PolarGrid radialLines={false} />
-                      <Radar
-                        dataKey="igazolt"
-                        fill="var(--color-igazolt)"
-                        fillOpacity={0}
-                        stroke="var(--color-igazolt)"
-                        strokeWidth={2}
-                      />
-                      <Radar
-                        dataKey="covered"
-                        fill="var(--color-covered)"
-                        fillOpacity={0}
-                        stroke="var(--color-covered)"
-                        strokeWidth={2}
-                      />
-                      <Radar
-                        dataKey="not_covered"
-                        fill="var(--color-not_covered)"
-                        fillOpacity={0}
-                        stroke="var(--color-not_covered)"
-                        strokeWidth={2}
-                      />
-                    </RadarChart>
-                  </ChartContainer>
-                </CardContent>
-                <CardFooter className="flex-col gap-2 text-sm pt-4">
-                  <div className="flex items-center gap-2 leading-none font-medium">
-                    {subjectData[0] && subjectData[0].not_covered > 0 && (
-                      <>
-                        Legtöbb lefedetlen: {subjectData[0].subject} <TrendingUp className="h-4 w-4 text-red-600" />
-                      </>
+          {/* Table Tab */}
+          <TabsContent value="table" className="space-y-4">
+
+            {/* Mulasztások Table */}
+            <Card className="overflow-hidden">
+            <CardHeader className="p-3 md:p-6">
+              <div className="flex items-center justify-between flex-wrap gap-2 md:gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+                    <CardTitle className="text-base md:text-xl">Mulasztások részletei</CardTitle>
+                    {analysis.not_covered > 0 && (
+                      <Badge variant="destructive" className="text-xs">
+                        {analysis.not_covered} lefedésre vár
+                      </Badge>
                     )}
                   </div>
-                  <div className="text-muted-foreground flex items-center gap-2 leading-none">
-                    Top {subjectData.length} tantárgy
-                  </div>
-                </CardFooter>
-              </Card>
-            )}
-          </div>
-
-          {/* Késés Warning - Radial Chart */}
-          {uncoveredKesesMinutes > 0 && (
-            <Card className={`flex flex-col ${isKesesDanger ? 'border-red-500 dark:border-red-700' : 'border-yellow-500 dark:border-yellow-700'}`}>
-              <CardHeader className="items-center pb-0">
-                <CardTitle className="flex items-center gap-2">
-                  <AlertCircle className={`w-5 h-5 ${isKesesDanger ? 'text-red-600' : 'text-yellow-600'}`} />
-                  <span className={isKesesDanger ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}>
-                    Késési percek figyelmeztetés
-                  </span>
-                </CardTitle>
-                <CardDescription className="text-center mt-2">
-                  {isKesesDanger 
-                    ? 'VESZÉLY! 45 perc felett igazolatlan óra kerül az eKrétába!'
-                    : 'Figyelem! Közeledik a 45 perces határ'
-                  }
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 pb-0">
-                <ChartContainer
-                  config={kesesChartConfig}
-                  className="mx-auto aspect-square max-h-[250px]"
-                >
-                  <RadialBarChart
-                    data={kesesChartData}
-                    startAngle={0}
-                    endAngle={(uncoveredKesesMinutes / 45) * 360}
-                    innerRadius={80}
-                    outerRadius={110}
-                  >
-                    <PolarGrid
-                      gridType="circle"
-                      radialLines={false}
-                      stroke="none"
-                      className="first:fill-muted last:fill-background"
-                      polarRadius={[86, 74]}
-                    />
-                    <RadialBar dataKey="minutes" background cornerRadius={10} />
-                    <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
-                      <Label
-                        content={({ viewBox }) => {
-                          if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                            return (
-                              <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
-                                <tspan
-                                  x={viewBox.cx}
-                                  y={viewBox.cy}
-                                  className={`text-4xl font-bold ${isKesesDanger ? 'fill-red-600' : 'fill-yellow-600'}`}
-                                >
-                                  {kesesChartData[0].minutes}
-                                </tspan>
-                                <tspan
-                                  x={viewBox.cx}
-                                  y={(viewBox.cy || 0) + 24}
-                                  className="fill-muted-foreground text-sm"
-                                >
-                                  perc / 45
-                                </tspan>
-                              </text>
-                            );
-                          }
-                        }}
-                      />
-                    </PolarRadiusAxis>
-                  </RadialBarChart>
-                </ChartContainer>
-              </CardContent>
-              <CardFooter className="flex-col gap-2 text-sm">
-                <div className={`flex items-center gap-2 leading-none font-medium ${
-                  isKesesDanger ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'
-                }`}>
-                  {isKesesDanger ? (
-                    <>
-                      Sürgősen fedezd le igazolással! <AlertCircle className="h-4 w-4" />
-                    </>
-                  ) : (
-                    <>
-                      Még {45 - uncoveredKesesMinutes} perc marad a határig <Clock className="h-4 w-4" />
-                    </>
-                  )}
-                </div>
-                <div className="text-muted-foreground leading-none text-center">
-                  {Math.round((uncoveredKesesMinutes / 45) * 100)}% kitöltöttség
-                </div>
-              </CardFooter>
-            </Card>
-          )}
-
-          {/* Quick Create Igazolás Section */}
-          {dayGroups.length > 0 && (
-            <Card className="border-blue-200 dark:border-blue-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Plus className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  Gyors igazolás létrehozása
-                </CardTitle>
-                <CardDescription>
-                  Válassz ki mulasztásokat nap vagy óránkénti bontásban, majd nyisd meg az igazolás űrlapot a mezők automatikus kitöltésével
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Day-by-day selection */}
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold">Válassz mulasztásokat ({selectedMulasztasok.size} kiválasztva)</p>
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto border rounded-md p-3">
-                    {dayGroups.map((dayGroup) => (
-                      <Collapsible
-                        key={dayGroup.date}
-                        open={expandedDays.has(dayGroup.date)}
-                        onOpenChange={() => toggleDayExpanded(dayGroup.date)}
-                      >
-                        <div className="space-y-2">
-                          <div 
-                            className="flex items-center justify-between p-2 hover:bg-accent rounded-md cursor-pointer transition-colors"
-                            onClick={() => toggleDayExpanded(dayGroup.date)}
-                          >
-                            <div className="flex items-center gap-3 flex-1" onClick={(e) => e.stopPropagation()}>
-                              <Checkbox
-                                checked={dayGroup.allSelected}
-                                onCheckedChange={() => toggleDaySelection(dayGroup)}
-                                aria-label={`Nap összes kiválasztása: ${formatDate(dayGroup.date)}`}
-                              />
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                                  <span className="font-medium">{formatDate(dayGroup.date)}</span>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {dayGroup.mulasztasok.length} óra
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center">
-                              {expandedDays.has(dayGroup.date) ? (
-                                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                              ) : (
-                                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                              )}
-                            </div>
-                          </div>
-                          
-                          <CollapsibleContent className="pl-9 space-y-1">
-                            {dayGroup.mulasztasok.map((mulasztas) => (
-                              <div
-                                key={mulasztas.id}
-                                className="flex items-center gap-3 p-2 hover:bg-accent rounded-md text-sm"
-                              >
-                                <Checkbox
-                                  checked={selectedMulasztasok.has(mulasztas.id)}
-                                  onCheckedChange={() => toggleMulasztasSelection(mulasztas.id)}
-                                  aria-label={`${mulasztas.ora}. óra - ${mulasztas.tantargy}`}
-                                />
-                                <Clock className="w-4 h-4 text-muted-foreground" />
-                                <span className="font-medium">{mulasztas.ora}. óra</span>
-                                <span className="text-muted-foreground">-</span>
-                                <span>{mulasztas.tantargy}</span>
-                                {getTipusBadge(mulasztas.tipus)}
-                              </div>
-                            ))}
-                          </CollapsibleContent>
-                        </div>
-                      </Collapsible>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Quick create button */}
-                {selectedMulasztasok.size > 0 && (
-                  <div className="pt-3 border-t space-y-3">
-                    {/* Preview of covered mulasztások */}
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-500 dark:bg-blue-400 flex items-center justify-center flex-shrink-0">
-                          <CheckCircle2 className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-blue-900 dark:text-blue-100">
-                            Lefedésre kerülő mulasztások
-                          </p>
-                          <p className="text-sm text-blue-700 dark:text-blue-300">
-                            {selectedMulasztasok.size} mulasztás lesz lefedve az új igazolással
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-1 max-h-[200px] overflow-y-auto">
-                        {Array.from(selectedMulasztasok).map(id => {
-                          const mulasztas = analysis!.mulasztasok.find(m => m.id === id);
-                          if (!mulasztas) return null;
-                          return (
-                            <div 
-                              key={id}
-                              className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded text-sm border border-blue-100 dark:border-blue-900"
-                            >
-                              <Calendar className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                              <span className="font-medium text-blue-900 dark:text-blue-100">
-                                {mulasztas.datum}
-                              </span>
-                              <span className="text-gray-400">•</span>
-                              <Clock className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                              <span className="text-blue-800 dark:text-blue-200">
-                                {mulasztas.ora}. óra
-                              </span>
-                              <span className="text-gray-400">•</span>
-                              <span className="text-gray-700 dark:text-gray-300 truncate">
-                                {mulasztas.tantargy}
-                              </span>
-                              {getTipusBadge(mulasztas.tipus)}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    
-                    <Button
-                      onClick={handleQuickCreateIgazolas}
-                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Igazolás űrlap megnyitása ({selectedMulasztasok.size} kiválasztott mulasztással)
-                    </Button>
-                    <p className="text-xs text-muted-foreground text-center">
-                      Az űrlap automatikusan ki lesz töltve a kiválasztott időpontokkal és a lefedett mulasztások listájával
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Mulasztások Table */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Mulasztások részletei</CardTitle>
-                  <CardDescription>
-                    {analysis.mulasztasok.length} mulasztás megjelenítve
+                  <CardDescription className="mt-2">
+                    {filteredTableAnalysis?.mulasztasok.length ?? 0} mulasztás megjelenítve
+                    <br className="hidden md:block" />
+                    <span className="text-xs hidden md:inline">
+                      Kattints a sorokra kijelöléshez. Shift+Kattintás: tartomány. Ctrl/Cmd+A: összes lefedetlen.
+                    </span>
                   </CardDescription>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full md:w-auto">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setIncludeIgazolt(!includeIgazolt)}
+                    className="flex-1 md:flex-initial text-xs md:text-sm"
                   >
-                    {includeIgazolt ? 'Csak nem igazoltak' : 'Összes mutatása'}
+                    <span className="md:hidden">{includeIgazolt ? 'Nem igazoltak' : 'Összes'}</span>
+                    <span className="hidden md:inline">{includeIgazolt ? 'Csak nem igazoltak' : 'Összes mutatása'}</span>
                   </Button>
                   <Button
                     variant="destructive"
                     size="sm"
                     onClick={handleDelete}
+                    className="flex-1 md:flex-initial text-xs md:text-sm"
                   >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Összes törlése
+                    <Trash2 className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
+                    <span className="md:hidden">Törlés</span>
+                    <span className="hidden md:inline">Összes törlése</span>
                   </Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
+            <CardContent className="p-3 md:p-6">
+              <div className="overflow-x-auto -mx-3 md:-mx-6">
+                <Table className="relative">
+                  <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
-                      <TableHead>Dátum</TableHead>
-                      <TableHead>Óra</TableHead>
-                      <TableHead>Tantárgy</TableHead>
-                      <TableHead>Típus</TableHead>
-                      <TableHead>Téma</TableHead>
-                      <TableHead>Státusz</TableHead>
+                      <TableHead className="w-20 md:w-24 text-xs md:text-sm">Dátum</TableHead>
+                      <TableHead className="w-10 md:w-12 text-xs md:text-sm">Óra</TableHead>
+                      <TableHead className="min-w-20 md:min-w-24 text-xs md:text-sm">Tantárgy</TableHead>
+                      <TableHead className="hidden md:table-cell text-xs md:text-sm">Típus</TableHead>
+                      <TableHead className="hidden lg:table-cell min-w-28 md:min-w-32 text-xs md:text-sm">Téma</TableHead>
+                      <TableHead className="w-16 md:w-20 text-xs md:text-sm">Státusz</TableHead>
+                      <TableHead className="text-right w-12 md:w-20 text-xs md:text-sm">Műv.</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {analysis.mulasztasok.length === 0 ? (
+                    {filteredTableAnalysis?.mulasztasok.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                           Nincsenek mulasztások
                         </TableCell>
                       </TableRow>
                     ) : (
-                      analysis.mulasztasok.map((mulasztas) => (
-                        <TableRow key={mulasztas.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-muted-foreground" />
-                              {formatDate(mulasztas.datum)}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Clock className="w-4 h-4 text-muted-foreground" />
-                              {mulasztas.ora}. óra
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <BookOpen className="w-4 h-4 text-muted-foreground" />
-                              {mulasztas.tantargy}
-                            </div>
-                          </TableCell>
-                          <TableCell>{getTipusBadge(mulasztas.tipus)}</TableCell>
-                          <TableCell className="max-w-xs truncate" title={mulasztas.tema}>
-                            {mulasztas.tema}
-                          </TableCell>
-                          <TableCell>{getCoverageBadge(mulasztas)}</TableCell>
-                        </TableRow>
-                      ))
+                      filteredTableAnalysis?.mulasztasok.map((mulasztas, index) => {
+                        const isUncovered = !mulasztas.igazolt && !mulasztas.is_covered;
+                        const isSelected = selectedMulasztasok.has(mulasztas.id);
+                        const isClickable = isUncovered || mulasztas.is_covered;
+                        
+                        const handleRowClick = (e: React.MouseEvent) => {
+                          if (isUncovered) {
+                            // Handle selection for uncovered records
+                            if (e.shiftKey && lastSelectedIndex !== null) {
+                              // Range selection with Shift
+                              e.preventDefault();
+                              const start = Math.min(lastSelectedIndex, index);
+                              const end = Math.max(lastSelectedIndex, index);
+                              const newSelected = new Set(selectedMulasztasok);
+                              
+                              for (let i = start; i <= end; i++) {
+                                const m = filteredTableAnalysis!.mulasztasok[i];
+                                if (m && !m.igazolt && !m.is_covered) {
+                                  newSelected.add(m.id);
+                                }
+                              }
+                              setSelectedMulasztasok(newSelected);
+                            } else {
+                              // Single toggle
+                              const newSelected = new Set(selectedMulasztasok);
+                              if (newSelected.has(mulasztas.id)) {
+                                newSelected.delete(mulasztas.id);
+                              } else {
+                                newSelected.add(mulasztas.id);
+                              }
+                              setSelectedMulasztasok(newSelected);
+                              setLastSelectedIndex(index);
+                            }
+                          } else if (mulasztas.is_covered) {
+                            // Show coverage drawer for covered records
+                            handleCoverageBadgeClick(mulasztas);
+                          }
+                        };
+                        
+                        return (
+                          <TableRow 
+                            key={mulasztas.id}
+                            onClick={handleRowClick}
+                            className={`
+                              transition-colors duration-150
+                              ${isSelected ? 'bg-blue-50 dark:bg-blue-950/30 border-l-4 border-l-blue-500' : ''}
+                              ${isClickable && !isSelected ? 'hover:bg-muted/50 cursor-pointer' : ''}
+                              ${!isClickable ? 'opacity-60' : ''}
+                            `}
+                            style={{ userSelect: 'none' }}
+                          >
+                            <TableCell className="text-xs md:text-sm py-2 md:py-4">
+                              <div className="flex items-center gap-1 md:gap-2">
+                                <Calendar className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground hidden md:inline" />
+                                <span className="whitespace-nowrap">{formatDate(mulasztas.datum)}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs md:text-sm py-2 md:py-4">
+                              <div className="flex items-center gap-1 md:gap-2">
+                                <Clock className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground hidden md:inline" />
+                                {mulasztas.ora}.
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs md:text-sm py-2 md:py-4">
+                              <div className="flex items-center gap-1 md:gap-2">
+                                <BookOpen className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground hidden md:inline" />
+                                {mulasztas.tantargy}
+                              </div>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell text-xs md:text-sm py-2 md:py-4">{getTipusBadge(mulasztas.tipus)}</TableCell>
+                            <TableCell className="hidden lg:table-cell text-xs md:text-sm py-2 md:py-4 max-w-xs truncate" title={mulasztas.tema}>
+                              {mulasztas.tema}
+                            </TableCell>
+                            <TableCell className="py-2 md:py-4">
+                              <div className="flex items-center gap-1 md:gap-2">
+                                {isSelected && <CheckCircle2 className="w-3 h-3 md:w-4 md:h-4 text-blue-600" />}
+                                {getCoverageBadge(mulasztas)}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right py-2 md:py-4">
+                              {isUncovered ? (
+                                <TooltipProvider>
+                                  <Tooltip delayDuration={300}>
+                                    <TooltipTrigger asChild className="hidden md:inline-flex">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const newSelected = new Set<number>();
+                                          newSelected.add(mulasztas.id);
+                                          setSelectedMulasztasok(newSelected);
+                                          handleQuickCreateIgazolas();
+                                        }}
+                                      >
+                                        <Plus className="w-4 h-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Igazolás létrehozása ehhez a mulasztáshoz</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  {/* Mobile button without tooltip */}
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="md:hidden h-7 w-7 p-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const newSelected = new Set<number>();
+                                      newSelected.add(mulasztas.id);
+                                      setSelectedMulasztasok(newSelected);
+                                      handleQuickCreateIgazolas();
+                                    }}
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </Button>
+                                </TooltipProvider>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
               </div>
             </CardContent>
           </Card>
+
+          {/* Floating Action Bar */}
+          {selectedMulasztasok.size > 0 && (
+            <div className="fixed bottom-0 left-0 right-0 z-50 animate-in slide-in-from-bottom-5 duration-300 backdrop-blur-sm bg-background/95 border-t shadow-lg">
+              <div className="container mx-auto px-3 md:px-6 max-w-full">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-2 py-3 md:py-4">
+                  <Badge variant="secondary" className="text-xs md:text-sm font-medium">
+                    {selectedMulasztasok.size} kiválasztva
+                  </Badge>
+                  <div className="flex flex-row gap-2 w-full md:w-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedMulasztasok(new Set());
+                        setLastSelectedIndex(null);
+                      }}
+                      className="flex-1 md:flex-initial text-xs md:text-sm"
+                    >
+                      Törlés
+                    </Button>
+                    <Button
+                      onClick={handleQuickCreateIgazolas}
+                      size="sm"
+                      className="flex-1 md:flex-initial bg-violet-600 hover:bg-violet-700 text-white"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      <span className="hidden md:inline">Igazolás létrehozása</span>
+                      <span className="md:hidden">Létrehozás</span>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          </TabsContent>
+
+          {/* Stats Tab */}
+          <TabsContent value="stats" className="space-y-6">
+            {/* Stats Filter Dropdown */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">Statisztikák</CardTitle>
+                    <CardDescription className="text-xs">Mulasztások elemzése</CardDescription>
+                  </div>
+                  <Select value={statsFilter} onValueChange={(v) => setStatsFilter(v as 'all' | 'uncovered')}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Összes mulasztás</SelectItem>
+                      <SelectItem value="uncovered">Csak igazolatlanok</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+            </Card>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {/* Interactive Pie Chart - Coverage */}
+              <Card data-chart={pieChartId} className="flex flex-col">
+                <ChartStyle id={pieChartId} config={pieChartConfig} />
+                <CardHeader className="flex-row items-start space-y-0 pb-0">
+                  <div className="grid gap-1 flex-1">
+                    <CardTitle>Lefedettség</CardTitle>
+                    <CardDescription>
+                      Összes mulasztás: {filteredStatsAnalysis?.total_mulasztasok ?? 0}
+                    </CardDescription>
+                  </div>
+                  <Select value={activeCoverage} onValueChange={setActiveCoverage}>
+                    <SelectTrigger
+                      className="ml-auto h-7 w-[160px] rounded-lg pl-2.5"
+                      aria-label="Válassz kategóriát"
+                    >
+                      <SelectValue placeholder="Kategória" />
+                    </SelectTrigger>
+                    <SelectContent align="end" className="rounded-xl">
+                      {pieData.map((item) => {
+                        const config = pieChartConfig[item.category as keyof typeof pieChartConfig];
+                        if (!config) return null;
+                        return (
+                          <SelectItem
+                            key={item.category}
+                            value={item.category}
+                            className="rounded-lg [&_span]:flex"
+                          >
+                            <div className="flex items-center gap-2 text-xs">
+                              <span
+                                className="flex h-3 w-3 shrink-0 rounded-sm"
+                                style={{ backgroundColor: `var(--color-${item.category})` }}
+                              />
+                              {config?.label}
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </CardHeader>
+                <CardContent className="flex flex-1 justify-center pb-0">
+                  <ChartContainer
+                    id={pieChartId}
+                    config={pieChartConfig}
+                    className="mx-auto aspect-square w-full max-w-[300px]"
+                  >
+                    <PieChart>
+                      <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                      <Pie
+                        data={pieData}
+                        dataKey="value"
+                        nameKey="category"
+                        innerRadius={60}
+                        strokeWidth={5}
+                        activeIndex={activeIndex}
+                        activeShape={(props: PieSectorDataItem) => {
+                          const outerRadius = props.outerRadius || 0;
+                          return (
+                            <g>
+                              <Sector {...props} outerRadius={outerRadius + 10} />
+                              <Sector
+                                {...props}
+                                outerRadius={outerRadius + 25}
+                                innerRadius={outerRadius + 12}
+                              />
+                            </g>
+                          );
+                        }}
+                      >
+                        <Label
+                          content={({ viewBox }) => {
+                            if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                              return (
+                                <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                                  <tspan
+                                    x={viewBox.cx}
+                                    y={viewBox.cy}
+                                    className="fill-foreground text-3xl font-bold"
+                                  >
+                                    {pieData[activeIndex]?.value.toLocaleString()}
+                                  </tspan>
+                                  <tspan
+                                    x={viewBox.cx}
+                                    y={(viewBox.cy || 0) + 24}
+                                    className="fill-muted-foreground"
+                                  >
+                                    {coveragePercentage}% lefedve
+                                  </tspan>
+                                </text>
+                              );
+                            }
+                          }}
+                        />
+                      </Pie>
+                    </PieChart>
+                  </ChartContainer>
+                </CardContent>
+                <CardFooter className="flex-col gap-2 text-sm pt-4">
+                  <div className="flex items-center gap-2 leading-none font-medium">
+                    {coveragePercentage >= 80 ? (
+                      <>
+                        Kiváló lefedettség! <TrendingUp className="h-4 w-4 text-green-600" />
+                      </>
+                    ) : coveragePercentage >= 50 ? (
+                      <>
+                        Jó úton vagy <TrendingUp className="h-4 w-4 text-blue-600" />
+                      </>
+                    ) : (
+                      <>
+                        Javításra szorul <TrendingDown className="h-4 w-4 text-red-600" />
+                      </>
+                    )}
+                  </div>
+                  <div className="text-muted-foreground leading-none text-center">
+                    {(filteredStatsAnalysis?.covered_by_igazolas ?? 0) + (filteredStatsAnalysis?.igazolt_count ?? 0)} mulasztás rendezve {filteredStatsAnalysis?.total_mulasztasok ?? 0}-ból
+                  </div>
+                </CardFooter>
+              </Card>
+
+              {/* Késés Warning - Radial Chart (Mobile Stats Tab) */}
+              {uncoveredKesesMinutes > 0 && (
+                <Card className={`flex flex-col ${isKesesDanger ? 'border-red-500 dark:border-red-700' : 'border-yellow-500 dark:border-yellow-700'}`}>
+                  <CardHeader className="items-center pb-0">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <AlertCircle className={`w-4 h-4 ${isKesesDanger ? 'text-red-600' : 'text-yellow-600'}`} />
+                      <span className={isKesesDanger ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}>
+                        Késési figyelmeztetés
+                      </span>
+                    </CardTitle>
+                    <CardDescription className="text-center mt-2 text-xs">
+                      {isKesesDanger 
+                        ? 'VESZÉLY! 45 perc felett igazolatlan óra!'
+                        : 'Közeledik a 45 perces határ'
+                      }
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-1 pb-0">
+                    <ChartContainer
+                      config={kesesChartConfig}
+                      className="mx-auto aspect-square max-h-[200px]"
+                    >
+                      <RadialBarChart
+                        data={kesesChartData}
+                        startAngle={0}
+                        endAngle={(uncoveredKesesMinutes / 45) * 360}
+                        innerRadius={70}
+                        outerRadius={95}
+                      >
+                        <PolarGrid
+                          gridType="circle"
+                          radialLines={false}
+                          stroke="none"
+                          className="first:fill-muted last:fill-background"
+                          polarRadius={[76, 64]}
+                        />
+                        <RadialBar dataKey="minutes" background cornerRadius={10} />
+                        <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
+                          <Label
+                            content={({ viewBox }) => {
+                              if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                                return (
+                                  <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                                    <tspan
+                                      x={viewBox.cx}
+                                      y={viewBox.cy}
+                                      className={`text-4xl font-bold ${isKesesDanger ? 'fill-red-600' : 'fill-yellow-600'}`}
+                                    >
+                                      {kesesChartData[0].minutes}
+                                    </tspan>
+                                    <tspan
+                                      x={viewBox.cx}
+                                      y={(viewBox.cy || 0) + 24}
+                                      className="fill-muted-foreground"
+                                    >
+                                      perc / 45
+                                    </tspan>
+                                  </text>
+                                );
+                              }
+                            }}
+                          />
+                        </PolarRadiusAxis>
+                      </RadialBarChart>
+                    </ChartContainer>
+                  </CardContent>
+                  <CardFooter className="flex-col gap-2 text-sm pt-4">
+                    <div className={`flex items-center gap-2 leading-none font-medium ${
+                      isKesesDanger ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'
+                    }`}>
+                      {isKesesDanger ? (
+                        <>
+                          Sürgősen fedezd le! <AlertCircle className="h-4 w-4" />
+                        </>
+                      ) : (
+                        <>
+                          Még {45 - uncoveredKesesMinutes} perc marad <Clock className="h-4 w-4" />
+                        </>
+                      )}
+                    </div>
+                    <div className="text-muted-foreground leading-none text-center">
+                      {Math.round((uncoveredKesesMinutes / 45) * 100)}% kitöltöttség
+                    </div>
+                  </CardFooter>
+                </Card>
+              )}
+
+              {/* Radar Chart - Subject Statistics */}
+              {subjectData.length > 0 && (
+                <Card>
+                  <CardHeader className="items-center pb-4">
+                    <CardTitle>Tantárgyak szerint</CardTitle>
+                    <CardDescription className="text-xs">
+                      Mulasztások megoszlása
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pb-0">
+                    <ChartContainer
+                      config={subjectChartConfig}
+                      className="mx-auto aspect-square max-h-[250px]"
+                    >
+                      <RadarChart data={subjectData}>
+                        <ChartTooltip
+                          cursor={false}
+                          content={<ChartTooltipContent indicator="line" />}
+                        />
+                        <PolarAngleAxis dataKey="subject" />
+                        <PolarGrid radialLines={false} />
+                        <Radar
+                          dataKey="igazolt"
+                          fill="var(--color-igazolt)"
+                          fillOpacity={0}
+                          stroke="var(--color-igazolt)"
+                          strokeWidth={2}
+                        />
+                        <Radar
+                          dataKey="covered"
+                          fill="var(--color-covered)"
+                          fillOpacity={0}
+                          stroke="var(--color-covered)"
+                          strokeWidth={2}
+                        />
+                        <Radar
+                          dataKey="not_covered"
+                          fill="var(--color-not_covered)"
+                          fillOpacity={0}
+                          stroke="var(--color-not_covered)"
+                          strokeWidth={2}
+                        />
+                      </RadarChart>
+                    </ChartContainer>
+                  </CardContent>
+                  <CardFooter className="flex-col gap-2 text-sm pt-4">
+                    <div className="flex items-center gap-2 leading-none font-medium">
+                      {subjectData[0] && subjectData[0].not_covered > 0 && (
+                        <>
+                          Legtöbb lefedetlen: {subjectData[0].subject} <TrendingUp className="h-4 w-4 text-red-600" />
+                        </>
+                      )}
+                    </div>
+                    <div className="text-muted-foreground flex items-center gap-2 leading-none">
+                      Top {subjectData.length} tantárgy
+                    </div>
+                  </CardFooter>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Desktop Layout - Grid with Sidebar */}
+        <div className="hidden md:block">
+          <div className="grid grid-cols-[1fr_380px] lg:grid-cols-[1fr_420px] gap-6">
+            {/* Main Content - Table */}
+            <div className="space-y-4">
+              {/* Mulasztások Table - Desktop */}
+              <Card className="overflow-hidden">
+                <CardHeader>
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <CardTitle>Mulasztások részletei</CardTitle>
+                        {analysis.not_covered > 0 && (
+                          <Badge variant="destructive">
+                            {analysis.not_covered} lefedésre vár
+                          </Badge>
+                        )}
+                      </div>
+                      <CardDescription className="mt-2">
+                        {filteredTableAnalysis?.mulasztasok.length ?? 0} mulasztás megjelenítve
+                        <br />
+                        <span className="text-xs">
+                          Kattints a sorokra kijelöléshez. Shift+Kattintás: tartomány. Ctrl/Cmd+A: összes lefedetlen.
+                        </span>
+                      </CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIncludeIgazolt(!includeIgazolt)}
+                      >
+                        {includeIgazolt ? 'Csak nem igazoltak' : 'Összes mutatása'}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleDelete}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Összes törlése
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="overflow-x-auto -mx-6">
+                    <Table className="relative">
+                      <TableHeader className="sticky top-0 bg-background z-10">
+                        <TableRow>
+                          <TableHead>Dátum</TableHead>
+                          <TableHead>Óra</TableHead>
+                          <TableHead>Tantárgy</TableHead>
+                          <TableHead>Típus</TableHead>
+                          <TableHead className="hidden lg:table-cell">Téma</TableHead>
+                          <TableHead>Státusz</TableHead>
+                          <TableHead className="text-right">Műv.</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredTableAnalysis?.mulasztasok.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                              Nincsenek mulasztások
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredTableAnalysis?.mulasztasok.map((mulasztas, index) => {
+                            const isUncovered = !mulasztas.igazolt && !mulasztas.is_covered;
+                            const isSelected = selectedMulasztasok.has(mulasztas.id);
+                            const isClickable = isUncovered || mulasztas.is_covered;
+                            
+                            const handleRowClick = (e: React.MouseEvent) => {
+                              if (isUncovered) {
+                                if (e.shiftKey && lastSelectedIndex !== null) {
+                                  e.preventDefault();
+                                  const start = Math.min(lastSelectedIndex, index);
+                                  const end = Math.max(lastSelectedIndex, index);
+                                  const newSelected = new Set(selectedMulasztasok);
+                                  
+                                  for (let i = start; i <= end; i++) {
+                                    const m = filteredTableAnalysis!.mulasztasok[i];
+                                    if (m && !m.igazolt && !m.is_covered) {
+                                      newSelected.add(m.id);
+                                    }
+                                  }
+                                  setSelectedMulasztasok(newSelected);
+                                } else {
+                                  const newSelected = new Set(selectedMulasztasok);
+                                  if (newSelected.has(mulasztas.id)) {
+                                    newSelected.delete(mulasztas.id);
+                                  } else {
+                                    newSelected.add(mulasztas.id);
+                                  }
+                                  setSelectedMulasztasok(newSelected);
+                                  setLastSelectedIndex(index);
+                                }
+                              } else if (mulasztas.is_covered) {
+                                handleCoverageBadgeClick(mulasztas);
+                              }
+                            };
+                            
+                            return (
+                              <TableRow 
+                                key={mulasztas.id}
+                                onClick={handleRowClick}
+                                className={`
+                                  transition-colors duration-150
+                                  ${isSelected ? 'bg-blue-50 dark:bg-blue-950/30 border-l-4 border-l-blue-500' : ''}
+                                  ${isClickable && !isSelected ? 'hover:bg-muted/50 cursor-pointer' : ''}
+                                  ${!isClickable ? 'opacity-60' : ''}
+                                `}
+                                style={{ userSelect: 'none' }}
+                              >
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                                    <span className="whitespace-nowrap">{formatDate(mulasztas.datum)}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-muted-foreground" />
+                                    {mulasztas.ora}.
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <BookOpen className="w-4 h-4 text-muted-foreground" />
+                                    {mulasztas.tantargy}
+                                  </div>
+                                </TableCell>
+                                <TableCell>{getTipusBadge(mulasztas.tipus)}</TableCell>
+                                <TableCell className="hidden lg:table-cell max-w-xs truncate" title={mulasztas.tema}>
+                                  {mulasztas.tema}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    {isSelected && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
+                                    {getCoverageBadge(mulasztas)}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {isUncovered ? (
+                                    <TooltipProvider>
+                                      <Tooltip delayDuration={300}>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const newSelected = new Set<number>();
+                                              newSelected.add(mulasztas.id);
+                                              setSelectedMulasztasok(newSelected);
+                                              handleQuickCreateIgazolas();
+                                            }}
+                                          >
+                                            <Plus className="w-4 h-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Igazolás létrehozása ehhez a mulasztáshoz</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  ) : (
+                                    <span className="text-muted-foreground">—</span>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Floating Action Bar */}
+              {selectedMulasztasok.size > 0 && (
+                <div className="fixed bottom-0 left-0 right-0 z-50 animate-in slide-in-from-bottom-5 duration-300 backdrop-blur-sm bg-background/95 border-t shadow-lg">
+                  <div className="container mx-auto px-6 max-w-full">
+                    <div className="flex items-center justify-between gap-2 py-4">
+                      <Badge variant="secondary" className="font-medium">
+                        {selectedMulasztasok.size} kiválasztva
+                      </Badge>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedMulasztasok(new Set());
+                            setLastSelectedIndex(null);
+                          }}
+                        >
+                          Törlés
+                        </Button>
+                        <Button
+                          onClick={handleQuickCreateIgazolas}
+                          size="sm"
+                          className="bg-violet-600 hover:bg-violet-700 text-white"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Igazolás létrehozása
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sidebar - Stats Cards */}
+            <div className="space-y-4">
+              {/* Interactive Pie Chart - Coverage (Desktop Sidebar) */}
+              <Card data-chart={pieChartId} className="flex flex-col">
+                <ChartStyle id={pieChartId} config={pieChartConfig} />
+                <CardHeader className="flex-row items-start space-y-0 pb-0">
+                  <div className="grid gap-1 flex-1">
+                    <CardTitle>Lefedettség</CardTitle>
+                    <CardDescription>
+                      Összes mulasztás: {filteredStatsAnalysis?.total_mulasztasok ?? 0}
+                    </CardDescription>
+                  </div>
+                  <Select value={activeCoverage} onValueChange={setActiveCoverage}>
+                    <SelectTrigger
+                      className="ml-auto h-7 w-[160px] rounded-lg pl-2.5"
+                      aria-label="Válassz kategóriát"
+                    >
+                      <SelectValue placeholder="Kategória" />
+                    </SelectTrigger>
+                    <SelectContent align="end" className="rounded-xl">
+                      {pieData.map((item) => {
+                        const config = pieChartConfig[item.category as keyof typeof pieChartConfig];
+                        if (!config) return null;
+                        return (
+                          <SelectItem
+                            key={item.category}
+                            value={item.category}
+                            className="rounded-lg [&_span]:flex"
+                          >
+                            <div className="flex items-center gap-2 text-xs">
+                              <span
+                                className="flex h-3 w-3 shrink-0 rounded-sm"
+                                style={{ backgroundColor: `var(--color-${item.category})` }}
+                              />
+                              {config?.label}
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </CardHeader>
+                <CardContent className="flex flex-1 justify-center pb-0">
+                  <ChartContainer
+                    id={pieChartId}
+                    config={pieChartConfig}
+                    className="mx-auto aspect-square w-full max-w-[300px]"
+                  >
+                    <PieChart>
+                      <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                      <Pie
+                        data={pieData}
+                        dataKey="value"
+                        nameKey="category"
+                        innerRadius={60}
+                        strokeWidth={5}
+                        activeIndex={activeIndex}
+                        activeShape={(props: PieSectorDataItem) => {
+                          const outerRadius = props.outerRadius || 0;
+                          return (
+                            <g>
+                              <Sector {...props} outerRadius={outerRadius + 10} />
+                              <Sector
+                                {...props}
+                                outerRadius={outerRadius + 25}
+                                innerRadius={outerRadius + 12}
+                              />
+                            </g>
+                          );
+                        }}
+                      >
+                        <Label
+                          content={({ viewBox }) => {
+                            if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                              return (
+                                <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                                  <tspan
+                                    x={viewBox.cx}
+                                    y={viewBox.cy}
+                                    className="fill-foreground text-3xl font-bold"
+                                  >
+                                    {pieData[activeIndex]?.value.toLocaleString()}
+                                  </tspan>
+                                  <tspan
+                                    x={viewBox.cx}
+                                    y={(viewBox.cy || 0) + 24}
+                                    className="fill-muted-foreground"
+                                  >
+                                    {coveragePercentage}% lefedve
+                                  </tspan>
+                                </text>
+                              );
+                            }
+                          }}
+                        />
+                      </Pie>
+                    </PieChart>
+                  </ChartContainer>
+                </CardContent>
+                <CardFooter className="flex-col gap-2 text-sm pt-4">
+                  <div className="flex items-center gap-2 leading-none font-medium">
+                    {coveragePercentage >= 80 ? (
+                      <>
+                        Kiváló lefedettség! <TrendingUp className="h-4 w-4 text-green-600" />
+                      </>
+                    ) : coveragePercentage >= 50 ? (
+                      <>
+                        Jó úton vagy <TrendingUp className="h-4 w-4 text-blue-600" />
+                      </>
+                    ) : (
+                      <>
+                        Javításra szorul <TrendingDown className="h-4 w-4 text-red-600" />
+                      </>
+                    )}
+                  </div>
+                  <div className="text-muted-foreground leading-none text-center">
+                    {(filteredStatsAnalysis?.covered_by_igazolas ?? 0) + (filteredStatsAnalysis?.igazolt_count ?? 0)} mulasztás rendezve {filteredStatsAnalysis?.total_mulasztasok ?? 0}-ból
+                  </div>
+                </CardFooter>
+              </Card>
+
+              {/* Késés Warning - Radial Chart (Desktop Sidebar) */}              {/* Késés Warning - Radial Chart */}
+              {uncoveredKesesMinutes > 0 && (
+                <Card className={`flex flex-col ${isKesesDanger ? 'border-red-500 dark:border-red-700' : 'border-yellow-500 dark:border-yellow-700'}`}>
+                  <CardHeader className="items-center pb-0">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <AlertCircle className={`w-4 h-4 ${isKesesDanger ? 'text-red-600' : 'text-yellow-600'}`} />
+                      <span className={isKesesDanger ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}>
+                        Késési figyelmeztetés
+                      </span>
+                    </CardTitle>
+                    <CardDescription className="text-center mt-2 text-xs">
+                      {isKesesDanger 
+                        ? 'VESZÉLY! 45 perc felett igazolatlan óra!'
+                        : 'Közeledik a 45 perces határ'
+                      }
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-1 pb-0">
+                    <ChartContainer
+                      config={kesesChartConfig}
+                      className="mx-auto aspect-square max-h-[200px]"
+                    >
+                      <RadialBarChart
+                        data={kesesChartData}
+                        startAngle={0}
+                        endAngle={(uncoveredKesesMinutes / 45) * 360}
+                        innerRadius={70}
+                        outerRadius={95}
+                      >
+                        <PolarGrid
+                          gridType="circle"
+                          radialLines={false}
+                          stroke="none"
+                          className="first:fill-muted last:fill-background"
+                          polarRadius={[76, 64]}
+                        />
+                        <RadialBar dataKey="minutes" background cornerRadius={10} />
+                        <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
+                          <Label
+                            content={({ viewBox }) => {
+                              if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                                return (
+                                  <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                                    <tspan
+                                      x={viewBox.cx}
+                                      y={viewBox.cy}
+                                      className={`text-4xl font-bold ${isKesesDanger ? 'fill-red-600' : 'fill-yellow-600'}`}
+                                    >
+                                      {kesesChartData[0].minutes}
+                                    </tspan>
+                                    <tspan
+                                      x={viewBox.cx}
+                                      y={(viewBox.cy || 0) + 24}
+                                      className="fill-muted-foreground"
+                                    >
+                                      perc / 45
+                                    </tspan>
+                                  </text>
+                                );
+                              }
+                            }}
+                          />
+                        </PolarRadiusAxis>
+                      </RadialBarChart>
+                    </ChartContainer>
+                  </CardContent>
+                  <CardFooter className="flex-col gap-2 text-sm pt-4">
+                    <div className={`flex items-center gap-2 leading-none font-medium ${
+                      isKesesDanger ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'
+                    }`}>
+                      {isKesesDanger ? (
+                        <>
+                          Sürgősen fedezd le! <AlertCircle className="h-4 w-4" />
+                        </>
+                      ) : (
+                        <>
+                          Még {45 - uncoveredKesesMinutes} perc marad <Clock className="h-4 w-4" />
+                        </>
+                      )}
+                    </div>
+                    <div className="text-muted-foreground leading-none text-center">
+                      {Math.round((uncoveredKesesMinutes / 45) * 100)}% kitöltöttség
+                    </div>
+                  </CardFooter>
+                </Card>
+              )}
+
+              {/* Radar Chart - Subject Statistics */}
+              {subjectData.length > 0 && (
+                <Card>
+                  <CardHeader className="items-center pb-4">
+                    <CardTitle>Tantárgyak szerint</CardTitle>
+                    <CardDescription className="text-xs">
+                      Mulasztások megoszlása
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pb-0">
+                    <ChartContainer
+                      config={subjectChartConfig}
+                      className="mx-auto aspect-square max-h-[250px]"
+                    >
+                      <RadarChart data={subjectData}>
+                        <ChartTooltip
+                          cursor={false}
+                          content={<ChartTooltipContent indicator="line" />}
+                        />
+                        <PolarAngleAxis dataKey="subject" />
+                        <PolarGrid radialLines={false} />
+                        <Radar
+                          dataKey="igazolt"
+                          fill="var(--color-igazolt)"
+                          fillOpacity={0}
+                          stroke="var(--color-igazolt)"
+                          strokeWidth={2}
+                        />
+                        <Radar
+                          dataKey="covered"
+                          fill="var(--color-covered)"
+                          fillOpacity={0}
+                          stroke="var(--color-covered)"
+                          strokeWidth={2}
+                        />
+                        <Radar
+                          dataKey="not_covered"
+                          fill="var(--color-not_covered)"
+                          fillOpacity={0}
+                          stroke="var(--color-not_covered)"
+                          strokeWidth={2}
+                        />
+                      </RadarChart>
+                    </ChartContainer>
+                  </CardContent>
+                  <CardFooter className="flex-col gap-2 text-sm pt-4">
+                    <div className="flex items-center gap-2 leading-none font-medium">
+                      {subjectData[0] && subjectData[0].not_covered > 0 && (
+                        <>
+                          Legtöbb lefedetlen: {subjectData[0].subject} <TrendingUp className="h-4 w-4 text-red-600" />
+                        </>
+                      )}
+                    </div>
+                    <div className="text-muted-foreground flex items-center gap-2 leading-none">
+                      Top {subjectData.length} tantárgy
+                    </div>
+                  </CardFooter>
+                </Card>
+              )}
+            </div>
+          </div>
+        </div>
         </>
       ) : (
         <Card>

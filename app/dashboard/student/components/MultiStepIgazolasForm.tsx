@@ -438,27 +438,27 @@ export function MultiStepIgazolasForm() {
           Töltsd ki a mezőket az igazolás beküldéséhez
         </CardDescription>
         {prefilledFromMulasztasok && (
-          <div className="mt-4 p-4 bg-teal-50 dark:bg-teal-950 border border-teal-200 dark:border-teal-800 rounded-lg">
+          <div className="mt-4 p-4 bg-violet-50 dark:bg-violet-950 border border-violet-200 dark:border-violet-800 rounded-lg">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center flex-shrink-0">
                 <Check className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1">
-                <p className="font-medium text-teal-900 dark:text-teal-100">
+                <p className="font-medium text-violet-900 dark:text-violet-100">
                   ✨ Űrlap előre kitöltve mulasztásokból
                 </p>
-                <p className="text-sm text-teal-700 dark:text-teal-300 mt-1">
+                <p className="text-sm text-violet-700 dark:text-violet-300 mt-1">
                   Az időpontok és megjegyzés automatikusan ki lettek töltve a kiválasztott {coveredMulasztasok.length} mulasztás alapján.
                   Ellenőrizd az adatokat és válaszd ki az igazolás típusát.
                 </p>
                 {coveredMulasztasok.length > 0 && (
                   <details className="mt-2">
-                    <summary className="text-sm text-teal-600 dark:text-teal-400 cursor-pointer hover:underline">
+                    <summary className="text-sm text-violet-600 dark:text-violet-400 cursor-pointer hover:underline">
                       Lefedett mulasztások megtekintése ({coveredMulasztasok.length})
                     </summary>
-                    <div className="mt-2 space-y-1 pl-4 border-l-2 border-teal-300 dark:border-teal-700">
+                    <div className="mt-2 space-y-1 pl-4 border-l-2 border-violet-300 dark:border-violet-700">
                       {coveredMulasztasok.map((m) => (
-                        <div key={m.id} className="text-xs text-teal-700 dark:text-teal-300">
+                        <div key={m.id} className="text-xs text-violet-700 dark:text-violet-300">
                           📅 {m.datum} • {m.ora}. óra • {m.tantargy}
                         </div>
                       ))}

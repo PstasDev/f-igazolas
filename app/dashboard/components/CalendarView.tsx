@@ -569,8 +569,8 @@ export function CalendarView() {
                               ${isTodayDate ? 'ring-2 ring-primary' : ''}
                               ${isSelected ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''}
                               ${attendanceReq 
-                                ? 'bg-green-100 dark:bg-green-900/20 hover:bg-green-200 dark:hover:bg-green-900/30' 
-                                : 'bg-red-100 dark:bg-red-900/20 hover:bg-red-200 dark:hover:bg-red-900/30'
+                                ? 'bg-green-100 dark:bg-green-900/10 hover:bg-green-200 dark:hover:bg-green-900/20' 
+                                : 'bg-red-100 dark:bg-red-900/10 hover:bg-red-200 dark:hover:bg-red-900/20'
                               }
                             `}
                           >
