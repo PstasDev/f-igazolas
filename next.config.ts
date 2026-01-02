@@ -19,6 +19,13 @@ const nextConfig: NextConfig = {
   images: {
     formats: ['image/webp', 'image/avif'],
     minimumCacheTTL: 60,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '75a37cbe8a.clvaw-cdnwnd.com',
+        pathname: '/**',
+      },
+    ],
   },
   
   // Experimental features for better performance

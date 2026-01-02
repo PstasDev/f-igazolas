@@ -231,7 +231,7 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
                   tooltipText = `Diák korrekció - Osztályfőnök elutasította\n${getPeriodSchedule(h)}`
                 } else {
                   bgColor = "period-correction"
-                  glowColor = "period-glow-purple"
+                  glowColor = "period-glow-yellow"
                   tooltipText = `Diák korrekció - Osztályfőnöki jóváhagyásra vár\n${getPeriodSchedule(h)}`
                 }
               } else if (isFTVHour) {

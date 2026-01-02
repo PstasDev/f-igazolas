@@ -165,24 +165,34 @@ export function DataTable<TData, TValue>({
     // Date range filter
     if (dateFrom || dateTo) {
       filtered = filtered.filter((item) => {
-        const itemDate = new Date(item.submittedAt);
-        // Normalize to midnight for date-only comparison
-        itemDate.setHours(0, 0, 0, 0);
-        let isValid = true;
+        // Parse igazolás date range (normalize to date-only, ignore time)
+        const igazolasStart = new Date(item.startDate);
+        igazolasStart.setHours(0, 0, 0, 0);
+        const igazolasEnd = new Date(item.endDate);
+        igazolasEnd.setHours(0, 0, 0, 0);
         
-        if (dateFrom) {
-          const fromDate = new Date(dateFrom);
-          fromDate.setHours(0, 0, 0, 0);
-          isValid = isValid && itemDate >= fromDate;
+        // Parse filter date range
+        const filterStart = dateFrom ? new Date(dateFrom) : null;
+        if (filterStart) filterStart.setHours(0, 0, 0, 0);
+        
+        const filterEnd = dateTo ? new Date(dateTo) : null;
+        if (filterEnd) filterEnd.setHours(0, 0, 0, 0);
+        
+        // Check for overlap between the two date ranges
+        // Two ranges overlap if: start1 <= end2 AND end1 >= start2
+        
+        if (filterStart && filterEnd) {
+          // Both dates specified: check if ranges overlap
+          return igazolasStart <= filterEnd && igazolasEnd >= filterStart;
+        } else if (filterStart) {
+          // Only "from" date specified: igazolás must end on or after filterStart
+          return igazolasEnd >= filterStart;
+        } else if (filterEnd) {
+          // Only "to" date specified: igazolás must start on or before filterEnd
+          return igazolasStart <= filterEnd;
         }
         
-        if (dateTo) {
-          const toDate = new Date(dateTo);
-          toDate.setHours(0, 0, 0, 0);
-          isValid = isValid && itemDate <= toDate;
-        }
-        
-        return isValid;
+        return true;
       })
     }
 
@@ -219,7 +229,7 @@ export function DataTable<TData, TValue>({
                 tooltipText = `Diák korrekció - Elutasítva\n${getPeriodSchedule(h)}`
               } else {
                 bgColor = "period-correction"
-                glowColor = "period-glow-purple"
+                glowColor = "period-glow-yellow"
                 tooltipText = `Diák korrekció - Jóváhagyásra vár\n${getPeriodSchedule(h)}`
               }
             } else if (isFTVHour) {
@@ -536,7 +546,7 @@ export function DataTable<TData, TValue>({
                     <span className="text-sm font-medium">Függőben / FTV importált</span>
                   </div>
                   <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-purple-500 text-white shadow-sm">0</span>
+                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-yellow-500 text-white shadow-sm">0</span>
                     <span className="text-sm font-medium">Diák korrekció</span>
                   </div>
                   <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
@@ -872,42 +882,42 @@ export function DataTable<TData, TValue>({
 
                               {/* Student Correction Section - Only show if there are extra minutes */}
                               {((selectedRow.minutesBefore ?? 0) > 0 || (selectedRow.minutesAfter ?? 0) > 0) && (
-                                <div className="p-4 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-2 border-purple-300 dark:border-purple-600">
+                                <div className="p-4 rounded-lg bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 border-2 border-yellow-300 dark:border-yellow-600">
                                   <div className="flex items-center gap-2 mb-3">
-                                    <div className="p-2 rounded-lg bg-purple-600 dark:bg-purple-500">
+                                    <div className="p-2 rounded-lg bg-yellow-600 dark:bg-yellow-500">
                                       <User className="h-4 w-4 text-white" />
                                     </div>
                                     <div>
-                                      <p className="font-bold text-purple-900 dark:text-purple-200">Általad megadott extra időszak</p>
-                                      <p className="text-xs text-purple-700 dark:text-purple-400">Osztályfőnöki jóváhagyásra vár</p>
+                                      <p className="font-bold text-yellow-900 dark:text-yellow-200">Általad megadott extra időszak</p>
+                                      <p className="text-xs text-yellow-700 dark:text-yellow-400">Osztályfőnöki jóváhagyásra vár</p>
                                     </div>
                                   </div>
                                   <div className="space-y-2">
                                     {(selectedRow.minutesBefore ?? 0) > 0 && (
-                                      <div className="flex items-center gap-3 p-2 rounded-md bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-700">
-                                        <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-purple-600 dark:bg-purple-500 text-white font-bold text-lg">
+                                      <div className="flex items-center gap-3 p-2 rounded-md bg-yellow-100 dark:bg-yellow-900/40 border border-yellow-200 dark:border-yellow-700">
+                                        <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-yellow-600 dark:bg-yellow-500 text-white font-bold text-lg">
                                           {selectedRow.minutesBefore}
                                         </div>
                                         <div>
-                                          <p className="text-sm font-semibold text-purple-900 dark:text-purple-200">Forgatás előtt</p>
-                                          <p className="text-xs text-purple-700 dark:text-purple-400">Utazási idő, előkészület</p>
+                                          <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-200">Forgatás előtt</p>
+                                          <p className="text-xs text-yellow-700 dark:text-yellow-400">Utazási idő, előkészület</p>
                                         </div>
                                       </div>
                                     )}
                                     {(selectedRow.minutesAfter ?? 0) > 0 && (
-                                      <div className="flex items-center gap-3 p-2 rounded-md bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-700">
-                                        <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-purple-600 dark:bg-purple-500 text-white font-bold text-lg">
+                                      <div className="flex items-center gap-3 p-2 rounded-md bg-yellow-100 dark:bg-yellow-900/40 border border-yellow-200 dark:border-yellow-700">
+                                        <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-yellow-600 dark:bg-yellow-500 text-white font-bold text-lg">
                                           {selectedRow.minutesAfter}
                                         </div>
                                         <div>
-                                          <p className="text-sm font-semibold text-purple-900 dark:text-purple-200">Forgatás után</p>
-                                          <p className="text-xs text-purple-700 dark:text-purple-400">Hazautazás, lezárás</p>
+                                          <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-200">Forgatás után</p>
+                                          <p className="text-xs text-yellow-700 dark:text-yellow-400">Hazautazás, lezárás</p>
                                         </div>
                                       </div>
                                     )}
                                   </div>
-                                  <div className="mt-3 p-2 rounded bg-purple-200/50 dark:bg-purple-800/30">
-                                    <p className="text-xs text-purple-800 dark:text-purple-300">
+                                  <div className="mt-3 p-2 rounded bg-yellow-200/50 dark:bg-yellow-800/30">
+                                    <p className="text-xs text-yellow-800 dark:text-yellow-300">
                                       <strong>Összesen:</strong> {(selectedRow.minutesBefore ?? 0) + (selectedRow.minutesAfter ?? 0)} perc extra időszak
                                     </p>
                                   </div>

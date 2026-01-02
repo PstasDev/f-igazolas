@@ -309,6 +309,10 @@ class APIClient {
     return this.fetchWithAuth<IgazolasTipus[]>('/igazolas-tipus');
   }
 
+  async getMostUsedIgazolasTipus(): Promise<IgazolasTipus[]> {
+    return this.fetchWithAuth<IgazolasTipus[]>('/igazolas-tipus/most-used');
+  }
+
   async getCategorizedIgazolasTipus(): Promise<{ categories: Array<{ key: string; name: string; emoji: string; types: IgazolasTipus[] }>; total_types: number }> {
     return this.fetchWithAuth('/igazolas-tipus/categorized');
   }

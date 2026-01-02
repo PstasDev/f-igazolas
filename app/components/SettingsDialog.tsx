@@ -224,7 +224,7 @@ export function SettingsDialog() {
     switch (activePage) {
       case "account":
         return (
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="space-y-4">
             <h2 className="text-lg font-semibold">Profil adatok</h2>
             <ItemGroup className="gap-2">
               <Item variant="outline">
@@ -261,7 +261,7 @@ export function SettingsDialog() {
       
       case "appearance":
         return (
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="space-y-4">
             <FieldGroup>
               <FieldSet>
                 <FieldLabel htmlFor="theme-selector">
@@ -362,7 +362,7 @@ export function SettingsDialog() {
       
       case "verification-types":
         return (
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="space-y-4">
             <div>
               <h2 className="text-lg font-semibold">Igazolástípusok kezelése</h2>
               <p className="text-sm text-muted-foreground">
@@ -497,7 +497,7 @@ export function SettingsDialog() {
       
       case "experimental":
         return (
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="space-y-4">
             <h2 className="text-lg font-semibold">Kísérleti funkciók</h2>
             <ItemGroup className="gap-4">
               <Item variant="outline" className="bg-teal-50 dark:bg-teal-950/30 border-teal-200 dark:border-teal-800">
@@ -590,7 +590,7 @@ export function SettingsDialog() {
       
       case "info":
         return (
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="space-y-4">
             <div>
               <h2 className="text-lg font-semibold">Információ</h2>
             </div>
@@ -911,13 +911,13 @@ export function SettingsDialog() {
           <Settings className="h-5 w-5" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="overflow-hidden p-0 md:max-w-[700px] lg:max-w-[800px] max-h-[90vh]">
+      <DialogContent className="p-0 md:max-w-[700px] lg:max-w-[800px] h-[85vh] md:h-[80vh] flex flex-col">
         <DialogTitle className="sr-only">Beállítások</DialogTitle>
         <DialogDescription className="sr-only">
           Itt tudod testreszabni a beállításokat.
         </DialogDescription>
-        <SidebarProvider className="items-start">
-          <Sidebar collapsible="none" className="hidden md:flex">
+        <SidebarProvider className="flex-1 min-h-0">
+          <Sidebar collapsible="none" className="hidden md:flex border-r">
             <SidebarContent>
               {/* Main group without label */}
               {groupedNavItems.main && groupedNavItems.main.length > 0 && (
@@ -965,8 +965,8 @@ export function SettingsDialog() {
                 ))}
             </SidebarContent>
           </Sidebar>
-          <main className="flex flex-1 flex-col overflow-hidden">
-            <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <main className="flex flex-col flex-1 min-h-0">
+            <header className="flex h-16 shrink-0 items-center gap-2 border-b">
               <div className="flex items-center gap-2 px-4 w-full">
                 {/* Mobile dropdown selector */}
                 <div className="md:hidden w-full">
@@ -1027,7 +1027,7 @@ export function SettingsDialog() {
                 </Breadcrumb>
               </div>
             </header>
-            <div className="flex flex-1 flex-col overflow-y-auto">
+            <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
               {renderPageContent()}
             </div>
           </main>

@@ -54,6 +54,7 @@ export function MultiStepIgazolasForm() {
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
   const [igazolasTipusok, setIgazolasTipusok] = useState<IgazolasTipus[]>([]);
   const [filteredIgazolasTipusok, setFilteredIgazolasTipusok] = useState<IgazolasTipus[]>([]);
+  const [mostUsedTipusok, setMostUsedTipusok] = useState<IgazolasTipus[]>([]);
   const [myProfile, setMyProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,19 +74,55 @@ export function MultiStepIgazolasForm() {
           const startDate = new Date(parsed.eleje);
           const endDate = new Date(parsed.vege);
           const dateStr = startDate.toISOString().split('T')[0];
+          const endDateStr = endDate.toISOString().split('T')[0];
           
-          // Calculate period range from times
-          const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
-          const endMinutes = endDate.getHours() * 60 + endDate.getMinutes();
-          const startPeriod = Math.max(0, Math.floor((startMinutes - 8 * 60) / 45));
-          const endPeriod = Math.min(8, Math.floor((endMinutes - 8 * 60) / 45));
+          // Check if this is a multi-day absence
+          const isMultiDay = parsed.is_multi_day || (dateStr !== endDateStr);
           
-          setFormData({
-            ...INITIAL_FORM_DATA,
-            date: dateStr,
-            periodRange: [startPeriod, endPeriod],
-            megjegyzes_diak: parsed.megjegyzes_diak || '',
-          });
+          if (isMultiDay) {
+            // For multi-day absences, set date range and use full days
+            setFormData({
+              ...INITIAL_FORM_DATA,
+              date: dateStr,
+              endDate: endDateStr,
+              isMultiDay: true,
+              periodRange: [0, BELL_SCHEDULE.length - 1], // Full day coverage
+              megjegyzes_diak: parsed.megjegyzes_diak || '',
+            });
+          } else {
+            // For single day absences, calculate period range from times using actual bell schedule
+            const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+            const endMinutes = endDate.getHours() * 60 + endDate.getMinutes();
+            
+            // Find which period the start time falls into
+            let startPeriod = 0;
+            for (let i = 0; i < BELL_SCHEDULE.length; i++) {
+              const [startHour, startMin] = BELL_SCHEDULE[i].start.split(':').map(Number);
+              const periodStartMinutes = startHour * 60 + startMin;
+              if (startMinutes >= periodStartMinutes) {
+                startPeriod = i;
+              }
+            }
+            
+            // Find which period the end time falls into
+            let endPeriod = 0;
+            for (let i = 0; i < BELL_SCHEDULE.length; i++) {
+              const [endHour, endMin] = BELL_SCHEDULE[i].end.split(':').map(Number);
+              const periodEndMinutes = endHour * 60 + endMin;
+              if (endMinutes <= periodEndMinutes) {
+                endPeriod = i;
+                break;
+              }
+              endPeriod = i; // Keep updating to last period if we don't break
+            }
+            
+            setFormData({
+              ...INITIAL_FORM_DATA,
+              date: dateStr,
+              periodRange: [startPeriod, endPeriod],
+              megjegyzes_diak: parsed.megjegyzes_diak || '',
+            });
+          }
           
           setPrefilledFromMulasztasok(true);
           
@@ -94,7 +131,8 @@ export function MultiStepIgazolasForm() {
             setCoveredMulasztasok(parsed.covered_mulasztasok);
           }
           
-          toast.success('Űrlap kitöltve a kiválasztott mulasztásokból', { duration: 5000 });
+          const multiDayText = isMultiDay ? ' (több napos)' : '';
+          toast.success(`Űrlap kitöltve a kiválasztott mulasztásokból${multiDayText}`, { duration: 5000 });
         }
         
         // Clear sessionStorage after loading
@@ -111,14 +149,16 @@ export function MultiStepIgazolasForm() {
       try {
         setIsLoading(true);
         
-        // Fetch both profile and igazolás types
-        const [profile, types] = await Promise.all([
+        // Fetch profile, igazolás types, and most used types
+        const [profile, types, mostUsed] = await Promise.all([
           apiClient.getMyProfile(),
-          apiClient.listIgazolasTipus()
+          apiClient.listIgazolasTipus(),
+          apiClient.getMostUsedIgazolasTipus().catch(() => []) // Fail gracefully if no history
         ]);
         
         setMyProfile(profile);
         setIgazolasTipusok(types);
+        setMostUsedTipusok(mostUsed);
         
         // Filter types based on student's class
         if (profile.osztalyom) {
@@ -438,27 +478,27 @@ export function MultiStepIgazolasForm() {
           Töltsd ki a mezőket az igazolás beküldéséhez
         </CardDescription>
         {prefilledFromMulasztasok && (
-          <div className="mt-4 p-4 bg-violet-50 dark:bg-violet-950 border border-violet-200 dark:border-violet-800 rounded-lg">
+          <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-yellow-600 flex items-center justify-center flex-shrink-0">
                 <Check className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1">
-                <p className="font-medium text-violet-900 dark:text-violet-100">
+                <p className="font-medium text-yellow-900 dark:text-yellow-100">
                   ✨ Űrlap előre kitöltve mulasztásokból
                 </p>
-                <p className="text-sm text-violet-700 dark:text-violet-300 mt-1">
+                <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
                   Az időpontok és megjegyzés automatikusan ki lettek töltve a kiválasztott {coveredMulasztasok.length} mulasztás alapján.
                   Ellenőrizd az adatokat és válaszd ki az igazolás típusát.
                 </p>
                 {coveredMulasztasok.length > 0 && (
                   <details className="mt-2">
-                    <summary className="text-sm text-violet-600 dark:text-violet-400 cursor-pointer hover:underline">
+                    <summary className="text-sm text-yellow-600 dark:text-yellow-400 cursor-pointer hover:underline">
                       Lefedett mulasztások megtekintése ({coveredMulasztasok.length})
                     </summary>
-                    <div className="mt-2 space-y-1 pl-4 border-l-2 border-violet-300 dark:border-violet-700">
+                    <div className="mt-2 space-y-1 pl-4 border-l-2 border-yellow-300 dark:border-yellow-700">
                       {coveredMulasztasok.map((m) => (
-                        <div key={m.id} className="text-xs text-violet-700 dark:text-violet-300">
+                        <div key={m.id} className="text-xs text-yellow-700 dark:text-yellow-300">
                           📅 {m.datum} • {m.ora}. óra • {m.tantargy}
                         </div>
                       ))}
@@ -684,6 +724,28 @@ export function MultiStepIgazolasForm() {
                   )}
                 </SelectContent>
               </Select>
+
+              {/* Quick selector for most used types */}
+              {!formData.tipus && mostUsedTipusok.length > 0 && (
+                <div className="flex gap-2 flex-wrap">
+                  {mostUsedTipusok.map((tipus) => {
+                    const typeInfo = getIgazolasType(tipus.nev);
+                    return (
+                      <Button
+                        key={tipus.id}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateFormData({ tipus: tipus.id })}
+                        className="flex items-center gap-1.5 text-xs hover:bg-blue-50 hover:border-blue-300 dark:hover:bg-blue-950 dark:hover:border-blue-700"
+                      >
+                        <span>{typeInfo.emoji}</span>
+                        <span>{tipus.nev}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
               
               {selectedTipusInfo && (
                 <div className="space-y-3">

@@ -231,8 +231,8 @@ h1, h2, h3, h4, h5, h6 {
   @apply shadow-lg shadow-blue-400/50 dark:shadow-blue-300/40;
 }
 
-.period-glow-purple {
-  @apply shadow-lg shadow-purple-500/50 dark:shadow-purple-400/40;
+.period-glow-yellow {
+  @apply shadow-lg shadow-yellow-500/50 dark:shadow-yellow-400/40;
 }
 
 /* Sidebar transition enhancements */
