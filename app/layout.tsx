@@ -62,6 +62,7 @@ export default function RootLayout({
             `,
           }}
         />
+        <script defer src="/__szlg/motd.js"></script> 
       </head>
       <body
         className={`${notoSans.variable} ${playfair.variable} antialiased`}
