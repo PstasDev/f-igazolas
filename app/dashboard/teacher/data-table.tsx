@@ -96,6 +96,29 @@ interface DataTableProps<TData, TValue> {
   ftvSyncStatus?: React.ReactNode
 }
 
+// Utility function to get row highlight class based on submission delay
+function getSubmissionDelayClass(startDate: string, submittedAt: string): string {
+  const absenceDate = new Date(startDate)
+  const submitDate = new Date(submittedAt)
+  
+  // Calculate the difference in days
+  const diffTime = submitDate.getTime() - absenceDate.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  
+  // Under 2 weeks (14 days): normal
+  if (diffDays < 14) {
+    return ""
+  }
+  // 2 weeks to 1 month (14-30 days): yellow
+  else if (diffDays < 30) {
+    return "bg-yellow-50 dark:bg-yellow-950/20 hover:bg-yellow-100 dark:hover:bg-yellow-950/30"
+  }
+  // Over 1 month (30+ days): red
+  else {
+    return "bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30"
+  }
+}
+
 export function DataTable<TData, TValue>({
   columns,
   data,
@@ -1102,6 +1125,27 @@ export function DataTable<TData, TValue>({
           </div>
         )}
 
+        {/* Legend for submission delay colors */}
+        <Card className="border bg-muted/30">
+          <CardContent className="p-3">
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <span className="font-semibold text-muted-foreground">Beadás késése:</span>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border rounded bg-white dark:bg-slate-950"></div>
+                <span className="text-xs">Kevesebb mint 2 hét</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border rounded bg-yellow-100 dark:bg-yellow-950/40"></div>
+                <span className="text-xs">2 hét - 1 hónap</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border rounded bg-red-100 dark:bg-red-950/40"></div>
+                <span className="text-xs">Több mint 1 hónap</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Table */}
         <Card>
           <CardContent className="p-0">
@@ -1128,11 +1172,14 @@ export function DataTable<TData, TValue>({
                   </TableHeader>
                   <TableBody>
                     {table.getRowModel().rows?.length ? (
-                      table.getRowModel().rows.map((row) => (
+                      table.getRowModel().rows.map((row) => {
+                        const igazolas = row.original as unknown as IgazolasTableRow
+                        const delayClass = getSubmissionDelayClass(igazolas.startDate, igazolas.submittedAt)
+                        return (
                         <TableRow
                           key={row.id}
                           data-state={row.getIsSelected() && "selected"}
-                          className="hover:bg-muted/50 transition-colors border-b"
+                          className={`transition-colors border-b ${delayClass || "hover:bg-muted/50"}`}
                         >
                           {row.getVisibleCells().map((cell) => (
                             <TableCell 
@@ -1144,7 +1191,8 @@ export function DataTable<TData, TValue>({
                             </TableCell>
                           ))}
                         </TableRow>
-                      ))
+                        )
+                      })
                     ) : (
                       <TableRow>
                         <TableCell colSpan={columns.length} className="h-32 text-center">
