@@ -111,11 +111,11 @@ function getSubmissionDelayClass(startDate: string, submittedAt: string): string
   }
   // 2 weeks to 1 month (14-30 days): yellow
   else if (diffDays < 30) {
-    return "bg-yellow-50 dark:bg-yellow-950/20 hover:bg-yellow-100 dark:hover:bg-yellow-950/30"
+    return "bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 dark:hover:bg-yellow-900/40"
   }
   // Over 1 month (30+ days): red
   else {
-    return "bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30"
+    return "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/40"
   }
 }
 
@@ -1079,7 +1079,7 @@ export function DataTable<TData, TValue>({
               <summary className="flex cursor-pointer items-center justify-between font-medium transition-colors">
                 <div className="flex items-center gap-2">
                   <Info className="h-4 w-4" />
-                  <span>Órarend színkódok magyarázata</span>
+                  <span>Jelmagyarázat</span>
                 </div>
                 <svg
                   className="h-4 w-4 transition-transform group-open:rotate-180"
@@ -1090,27 +1090,49 @@ export function DataTable<TData, TValue>({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </summary>
-              <div className="mt-4 pt-3 border-t">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-blue-500 text-white shadow-sm">0</span>
-                    <span className="text-sm font-medium">Függőben / FTV importált</span>
+              <div className="mt-4 pt-3 border-t space-y-6">
+                {/* Órarend színkódok */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Órarend színkódok</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-blue-500 text-white shadow-sm">0</span>
+                      <span className="text-sm font-medium">Függőben / FTV importált</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-purple-500 text-white shadow-sm">0</span>
+                      <span className="text-sm font-medium">Diák korrekció</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-green-500 text-white shadow-sm">0</span>
+                      <span className="text-sm font-medium">Jóváhagyva</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-red-500 text-white shadow-sm">0</span>
+                      <span className="text-sm font-medium">Elutasítva</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-muted text-muted-foreground border">0</span>
+                      <span className="text-sm font-medium">Nincs hiányzás</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-purple-500 text-white shadow-sm">0</span>
-                    <span className="text-sm font-medium">Diák korrekció</span>
-                  </div>
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-green-500 text-white shadow-sm">0</span>
-                    <span className="text-sm font-medium">Jóváhagyva</span>
-                  </div>
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-red-500 text-white shadow-sm">0</span>
-                    <span className="text-sm font-medium">Elutasítva</span>
-                  </div>
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-muted text-muted-foreground border">0</span>
-                    <span className="text-sm font-medium">Nincs hiányzás</span>
+                </div>
+                {/* Beadási késés színkódok */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Beadási késés</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                      <div className="w-5 h-5 border rounded bg-white dark:bg-slate-950 flex-shrink-0"></div>
+                      <span className="text-sm font-medium">Kevesebb mint 2 hét</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                      <div className="w-5 h-5 border rounded bg-yellow-200 dark:bg-yellow-800 flex-shrink-0"></div>
+                      <span className="text-sm font-medium">2 hét - 1 hónap</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                      <div className="w-5 h-5 border rounded bg-red-200 dark:bg-red-800 flex-shrink-0"></div>
+                      <span className="text-sm font-medium">Több mint 1 hónap</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1124,27 +1146,6 @@ export function DataTable<TData, TValue>({
             {ftvSyncStatus}
           </div>
         )}
-
-        {/* Legend for submission delay colors */}
-        <Card className="border bg-muted/30">
-          <CardContent className="p-3">
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              <span className="font-semibold text-muted-foreground">Beadás késése:</span>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border rounded bg-white dark:bg-slate-950"></div>
-                <span className="text-xs">Kevesebb mint 2 hét</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border rounded bg-yellow-100 dark:bg-yellow-950/40"></div>
-                <span className="text-xs">2 hét - 1 hónap</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border rounded bg-red-100 dark:bg-red-950/40"></div>
-                <span className="text-xs">Több mint 1 hónap</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Table */}
         <Card>
