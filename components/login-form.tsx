@@ -44,7 +44,8 @@ export function LoginForm({
     try {
       await login(username, password);
       toast.success('Sikeres bejelentkezés!');
-      router.replace('/dashboard');
+      // Don't manually redirect - let the login page's useEffect handle it
+      // This prevents a flash of the login page before redirect
     } catch (error) {
       const errorMessage = (error as Error)?.message || 'Bejelentkezési hiba';
       toast.error(errorMessage);

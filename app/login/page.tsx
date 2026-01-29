@@ -30,7 +30,7 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, isLoading, router])
 
-  // Show loading while checking auth status
+  // Show loading while checking auth status or during login
   if (isLoading || !shouldRender) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
