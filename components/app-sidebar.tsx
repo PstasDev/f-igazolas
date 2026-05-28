@@ -8,6 +8,7 @@ import {
   IconCalendarEvent,
   IconSettings,
   IconSchool,
+  IconBus,
 } from "@tabler/icons-react"
 import Link from "next/link"
 import { Logo } from "@/components/Logo"
@@ -63,6 +64,12 @@ export function AppSidebar({ onViewChange, currentView, ...props }: AppSidebarPr
       url: "#naptar",
       icon: IconCalendarEvent,
     },
+    // Add Közlekedés for superusers
+    ...(isSuperuser ? [{
+      title: "Közlekedés",
+      url: "#kozlekedes",
+      icon: IconBus,
+    }] : []),
     // Add Administration for superuser students
     ...(isSuperuser ? [{
       title: "Adminisztráció",
@@ -88,6 +95,12 @@ export function AppSidebar({ onViewChange, currentView, ...props }: AppSidebarPr
       url: "#naptar",
       icon: IconCalendarEvent,
     },
+    // Add Közlekedés for superusers
+    ...(isSuperuser ? [{
+      title: "Közlekedés",
+      url: "#kozlekedes",
+      icon: IconBus,
+    }] : []),
     // Add Administration for superuser teachers
     ...(isSuperuser ? [{
       title: "Adminisztráció",

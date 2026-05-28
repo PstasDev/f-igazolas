@@ -18,6 +18,7 @@ import { MultiStepIgazolasForm } from "./student/components/MultiStepIgazolasFor
 import { MulasztasokView } from "./student/components/MulasztasokView"
 import { CalendarView } from "./components/CalendarView"
 import { AdminView } from "./components/AdminView"
+import { KozlekedesView } from "./components/KozlekedesView"
 import { SystemMessageBanner } from "@/app/components/SystemMessageBanner"
 import { PasskeySetupDrawer } from "@/components/passkey-setup-drawer"
 
@@ -64,6 +65,7 @@ export default function Page() {
 
   const getPageTitle = () => {
     if (currentView === 'naptar') return 'Naptár'
+    if (currentView === 'kozlekedes' && isSuperuser) return 'Közlekedés'
     if (currentView === 'adminisztracio' && isSuperuser) return 'Adminisztráció'
     
     if (isTeacher) {
@@ -99,6 +101,13 @@ export default function Page() {
           {currentView === 'naptar' && (
             <div>
               <CalendarView />
+            </div>
+          )}
+          
+          {/* Közlekedés view (superusers only) */}
+          {currentView === 'kozlekedes' && isSuperuser && (
+            <div>
+              <KozlekedesView />
             </div>
           )}
           

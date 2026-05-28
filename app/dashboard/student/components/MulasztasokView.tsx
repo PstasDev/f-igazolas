@@ -597,6 +597,12 @@ export function MulasztasokView() {
             Kísérleti funkció
           </Badge>
         </div>
+        <Button asChild variant="outline" size="sm" className="shrink-0">
+          <a href="https://klik035236001.e-kreta.hu/Hianyzas/Hianyzasok" target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Irány a Kréta
+          </a>
+        </Button>
       </div>
 
       {/* Instructions - Collapsible */}
