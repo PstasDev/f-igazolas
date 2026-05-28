@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { apiClient } from "@/lib/api"
 import { useRole } from "@/app/context/RoleContext"
 import type { TanevRendje, Override, TanitasiSzunet, Osztaly } from "@/lib/types"
-import { IconAlertCircle, IconPlus, IconEdit, IconTrash, IconSchool, IconKey, IconShield, IconChartBar, IconUsers, IconDatabase, IconTool, IconArchive } from "@tabler/icons-react"
+import { IconAlertCircle, IconPlus, IconEdit, IconTrash, IconSchool, IconKey, IconShield, IconChartBar, IconUsers, IconArchive } from "@tabler/icons-react"
 import { Clapperboard } from "lucide-react"
 import { format } from "date-fns"
 import { PasswordManagement } from "@/components/admin/PasswordManagement"
@@ -26,10 +26,7 @@ import { TeacherAssignment } from "@/components/admin/TeacherAssignment"
 import { LoginStatistics } from "@/components/admin/LoginStatistics"
 import { ClassActivityHeatmap } from "@/components/admin/ClassActivityHeatmap"
 import { ApprovalRatesAnalytics } from "@/components/admin/ApprovalRatesAnalytics"
-import { DatabaseStatistics } from "@/components/admin/DatabaseStatistics"
-import { StorageUsageMonitoring } from "@/components/admin/StorageUsageMonitoring"
-import { MaintenanceMode } from "@/components/admin/MaintenanceMode"
-import { APIMetrics } from "@/components/admin/APIMetrics"
+
 import { PermissionMatrix } from "@/components/admin/PermissionMatrix"
 import { AcademicYearArchival } from "@/components/admin/AcademicYearArchival"
 
@@ -356,18 +353,6 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
               <span className="sm:hidden">Elem.</span>
             </TabsTrigger>
             
-            {/* System */}
-            <TabsTrigger value="system" className="gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap">
-              <IconDatabase className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Rendszer</span>
-              <span className="sm:hidden">Rend.</span>
-            </TabsTrigger>
-            <TabsTrigger value="maintenance" className="gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap">
-              <IconTool className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Karbantartás</span>
-              <span className="sm:hidden">Karb.</span>
-            </TabsTrigger>
-            
             {/* Advanced Features */}
             <TabsTrigger value="archive" className="gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap">
               <IconArchive className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -603,7 +588,7 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
         {/* Analytics Tab - Consolidated */}
         <TabsContent value="analytics" className="space-y-4">
           <Tabs defaultValue="login" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1">
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 gap-1">
               <TabsTrigger value="login" className="text-xs sm:text-sm">
                 <IconUsers className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                 Bejelentkezések
@@ -615,10 +600,6 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
               <TabsTrigger value="approval-rates" className="text-xs sm:text-sm">
                 <span className="mr-1">✅</span>
                 Elfogadási Ráta
-              </TabsTrigger>
-              <TabsTrigger value="api" className="text-xs sm:text-sm">
-                <span className="mr-1">⚡</span>
-                API Metrikák
               </TabsTrigger>
             </TabsList>
 
@@ -633,40 +614,7 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
             <TabsContent value="approval-rates">
               <ApprovalRatesAnalytics />
             </TabsContent>
-
-            <TabsContent value="api">
-              <APIMetrics />
-            </TabsContent>
           </Tabs>
-        </TabsContent>
-
-        {/* System Tab - Consolidated */}
-        <TabsContent value="system" className="space-y-4">
-          <Tabs defaultValue="database" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 gap-1">
-              <TabsTrigger value="database" className="text-xs sm:text-sm">
-                <IconDatabase className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                Adatbázis
-              </TabsTrigger>
-              <TabsTrigger value="storage" className="text-xs sm:text-sm">
-                <span className="mr-1">💾</span>
-                Tárhely
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="database">
-              <DatabaseStatistics />
-            </TabsContent>
-
-            <TabsContent value="storage">
-              <StorageUsageMonitoring />
-            </TabsContent>
-          </Tabs>
-        </TabsContent>
-
-        {/* Maintenance Mode Tab */}
-        <TabsContent value="maintenance" className="space-y-4">
-          <MaintenanceMode />
         </TabsContent>
 
         {/* Academic Year Archival Tab */}

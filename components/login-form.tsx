@@ -12,10 +12,15 @@ import {
 import { useRouter } from "next/navigation"
 import { useRole } from "@/app/context/RoleContext"
 import { toast } from "sonner"
-import { useState } from "react"
-import { KeyRound, LogIn } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Fingerprint, KeyRound, LogIn } from "lucide-react"
 import { ForgotPasswordForm } from "./forgot-password-form"
 import { FirstPasswordForm } from "./first-password-form"
+import {
+  describePasskeyError,
+  hasPlatformAuthenticator,
+  isPasskeySupported,
+} from "@/lib/passkey"
 
 interface LoginFormProps extends React.ComponentProps<"form"> {
   onModeChange?: (isSpecialMode: boolean) => void;
@@ -26,16 +31,30 @@ export function LoginForm({
   onModeChange,
   ...props
 }: LoginFormProps) {
-  const { login, isLoading } = useRole();
+  const { login, loginWithPasskey, isLoading } = useRole();
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showFirstPassword, setShowFirstPassword] = useState(false);
+  const [passkeyAvailable, setPasskeyAvailable] = useState(false);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      if (!isPasskeySupported()) return;
+      const ok = await hasPlatformAuthenticator();
+      if (active) setPasskeyAvailable(ok);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!username || !password) {
       toast.error('Kérlek add meg a felhasználónevet és a jelszót!');
       return;
@@ -49,6 +68,20 @@ export function LoginForm({
       const errorMessage = (error as Error)?.message || 'Bejelentkezési hiba';
       toast.error(errorMessage);
       console.error('Login error:', error);
+    }
+  };
+
+  const handlePasskeyLogin = async () => {
+    if (passkeyLoading || isLoading) return;
+    setPasskeyLoading(true);
+    try {
+      await loginWithPasskey(username || undefined);
+      toast.success('Sikeres bejelentkezés!');
+      router.replace('/dashboard');
+    } catch (error) {
+      toast.error(describePasskeyError(error));
+    } finally {
+      setPasskeyLoading(false);
     }
   };
 
@@ -72,8 +105,8 @@ export function LoginForm({
 
   if (showForgotPassword) {
     return (
-      <ForgotPasswordForm 
-        className={className} 
+      <ForgotPasswordForm
+        className={className}
         onBack={handleBackToLogin}
       />
     );
@@ -81,16 +114,16 @@ export function LoginForm({
 
   if (showFirstPassword) {
     return (
-      <FirstPasswordForm 
-        className={className} 
+      <FirstPasswordForm
+        className={className}
         onBack={handleBackToLogin}
       />
     );
   }
 
   return (
-    <form 
-      className={cn("flex flex-col gap-6", className)} 
+    <form
+      className={cn("flex flex-col gap-6", className)}
       onSubmit={handleSubmit}
       {...props}
     >
@@ -101,7 +134,31 @@ export function LoginForm({
             Add meg a felhasználóneved vagy e-mail címed és jelszavad
           </p>
         </div>
-        
+
+        {passkeyAvailable && (
+          <>
+            <Field>
+              <Button
+                type="button"
+                variant="default"
+                size="lg"
+                disabled={passkeyLoading || isLoading}
+                onClick={handlePasskeyLogin}
+                className="w-full"
+              >
+                <Fingerprint className="mr-2 h-4 w-4" />
+                {passkeyLoading ? 'Hitelesítés…' : 'Bejelentkezés jelkulccsal'}
+              </Button>
+              <p className="text-muted-foreground mt-1 text-center text-xs">
+                Touch ID, Windows Hello vagy biometrikus hitelesítő használata.
+              </p>
+            </Field>
+            <FieldSeparator className="*:data-[slot=field-separator-content]:bg-background">
+              vagy jelszóval
+            </FieldSeparator>
+          </>
+        )}
+
         <Field>
           <Label htmlFor="username">Felhasználónév vagy E-mail cím</Label>
           <Input
@@ -130,7 +187,7 @@ export function LoginForm({
           />
         </Field>
 
-        <Button 
+        <Button
           type="submit"
           disabled={isLoading}
           className="w-full"
@@ -151,8 +208,8 @@ export function LoginForm({
         </FieldSeparator>
 
         <Field>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             type="button"
             onClick={handleFirstPassword}
           >
@@ -162,7 +219,7 @@ export function LoginForm({
         </Field>
 
         <div className="text-center">
-          <Button 
+          <Button
             type="button"
             variant="link"
             onClick={handleForgotPassword}

@@ -76,15 +76,19 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown } from 'lucide-react';
 
+type FilterMode = 'all' | 'uncovered' | 'resolved';
+
 export function MulasztasokView() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [analysis, setAnalysis] = useState<MulasztasAnalysis | null>(null);
-  const [includeIgazolt, setIncludeIgazolt] = useState(false);
+  // 3-state filter: 'uncovered' shown by default (most actionable for the student)
+  const [filterMode, setFilterMode] = useState<FilterMode>('uncovered');
   const [activeTab, setActiveTab] = useState<'table' | 'stats'>('table');
   const [statsFilter, setStatsFilter] = useState<'all' | 'uncovered'>('all');
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   
   // Quick create igazolás state
   const [selectedMulasztasok, setSelectedMulasztasok] = useState<Set<number>>(new Set());
@@ -181,6 +185,7 @@ export function MulasztasokView() {
       const result = await apiClient.uploadEkretaMulasztasok(file);
       toast.success(result.message);
       setAnalysis(result.analysis);
+      setUploadErrors(Array.isArray(result.errors) ? result.errors : []);
       setFile(null);
       // Reset file input
       const fileInput = document.getElementById('file-upload') as HTMLInputElement;
@@ -288,11 +293,37 @@ export function MulasztasokView() {
 
   const getCoverageBadge = (mulasztas: MulasztasDetailed) => {
     if (mulasztas.igazolt) {
-      return (
+      const ekretaReason = mulasztas.igazolas_tipusa || mulasztas.mulasztas_ok;
+      const badge = (
         <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
           <CheckCircle2 className="w-3 h-3 mr-1" />
           eKrétában igazolt
+          {ekretaReason && (
+            <span className="ml-1 hidden sm:inline text-[10px] opacity-80 font-normal">
+              ({ekretaReason})
+            </span>
+          )}
         </Badge>
+      );
+      if (!ekretaReason) return badge;
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>{badge}</TooltipTrigger>
+            <TooltipContent className="max-w-xs text-xs">
+              <p className="font-semibold">Már igazolt eKrétában</p>
+              {mulasztas.igazolas_tipusa && (
+                <p>Típus: {mulasztas.igazolas_tipusa}</p>
+              )}
+              {mulasztas.mulasztas_ok && (
+                <p>Ok: {mulasztas.mulasztas_ok}</p>
+              )}
+              {mulasztas.mulasztas_statusz && (
+                <p>Státusz: {mulasztas.mulasztas_statusz}</p>
+              )}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       );
     }
     if (mulasztas.is_covered) {
@@ -416,21 +447,34 @@ export function MulasztasokView() {
   const pieChartId = "pie-coverage";
   const [activeCoverage, setActiveCoverage] = useState("covered");
   
-  // Filter analysis based on statsFilter
-  // Filter for table display based on includeIgazolt toggle
+  // Filter for table display based on the 3-state filterMode
+  //  - 'all':       every record
+  //  - 'uncovered': not igazolt in eKréta AND not covered by a local igazolás (actionable)
+  //  - 'resolved':  igazolt in eKréta OR covered by a local igazolás
   const filteredTableAnalysis = useMemo(() => {
     if (!analysis) return null;
-    if (includeIgazolt) return analysis;
-    
-    // Filter out igazolt and covered mulasztások for table
-    const filteredMulasztasok = analysis.mulasztasok.filter(m => !m.igazolt && !m.is_covered);
-    
+    if (filterMode === 'all') return analysis;
+
+    const filteredMulasztasok = analysis.mulasztasok.filter(m => {
+      const resolved = m.igazolt || m.is_covered;
+      return filterMode === 'resolved' ? resolved : !resolved;
+    });
+
     return {
       ...analysis,
       mulasztasok: filteredMulasztasok,
       total_mulasztasok: filteredMulasztasok.length,
     };
-  }, [analysis, includeIgazolt]);
+  }, [analysis, filterMode]);
+
+  // Breakdown for the informative empty/header state
+  const breakdown = useMemo(() => {
+    if (!analysis) return { total: 0, igazolt: 0, covered: 0, uncovered: 0 };
+    const igazolt = analysis.mulasztasok.filter(m => m.igazolt).length;
+    const covered = analysis.mulasztasok.filter(m => !m.igazolt && m.is_covered).length;
+    const uncovered = analysis.mulasztasok.filter(m => !m.igazolt && !m.is_covered).length;
+    return { total: analysis.mulasztasok.length, igazolt, covered, uncovered };
+  }, [analysis]);
 
   // Filter for stats display based on statsFilter dropdown
   const filteredStatsAnalysis = useMemo(() => {
@@ -704,21 +748,108 @@ export function MulasztasokView() {
           {/* Table Tab */}
           <TabsContent value="table" className="space-y-4">
 
-            {/* Mulasztások Table */}
+            {/* Upload error details (if any) */}
+            {uploadErrors.length > 0 && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle className="text-sm">
+                  {uploadErrors.length} sor nem került feldolgozásra
+                </AlertTitle>
+                <AlertDescription>
+                  <ul className="list-disc pl-4 mt-1 space-y-0.5 text-xs">
+                    {uploadErrors.slice(0, 5).map((err, i) => (
+                      <li key={i} className="break-words">{err}</li>
+                    ))}
+                    {uploadErrors.length > 5 && (
+                      <li className="italic">…és {uploadErrors.length - 5} további.</li>
+                    )}
+                  </ul>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 h-7 text-xs"
+                    onClick={() => setUploadErrors([])}
+                  >
+                    Elrejtés
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Stat overview ribbon — mobile-first, scrolls horizontally on small screens */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+              <button
+                type="button"
+                onClick={() => setFilterMode('all')}
+                className={`text-left rounded-lg border p-3 transition-colors ${
+                  filterMode === 'all'
+                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                    : 'hover:bg-muted/50'
+                }`}
+              >
+                <div className="text-xs text-muted-foreground">Összesen</div>
+                <div className="text-xl md:text-2xl font-bold">{breakdown.total}</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterMode('uncovered')}
+                className={`text-left rounded-lg border p-3 transition-colors ${
+                  filterMode === 'uncovered'
+                    ? 'border-red-500 bg-red-50 dark:bg-red-950/30 ring-1 ring-red-500'
+                    : 'hover:bg-muted/50'
+                }`}
+              >
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <XCircle className="w-3 h-3 text-red-600 dark:text-red-400" />
+                  Nincs lefedve
+                </div>
+                <div className="text-xl md:text-2xl font-bold text-red-600 dark:text-red-400">
+                  {breakdown.uncovered}
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterMode('resolved')}
+                className={`text-left rounded-lg border p-3 transition-colors ${
+                  filterMode === 'resolved'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 ring-1 ring-blue-500'
+                    : 'hover:bg-muted/50'
+                }`}
+              >
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                  Lefedve
+                </div>
+                <div className="text-xl md:text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {breakdown.covered}
+                </div>
+              </button>
+              <div className="rounded-lg border p-3 bg-muted/30">
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400" />
+                  eKrétában igazolt
+                </div>
+                <div className="text-xl md:text-2xl font-bold text-green-600 dark:text-green-400">
+                  {breakdown.igazolt}
+                </div>
+              </div>
+            </div>
+
+            {/* Mulasztások List */}
             <Card className="overflow-hidden">
             <CardHeader className="p-3 md:p-6">
-              <div className="flex items-center justify-between flex-wrap gap-2 md:gap-4">
+              <div className="flex items-start justify-between flex-wrap gap-2 md:gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 md:gap-3 flex-wrap">
                     <CardTitle className="text-base md:text-xl">Mulasztások részletei</CardTitle>
-                    {analysis.not_covered > 0 && (
+                    {breakdown.uncovered > 0 && filterMode !== 'uncovered' && (
                       <Badge variant="destructive" className="text-xs">
-                        {analysis.not_covered} lefedésre vár
+                        {breakdown.uncovered} lefedésre vár
                       </Badge>
                     )}
                   </div>
                   <CardDescription className="mt-2">
-                    {filteredTableAnalysis?.mulasztasok.length ?? 0} mulasztás megjelenítve
+                    {filteredTableAnalysis?.mulasztasok.length ?? 0} / {breakdown.total} mulasztás megjelenítve
                     <br className="hidden md:block" />
                     <span className="text-xs hidden md:inline">
                       Kattints a sorokra kijelöléshez. Shift+Kattintás: tartomány. Ctrl/Cmd+A: összes lefedetlen.
@@ -726,15 +857,6 @@ export function MulasztasokView() {
                   </CardDescription>
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIncludeIgazolt(!includeIgazolt)}
-                    className="flex-1 md:flex-initial text-xs md:text-sm"
-                  >
-                    <span className="md:hidden">{includeIgazolt ? 'Nem igazoltak' : 'Összes'}</span>
-                    <span className="hidden md:inline">{includeIgazolt ? 'Csak nem igazoltak' : 'Összes mutatása'}</span>
-                  </Button>
                   <Button
                     variant="destructive"
                     size="sm"
@@ -747,30 +869,77 @@ export function MulasztasokView() {
                   </Button>
                 </div>
               </div>
+
+              {/* Segmented filter — mobile-first */}
+              <div
+                role="tablist"
+                aria-label="Mulasztás szűrő"
+                className="mt-3 grid grid-cols-3 gap-1 p-1 bg-muted rounded-lg text-xs md:text-sm"
+              >
+                {([
+                  { key: 'all', label: 'Összes', count: breakdown.total },
+                  { key: 'uncovered', label: 'Lefedetlen', count: breakdown.uncovered },
+                  { key: 'resolved', label: 'Rendezve', count: breakdown.covered + breakdown.igazolt },
+                ] as { key: FilterMode; label: string; count: number }[]).map(opt => (
+                  <button
+                    key={opt.key}
+                    role="tab"
+                    aria-selected={filterMode === opt.key}
+                    onClick={() => setFilterMode(opt.key)}
+                    className={`px-2 py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                      filterMode === opt.key
+                        ? 'bg-background shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <span className="truncate">{opt.label}</span>
+                    <span className="text-[10px] md:text-xs text-muted-foreground">({opt.count})</span>
+                  </button>
+                ))}
+              </div>
             </CardHeader>
-            <CardContent className="p-3 md:p-6">
-              <div className="overflow-x-auto -mx-3 md:-mx-6">
-                <Table className="relative">
-                  <TableHeader className="sticky top-0 bg-background z-10">
-                    <TableRow>
-                      <TableHead className="w-20 md:w-24 text-xs md:text-sm">Dátum</TableHead>
-                      <TableHead className="w-10 md:w-12 text-xs md:text-sm">Óra</TableHead>
-                      <TableHead className="min-w-20 md:min-w-24 text-xs md:text-sm">Tantárgy</TableHead>
-                      <TableHead className="hidden md:table-cell text-xs md:text-sm">Típus</TableHead>
-                      <TableHead className="hidden lg:table-cell min-w-28 md:min-w-32 text-xs md:text-sm">Téma</TableHead>
-                      <TableHead className="w-16 md:w-20 text-xs md:text-sm">Státusz</TableHead>
-                      <TableHead className="text-right w-12 md:w-20 text-xs md:text-sm">Műv.</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredTableAnalysis?.mulasztasok.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                          Nincsenek mulasztások
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredTableAnalysis?.mulasztasok.map((mulasztas, index) => {
+            <CardContent className="p-3 md:p-6 pt-0 md:pt-0">
+              {filteredTableAnalysis?.mulasztasok.length === 0 ? (
+                renderEmptyFilteredState({ filterMode, breakdown, onShowAll: () => setFilterMode('all') })
+              ) : (
+                <>
+                  {/* MOBILE: card list */}
+                  <div className="md:hidden space-y-2">
+                    {filteredTableAnalysis?.mulasztasok.map((mulasztas, index) =>
+                      renderMulasztasCard({
+                        mulasztas,
+                        index,
+                        selectedMulasztasok,
+                        lastSelectedIndex,
+                        setSelectedMulasztasok,
+                        setLastSelectedIndex,
+                        list: filteredTableAnalysis.mulasztasok,
+                        getCoverageBadge,
+                        getTipusBadge,
+                        getTipusIcon,
+                        formatDate,
+                        handleCoverageBadgeClick,
+                        handleQuickCreateIgazolas,
+                      })
+                    )}
+                  </div>
+
+                  {/* DESKTOP: table */}
+                  <div className="hidden md:block overflow-x-auto -mx-3 md:-mx-6">
+                    <Table className="relative">
+                      <TableHeader className="sticky top-0 bg-background z-10">
+                        <TableRow>
+                          <TableHead className="w-24 text-sm">Dátum</TableHead>
+                          <TableHead className="w-12 text-sm">Óra</TableHead>
+                          <TableHead className="min-w-24 text-sm">Tantárgy</TableHead>
+                          <TableHead className="text-sm">Típus</TableHead>
+                          <TableHead className="hidden lg:table-cell min-w-32 text-sm">Téma</TableHead>
+                          <TableHead className="w-20 text-sm">Státusz</TableHead>
+                          <TableHead className="text-right w-20 text-sm">Műv.</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredTableAnalysis?.mulasztasok.map((mulasztas, index) => {
                         const isUncovered = !mulasztas.igazolt && !mulasztas.is_covered;
                         const isSelected = selectedMulasztasok.has(mulasztas.id);
                         const isClickable = isUncovered || mulasztas.is_covered;
@@ -896,11 +1065,12 @@ export function MulasztasokView() {
                             </TableCell>
                           </TableRow>
                         );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -1738,6 +1908,225 @@ function mapIgazolasToTableRow(igazolas: Igazolas): IgazolasTableRow {
     minutesAfter: igazolas.diak_extra_ido_utana,
     bkk_verification: igazolas.bkk_verification,
   };
+}
+
+// --- New helpers for the redesigned Mulasztások view -----------------------
+
+interface EmptyFilteredStateProps {
+  filterMode: FilterMode;
+  breakdown: { total: number; igazolt: number; covered: number; uncovered: number };
+  onShowAll: () => void;
+}
+
+function renderEmptyFilteredState({ filterMode, breakdown, onShowAll }: EmptyFilteredStateProps) {
+  // No records at all in dataset
+  if (breakdown.total === 0) {
+    return (
+      <div className="text-center py-10 px-4">
+        <FileSpreadsheet className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+        <p className="text-sm text-muted-foreground">Nincsenek feltöltött mulasztások.</p>
+      </div>
+    );
+  }
+
+  // Filter hides everything — explain why
+  if (filterMode === 'uncovered') {
+    return (
+      <div className="text-center py-8 px-4 space-y-4">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30">
+          <CheckCircle2 className="w-7 h-7 text-green-600 dark:text-green-400" />
+        </div>
+        <div>
+          <h3 className="text-base md:text-lg font-semibold">Minden mulasztás rendezve!</h3>
+          <p className="text-xs md:text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+            Az összes feltöltött mulasztásod vagy már igazolt eKrétában, vagy lefedi egy
+            beküldött igazolásod.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
+          {breakdown.igazolt > 0 && (
+            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+              <CheckCircle2 className="w-3 h-3 mr-1" />
+              {breakdown.igazolt} eKrétában igazolt
+            </Badge>
+          )}
+          {breakdown.covered > 0 && (
+            <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+              <CheckCircle2 className="w-3 h-3 mr-1" />
+              {breakdown.covered} igazolással lefedve
+            </Badge>
+          )}
+        </div>
+        <Button variant="outline" size="sm" onClick={onShowAll}>
+          Összes megjelenítése
+        </Button>
+      </div>
+    );
+  }
+
+  if (filterMode === 'resolved') {
+    return (
+      <div className="text-center py-8 px-4 space-y-3">
+        <AlertCircle className="w-10 h-10 text-muted-foreground mx-auto" />
+        <div>
+          <h3 className="text-base font-semibold">Még semmi nincs rendezve</h3>
+          <p className="text-xs md:text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+            Nincs egyetlen olyan mulasztás sem, amely eKrétában igazolva van vagy igazolásod
+            által lefedve lenne. {breakdown.uncovered > 0 && `${breakdown.uncovered} mulasztás vár lefedésre.`}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={onShowAll}>
+          Összes megjelenítése
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-center py-10 px-4">
+      <p className="text-sm text-muted-foreground">Nincs megjeleníthető mulasztás.</p>
+    </div>
+  );
+}
+
+interface MulasztasCardProps {
+  mulasztas: MulasztasDetailed;
+  index: number;
+  selectedMulasztasok: Set<number>;
+  lastSelectedIndex: number | null;
+  setSelectedMulasztasok: React.Dispatch<React.SetStateAction<Set<number>>>;
+  setLastSelectedIndex: React.Dispatch<React.SetStateAction<number | null>>;
+  list: MulasztasDetailed[];
+  getCoverageBadge: (m: MulasztasDetailed) => React.ReactNode;
+  getTipusBadge: (tipus: string) => React.ReactNode;
+  getTipusIcon: (tipus: string) => React.ReactNode;
+  formatDate: (d: string) => string;
+  handleCoverageBadgeClick: (m: MulasztasDetailed) => void;
+  handleQuickCreateIgazolas: () => void;
+}
+
+function renderMulasztasCard(props: MulasztasCardProps) {
+  const {
+    mulasztas, index, selectedMulasztasok, lastSelectedIndex,
+    setSelectedMulasztasok, setLastSelectedIndex, list,
+    getCoverageBadge, getTipusBadge, getTipusIcon, formatDate,
+    handleCoverageBadgeClick, handleQuickCreateIgazolas,
+  } = props;
+
+  const isUncovered = !mulasztas.igazolt && !mulasztas.is_covered;
+  const isSelected = selectedMulasztasok.has(mulasztas.id);
+  const isClickable = isUncovered || mulasztas.is_covered;
+
+  const onCardClick = (e: React.MouseEvent) => {
+    if (isUncovered) {
+      if (e.shiftKey && lastSelectedIndex !== null) {
+        e.preventDefault();
+        const start = Math.min(lastSelectedIndex, index);
+        const end = Math.max(lastSelectedIndex, index);
+        const newSelected = new Set(selectedMulasztasok);
+        for (let i = start; i <= end; i++) {
+          const m = list[i];
+          if (m && !m.igazolt && !m.is_covered) newSelected.add(m.id);
+        }
+        setSelectedMulasztasok(newSelected);
+      } else {
+        const newSelected = new Set(selectedMulasztasok);
+        if (newSelected.has(mulasztas.id)) newSelected.delete(mulasztas.id);
+        else newSelected.add(mulasztas.id);
+        setSelectedMulasztasok(newSelected);
+        setLastSelectedIndex(index);
+      }
+    } else if (mulasztas.is_covered) {
+      handleCoverageBadgeClick(mulasztas);
+    }
+  };
+
+  // Extract any extra eKréta-side info the user might need to see
+  const ekretaInfo: { label: string; value: string }[] = [];
+  if (mulasztas.igazolt && mulasztas.igazolas_tipusa) {
+    ekretaInfo.push({ label: 'Igazolás típusa (eKréta)', value: mulasztas.igazolas_tipusa });
+  }
+  if (mulasztas.mulasztas_ok) {
+    ekretaInfo.push({ label: 'Ok', value: mulasztas.mulasztas_ok });
+  }
+  if (mulasztas.mulasztas_statusz) {
+    ekretaInfo.push({ label: 'Státusz (eKréta)', value: mulasztas.mulasztas_statusz });
+  }
+
+  return (
+    <div
+      key={mulasztas.id}
+      onClick={onCardClick}
+      style={{ userSelect: 'none' }}
+      className={`rounded-lg border p-3 transition-colors
+        ${isSelected ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-500 ring-1 ring-blue-500' : 'bg-card'}
+        ${isClickable && !isSelected ? 'active:bg-muted/60 cursor-pointer' : ''}
+        ${!isClickable ? 'opacity-70' : ''}`}
+    >
+      {/* Top row: type icon + date + lesson number + status */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {isSelected ? (
+            <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
+          ) : (
+            <span className="flex-shrink-0">{getTipusIcon(mulasztas.tipus)}</span>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <span className="truncate">{formatDate(mulasztas.datum)}</span>
+              <span className="text-muted-foreground text-xs whitespace-nowrap">
+                • {mulasztas.ora}. óra
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
+              <BookOpen className="w-3 h-3 flex-shrink-0" />
+              <span className="truncate">{mulasztas.tantargy}</span>
+            </div>
+          </div>
+        </div>
+        {isUncovered && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 flex-shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedMulasztasok(new Set([mulasztas.id]));
+              handleQuickCreateIgazolas();
+            }}
+            aria-label="Igazolás létrehozása ehhez a mulasztáshoz"
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+
+      {/* Tema */}
+      {mulasztas.tema && (
+        <div className="mt-2 text-xs text-muted-foreground line-clamp-2">
+          {mulasztas.tema}
+        </div>
+      )}
+
+      {/* Badges row */}
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {getTipusBadge(mulasztas.tipus)}
+        {getCoverageBadge(mulasztas)}
+      </div>
+
+      {/* eKréta extra info — answers "is it justified already?" */}
+      {ekretaInfo.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-dashed space-y-1">
+          {ekretaInfo.map((info) => (
+            <div key={info.label} className="flex items-baseline gap-1.5 text-[11px]">
+              <span className="text-muted-foreground flex-shrink-0">{info.label}:</span>
+              <span className="font-medium break-words">{info.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Helper function to get hours display

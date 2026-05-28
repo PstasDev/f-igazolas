@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import type { Profile } from '@/lib/types';
 import { useFrontendConfig } from './FrontendConfigContext';
+import { authenticateWithPasskey } from '@/lib/passkey';
 
 export type UserRole = 'student' | 'teacher';
 
@@ -24,6 +25,7 @@ interface RoleContextType {
   user: User | null;
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<void>;
+  loginWithPasskey: (username?: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
   refreshProfile: () => Promise<void>;
@@ -178,6 +180,20 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     resetConfig();
   };
 
+  const loginWithPasskey = async (username?: string) => {
+    setIsLoading(true);
+    try {
+      await authenticateWithPasskey(username);
+      await fetchUserProfile();
+      await reloadConfig();
+    } catch (error) {
+      console.error('Passkey login failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const refreshProfile = async () => {
     await fetchUserProfile();
   };
@@ -188,6 +204,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         user,
         isAuthenticated: !!user,
         login,
+        loginWithPasskey,
         logout,
         isLoading,
         refreshProfile,

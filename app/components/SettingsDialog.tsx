@@ -103,6 +103,8 @@ import type { IgazolasTipus, Osztaly } from "@/lib/types"
 import { getIgazolasType } from "@/app/dashboard/types"
 import { toast } from "sonner"
 import BKKLogo from "@/components/icons/BKKLogo"
+import { PasskeyAccountSection } from "@/components/PasskeyAccountSection"
+import { ChangePasswordSection } from "@/components/ChangePasswordSection"
 
 type PageId = "account" | "appearance" | "verification-types" | "experimental" | "info"
 
@@ -256,6 +258,9 @@ export function SettingsDialog() {
                 </ItemContent>
               </Item>
             </ItemGroup>
+
+            <ChangePasswordSection />
+            <PasskeyAccountSection />
           </div>
         )
       

@@ -19,6 +19,7 @@ import { MulasztasokView } from "./student/components/MulasztasokView"
 import { CalendarView } from "./components/CalendarView"
 import { AdminView } from "./components/AdminView"
 import { SystemMessageBanner } from "@/app/components/SystemMessageBanner"
+import { PasskeySetupDrawer } from "@/components/passkey-setup-drawer"
 
 export default function Page() {
   const { isAuthenticated, user, isLoading } = useRole()
@@ -144,6 +145,7 @@ export default function Page() {
           )}
         </div>
       </SidebarInset>
+      <PasskeySetupDrawer />
     </SidebarProvider>
   )
 }

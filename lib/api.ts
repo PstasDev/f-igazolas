@@ -1107,6 +1107,75 @@ class APIClient {
       body: JSON.stringify(data),
     });
   }
+
+  // ---------------- Passkey / WebAuthn ----------------
+
+  async listPasskeys(): Promise<{
+    has_passkey: boolean;
+    passkeys: Array<{ id: number; name: string; created_at: string; last_used_at: string | null }>;
+  }> {
+    return this.fetchWithAuth('/passkey');
+  }
+
+  async deletePasskey(passkeyId: number): Promise<{ message: string }> {
+    return this.fetchWithAuth(`/passkey/${passkeyId}`, { method: 'DELETE' });
+  }
+
+  async passkeyRegisterOptions(data: { name?: string } = {}): Promise<Record<string, unknown>> {
+    return this.fetchWithAuth('/passkey/register/options', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async passkeyRegisterVerify(data: { name?: string; response: unknown }): Promise<{ message: string }> {
+    return this.fetchWithAuth('/passkey/register/verify', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async passkeyAuthOptions(
+    data: { username?: string } = {}
+  ): Promise<{ options: Record<string, unknown>; challenge_id: string }> {
+    // Unauthenticated endpoint - call directly so we don't require a token.
+    const url = `${this.baseUrl}/passkey/authenticate/options`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const err = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
+      throw new Error(err.detail || err.error || `HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async passkeyAuthVerify(data: { challenge_id: string; response: unknown }): Promise<TokenResponse> {
+    const url = `${this.baseUrl}/passkey/authenticate/verify`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const err = (await response.json().catch(() => ({}))) as { detail?: string; error?: string };
+      const e = new Error(err.detail || err.error || `HTTP ${response.status}`) as APIError;
+      e.status = response.status;
+      throw e;
+    }
+    const result = (await response.json()) as TokenResponse;
+    this.setToken(result.token);
+    return result;
+  }
+
+  async changePassword(data: { old_password: string; new_password: string }): Promise<{ message: string }> {
+    return this.fetchWithAuth('/change-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 // Export singleton instance
