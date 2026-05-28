@@ -106,7 +106,7 @@ export function PasskeyAccountSection() {
     setRemovingId(id)
     try {
       await apiClient.deletePasskey(id)
-      toast.success("Jelkuls törölve.")
+      toast.success("Jelkulcs törölve.")
       await load()
     } catch (err) {
       toast.error("Nem sikerült törölni a jelkulcsot", {
@@ -120,7 +120,7 @@ export function PasskeyAccountSection() {
   return (
     <div className="space-y-3 pt-2">
       <div>
-        <h2 className="text-lg font-semibold">Jelkuls</h2>
+        <h2 className="text-lg font-semibold">Jelkulcs</h2>
         <p className="text-muted-foreground text-sm">
           Jelszó nélküli bejelentkezés Touch ID-val, Windows Hello-val vagy más biometrikus
           hitelesítővel.
@@ -145,7 +145,7 @@ export function PasskeyAccountSection() {
                 <Fingerprint className="h-5 w-5" />
               </ItemMedia>
               <ItemContent>
-                <ItemTitle>Még nincs passkey beállítva</ItemTitle>
+                <ItemTitle>Még nincs jelkulcs beállítva</ItemTitle>
                 <ItemDescription>
                   Adj hozzá egyet a gyorsabb és biztonságosabb bejelentkezéshez.
                 </ItemDescription>
@@ -194,7 +194,7 @@ export function PasskeyAccountSection() {
           </>
         ) : (
           <>
-            <Plus className="mr-2 size-4" /> Új passkey hozzáadása
+            <Plus className="mr-2 size-4" /> Új Jelkulcs hozzáadása
           </>
         )}
       </Button>

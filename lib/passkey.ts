@@ -163,7 +163,7 @@ export function describePasskeyError(err: unknown): string {
     const name = (err as { name?: string }).name;
     if (name === 'NotAllowedError') return 'A passkey művelet megszakadt vagy időtúllépés történt.';
     if (name === 'InvalidStateError') return 'Ez a passkey már regisztrálva van ezen a fiókon.';
-    if (name === 'SecurityError') return 'Biztonsági hiba: ellenőrizd, hogy https-en éred-e el az oldalt.';
+    if (name === 'SecurityError') return 'Biztonsági hiba: az oldal domainje nem egyezik a szerver RP ID beállításával. Ellenőrizd a WEBAUTHN_RP_ID értékét a backend .env fájlban.';
     if (name === 'AbortError') return 'A passkey művelet megszakadt.';
   }
   return message || 'Ismeretlen hiba történt.';

@@ -144,7 +144,7 @@ export function PasskeySetupDrawer() {
               ) : (
                 <>
                   <Fingerprint className="size-4" />
-                  Passkey beállítása
+                  Jelkulcs beállítása
                 </>
               )}
             </Button>
