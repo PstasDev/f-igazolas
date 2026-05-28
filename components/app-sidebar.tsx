@@ -64,12 +64,6 @@ export function AppSidebar({ onViewChange, currentView, ...props }: AppSidebarPr
       url: "#naptar",
       icon: IconCalendarEvent,
     },
-    // Add Közlekedés for superusers
-    ...(isSuperuser ? [{
-      title: "Közlekedés",
-      url: "#kozlekedes",
-      icon: IconBus,
-    }] : []),
     // Add Administration for superuser students
     ...(isSuperuser ? [{
       title: "Adminisztráció",
