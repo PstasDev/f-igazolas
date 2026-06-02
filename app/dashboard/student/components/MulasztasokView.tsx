@@ -26,7 +26,7 @@ import {
   Calendar,
   Clock,
   BookOpen,
-  FlaskConical,
+  Sparkles,
   Plus,
   ChevronRight,
   TrendingUp,
@@ -221,6 +221,38 @@ export function MulasztasokView() {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+    });
+  };
+
+  // Determine when the mulasztások table was last updated (most recent upload).
+  const lastUpdatedAt = useMemo<number | null>(() => {
+    if (!analysis || analysis.mulasztasok.length === 0) return null;
+    let latest: number | null = null;
+    for (const m of analysis.mulasztasok) {
+      const t = new Date(m.uploaded_at).getTime();
+      if (!isNaN(t) && (latest === null || t > latest)) {
+        latest = t;
+      }
+    }
+    return latest;
+  }, [analysis]);
+
+  // Number of whole days since the last update (null if never updated).
+  const daysSinceLastUpdate = useMemo<number | null>(() => {
+    if (lastUpdatedAt === null) return null;
+    return Math.floor((Date.now() - lastUpdatedAt) / (1000 * 60 * 60 * 24));
+  }, [lastUpdatedAt]);
+
+  // Advise a manual refresh if the data is a few days old or more.
+  const isDataStale = daysSinceLastUpdate !== null && daysSinceLastUpdate >= 3;
+
+  const formatDateTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleString('hu-HU', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
@@ -577,7 +609,7 @@ export function MulasztasokView() {
 
   return (
     <div className="space-y-4 md:space-y-6 px-2 md:px-0">
-      {/* Header with experimental badge */}
+      {/* Header with "new feature" badge */}
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2">
@@ -592,9 +624,9 @@ export function MulasztasokView() {
           <p className="text-xs md:text-sm text-muted-foreground mt-1">
             Töltsd fel az eKrétából exportált mulasztásaidat és elemezd az igazolásokkal való lefedettséget.
           </p>
-          <Badge className="mt-2 bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
-            <FlaskConical className="w-3 h-3 mr-1" />
-            Kísérleti funkció
+          <Badge className="mt-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+            <Sparkles className="w-3 h-3 mr-1" />
+            Új
           </Badge>
         </div>
         <Button asChild variant="outline" size="sm" className="shrink-0">
@@ -686,6 +718,30 @@ export function MulasztasokView() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 md:space-y-4">
+          {lastUpdatedAt !== null && (
+            <div
+              className={`flex items-start gap-2 rounded-md border px-3 py-2 text-xs md:text-sm ${
+                isDataStale
+                  ? 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300'
+                  : 'border-muted bg-muted/40 text-muted-foreground'
+              }`}
+            >
+              <Clock className="w-4 h-4 mt-0.5 shrink-0" />
+              <div className="space-y-0.5">
+                <div>
+                  Utoljára frissítve: <span className="font-medium">{formatDateTime(lastUpdatedAt)}</span>
+                  {daysSinceLastUpdate !== null && daysSinceLastUpdate > 0 && (
+                    <span> ({daysSinceLastUpdate} napja)</span>
+                  )}
+                </div>
+                {isDataStale && (
+                  <div className="font-medium">
+                    Az adatok már néhány napja frissültek. Érdemes manuálisan frissíteni az eKrétából exportált fájl újbóli feltöltésével.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           <div className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4">
             <input
               id="file-upload"

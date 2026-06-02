@@ -6,6 +6,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
@@ -20,7 +21,7 @@ export function NavMain({
     url: string
     icon?: Icon
     isPrimary?: boolean
-    isExperimental?: boolean
+    isNew?: boolean
   }[]
   onViewChange?: (view: string) => void
   currentView?: string
@@ -43,8 +44,8 @@ export function NavMain({
                 className={
                   item.isPrimary ? 
                     "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground transition-all duration-200 ease-in-out cursor-pointer hover:transform hover:scale-[1.02] active:scale-[0.98]" : 
-                  item.isExperimental ?
-                    "bg-teal-100 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 hover:bg-teal-200 dark:hover:bg-teal-900/50 border border-teal-300 dark:border-teal-800 cursor-pointer transition-all duration-200 ease-in-out hover:transform hover:scale-[1.02] active:scale-[0.98]" :
+                  item.isNew ?
+                    "bg-indigo-100 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 border border-indigo-300 dark:border-indigo-800 cursor-pointer transition-all duration-200 ease-in-out hover:transform hover:scale-[1.02] active:scale-[0.98]" :
                     "cursor-pointer transition-all duration-200 ease-in-out hover:transform hover:scale-[1.02] active:scale-[0.98]"
                 }
                 isActive={currentView === item.url.replace('#', '')}
@@ -53,6 +54,11 @@ export function NavMain({
                 {item.icon && <item.icon />}
                 <span>{item.title}</span>
               </SidebarMenuButton>
+              {item.isNew && (
+                <SidebarMenuBadge className="bg-indigo-500 text-white dark:bg-indigo-500 dark:text-white">
+                  Új
+                </SidebarMenuBadge>
+              )}
             </SidebarMenuItem>
           ))}
         </SidebarMenu>

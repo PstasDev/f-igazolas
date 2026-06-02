@@ -97,7 +97,6 @@ import { Switch } from "@/components/ui/switch"
 import { useTheme } from "../context/ThemeContext"
 import { useRole } from "../context/RoleContext"
 import { useHeadingFont } from "../context/HeadingFontContext"
-import { useExperimentalFeatures } from "../context/ExperimentalFeaturesContext"
 import { apiClient } from "@/lib/api"
 import type { IgazolasTipus, Osztaly } from "@/lib/types"
 import { getIgazolasType } from "@/app/dashboard/types"
@@ -135,7 +134,6 @@ export function SettingsDialog() {
   const { theme, toggleTheme } = useTheme()
   const { headingFont, setHeadingFont } = useHeadingFont()
   const { user } = useRole()
-  const { ekretaMulasztasokEnabled, setEkretaMulasztasokEnabled } = useExperimentalFeatures()
   const [igazolasTipusok, setIgazolasTipusok] = React.useState<IgazolasTipus[]>([])
   const [myClass, setMyClass] = React.useState<Osztaly | null>(null)
   const [loading, setLoading] = React.useState(false)
@@ -573,18 +571,7 @@ export function SettingsDialog() {
                     </ItemDescription>
                   </ItemContent>
                   <ItemActions>
-                    <Switch 
-                      checked={ekretaMulasztasokEnabled} 
-                      onCheckedChange={async (checked) => {
-                        try {
-                          await setEkretaMulasztasokEnabled(checked);
-                          toast.success(checked ? 'Mulasztások funkció bekapcsolva' : 'Mulasztások funkció kikapcsolva');
-                        } catch (error) {
-                          console.error('Failed to toggle eKréta mulasztások:', error);
-                          toast.error('Nem sikerült megváltoztatni a beállítást');
-                        }
-                      }}
-                    />
+                    <Switch checked={true} disabled />
                   </ItemActions>
                 </Item>
               )}
