@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -460,23 +459,23 @@ export function MultiStepIgazolasForm() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="py-8">
-          <div className="flex justify-center items-center">
-            <Spinner className="w-8 h-8" />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="w-full max-w-4xl mx-auto py-8">
+        <div className="flex justify-center items-center">
+          <Spinner className="w-8 h-8" />
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>Új igazolás beküldése</CardTitle>
-        <CardDescription>
-          Töltsd ki a mezőket az igazolás beküldéséhez
-        </CardDescription>
+    <div className="w-full max-w-4xl mx-auto min-w-0 overflow-hidden">
+      <div className="flex flex-col gap-3 mb-4 pb-4 border-b">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight">Új igazolás beküldése</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Töltsd ki a mezőket az igazolás beküldéséhez
+          </p>
+        </div>
         {prefilledFromMulasztasok && (
           <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg">
             <div className="flex items-start gap-3">
@@ -509,9 +508,9 @@ export function MultiStepIgazolasForm() {
             </div>
           </div>
         )}
-      </CardHeader>
+      </div>
 
-      <CardContent className="space-y-6">
+      <div className="space-y-6">
         {/* Step 1: Date Selection */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
@@ -1170,7 +1169,7 @@ export function MultiStepIgazolasForm() {
                 </Button>
               </div>
             </div>
-      </CardContent>
+      </div>
       
       {/* BKK Disruption Selector Dialog */}
       {showBKKSelector && (
@@ -1179,6 +1178,6 @@ export function MultiStepIgazolasForm() {
           onClose={() => setShowBKKSelector(false)}
         />
       )}
-    </Card>
+    </div>
   );
 }

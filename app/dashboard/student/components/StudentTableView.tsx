@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '../data-table';
 import { studentColumns } from '../columns';
@@ -147,49 +146,41 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
   };
 
   const getFilterDescription = () => {
-    const baseDesc = (() => {
-      switch (filter) {
-        case 'pending': return 'Ellenőrzésre váró igazolások';
-        case 'approved': return 'Osztályfőnök által elfogadott igazolások';
-        case 'rejected': return 'Osztályfőnök által elutasított igazolások';
-        default: return 'Az összes beküldött igazolásod';
-      }
-    })();
-    
-    if (schedule) {
-      return (
-        <>
-          {baseDesc}
-          <Badge variant="outline" className="ml-2 text-xs bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-900">
-            Szünnapokra vonatkozó igazolások elrejtve
-          </Badge>
-        </>
-      );
+    switch (filter) {
+      case 'pending': return 'Ellenőrzésre váró igazolások';
+      case 'approved': return 'Osztályfőnök által elfogadott igazolások';
+      case 'rejected': return 'Osztályfőnök által elutasított igazolások';
+      default: return 'Az összes beküldött igazolásod';
     }
-    
-    return baseDesc;
   };
 
+  const showScheduleBadge = !!schedule;
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-col md:flex-row items-start justify-between gap-4">
-          <div className="flex-1">
-            <CardTitle><h1 className='text-xl'>{getFilterTitle()}</h1></CardTitle>
-            <CardDescription>
+    <div className="min-w-0 overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-4 border-b">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight">{getFilterTitle()}</h1>
+          <div className="flex flex-wrap items-center gap-2 mt-1.5">
+            <p className="text-sm text-muted-foreground">
               {getFilterDescription()}
-            </CardDescription>
+            </p>
+            {showScheduleBadge && (
+              <Badge variant="outline" className="text-xs bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-900">
+                Szünnapokra vonatkozó igazolások elrejtve
+              </Badge>
+            )}
           </div>
-          <Button 
-            onClick={() => window.location.hash = 'new'}
-            className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white dark:text-white transition-all duration-200 ease-in-out hover:transform hover:scale-[1.02] active:scale-[0.98] w-full md:w-min"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Új igazolás
-          </Button>
         </div>
-      </CardHeader>
-      <CardContent>
+        <Button 
+          onClick={() => window.location.hash = 'new'}
+          className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white dark:text-white transition-all duration-200 ease-in-out hover:transform hover:scale-[1.02] active:scale-[0.98] shrink-0"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Új igazolás
+        </Button>
+      </div>
+      <div className="min-w-0">
         {isLoading ? (
           <div className="py-4">
             {isFtvRegistered ? (
@@ -222,7 +213,7 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
             }
           />
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
