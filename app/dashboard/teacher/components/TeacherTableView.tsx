@@ -270,28 +270,15 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
   };
 
   const getDescription = () => {
-    const baseDesc = (() => {
-      switch (filter) {
-        case 'pending': return 'Jóváhagyásra váró igazolások listája';
-        case 'approved': return 'Elfogadott igazolások listája';
-        case 'rejected': return 'Elutasított igazolások listája';
-        default: return 'Az összes beküldött igazolás';
-      }
-    })();
-    
-    if (schedule) {
-      return (
-        <>
-          {baseDesc}
-          <Badge variant="outline" className="ml-2 text-xs bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800">
-            Szünnapokra vonatkozó igazolások elrejtve
-          </Badge>
-        </>
-      );
+    switch (filter) {
+      case 'pending': return 'Jóváhagyásra váró igazolások listája';
+      case 'approved': return 'Elfogadott igazolások listája';
+      case 'rejected': return 'Elutasított igazolások listája';
+      default: return 'Az összes beküldött igazolás';
     }
-    
-    return baseDesc;
   };
+
+  const showScheduleBadge = !!schedule;
 
   // Map data to table format
   const tableData = localIgazolasok.map(mapIgazolasToTableData);
@@ -321,14 +308,21 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-xl font-semibold">{getTitle()}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{getDescription()}</p>
+      <div className="min-w-0 overflow-hidden">
+      <div className="flex items-center justify-between mb-4 pb-4 border-b">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight">{getTitle()}</h1>
+          <div className="flex flex-wrap items-center gap-2 mt-1.5">
+            <p className="text-sm text-muted-foreground">{getDescription()}</p>
+            {showScheduleBadge && (
+              <Badge variant="outline" className="text-xs bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800">
+                Szünnapokra vonatkozó igazolások elrejtve
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
-      <div>
+      <div className="min-w-0">
         {isLoading ? (
           <div className="py-4">
             <FTVLoadingState 

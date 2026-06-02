@@ -30,7 +30,7 @@ export default function TeacherDashboard() {
       <TeacherSidebar onViewChange={setSelectedView} currentView={selectedView} />
       <SidebarInset>
         <DashboardHeader userName={user?.name || ''} userRole="Osztályfőnök" />
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-w-0 overflow-hidden">
           {selectedView === 'overview' && (
             <div className="space-y-4">
               <TeacherStatsCards />

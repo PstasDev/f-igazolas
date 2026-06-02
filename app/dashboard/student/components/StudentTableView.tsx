@@ -146,47 +146,41 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
   };
 
   const getFilterDescription = () => {
-    const baseDesc = (() => {
-      switch (filter) {
-        case 'pending': return 'Ellenőrzésre váró igazolások';
-        case 'approved': return 'Osztályfőnök által elfogadott igazolások';
-        case 'rejected': return 'Osztályfőnök által elutasított igazolások';
-        default: return 'Az összes beküldött igazolásod';
-      }
-    })();
-    
-    if (schedule) {
-      return (
-        <>
-          {baseDesc}
-          <Badge variant="outline" className="ml-2 text-xs bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-900">
-            Szünnapokra vonatkozó igazolások elrejtve
-          </Badge>
-        </>
-      );
+    switch (filter) {
+      case 'pending': return 'Ellenőrzésre váró igazolások';
+      case 'approved': return 'Osztályfőnök által elfogadott igazolások';
+      case 'rejected': return 'Osztályfőnök által elutasított igazolások';
+      default: return 'Az összes beküldött igazolásod';
     }
-    
-    return baseDesc;
   };
 
+  const showScheduleBadge = !!schedule;
+
   return (
-    <div>
-      <div className="flex flex-col md:flex-row items-start justify-between gap-4 mb-4">
-        <div className="flex-1">
-          <h1 className="text-xl font-semibold">{getFilterTitle()}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {getFilterDescription()}
-          </p>
+    <div className="min-w-0 overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-4 border-b">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight">{getFilterTitle()}</h1>
+          <div className="flex flex-wrap items-center gap-2 mt-1.5">
+            <p className="text-sm text-muted-foreground">
+              {getFilterDescription()}
+            </p>
+            {showScheduleBadge && (
+              <Badge variant="outline" className="text-xs bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-900">
+                Szünnapokra vonatkozó igazolások elrejtve
+              </Badge>
+            )}
+          </div>
         </div>
         <Button 
           onClick={() => window.location.hash = 'new'}
-          className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white dark:text-white transition-all duration-200 ease-in-out hover:transform hover:scale-[1.02] active:scale-[0.98] w-full md:w-min"
+          className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white dark:text-white transition-all duration-200 ease-in-out hover:transform hover:scale-[1.02] active:scale-[0.98] shrink-0"
         >
           <Plus className="w-4 h-4 mr-2" />
           Új igazolás
         </Button>
       </div>
-      <div>
+      <div className="min-w-0">
         {isLoading ? (
           <div className="py-4">
             {isFtvRegistered ? (
