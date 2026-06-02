@@ -736,7 +736,7 @@ export function MulasztasokView() {
                 </div>
                 {isDataStale && (
                   <div className="font-medium">
-                    Az adatok már néhány napja frissültek. Érdemes manuálisan frissíteni az eKrétából exportált fájl újbóli feltöltésével.
+                    Az adatok már néhány napja nem frissültek. Érdemes manuálisan frissíteni az eKrétából exportált fájl újbóli feltöltésével.
                   </div>
                 )}
               </div>
