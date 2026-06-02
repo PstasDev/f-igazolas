@@ -12,7 +12,6 @@ import { TeacherStatsCards } from '@/app/dashboard/teacher/components/TeacherSta
 import { TeacherTableView } from '@/app/dashboard/teacher/components/TeacherTableView';
 import { StudentsManagementView } from '@/app/dashboard/teacher/components/StudentsManagementView';
 import { TeacherCreateIgazolasView } from '@/app/dashboard/teacher/components/TeacherCreateIgazolasView';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PeriodConfiguration } from '@/components/admin/PeriodConfiguration';
 
 export default function TeacherDashboard() {
@@ -35,23 +34,19 @@ export default function TeacherDashboard() {
           {selectedView === 'overview' && (
             <div className="space-y-4">
               <TeacherStatsCards />
-              <Card>
-                <CardHeader>
-                  <CardTitle>Áttekintés</CardTitle>
-                  <CardDescription>A legutóbbi igazolások és fontosabb statisztikák</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-sm text-muted-foreground">
-                    <p className="mb-2">Válassz a menüből az igazolások kezeléséhez:</p>
-                    <ul className="list-disc list-inside space-y-1">
-                      <li>Ellenőrzésre vár - Jóváhagyásra váró igazolások</li>
-                      <li>Jóváhagyott - Elfogadott igazolások</li>
-                      <li>Összes igazolás - Teljes lista</li>
-                      <li>Diákok - Diákok kezelése és statisztikák</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
+              <div>
+                <h2 className="text-lg font-semibold">Áttekintés</h2>
+                <p className="text-sm text-muted-foreground mt-1">A legutóbbi igazolások és fontosabb statisztikák</p>
+                <div className="text-sm text-muted-foreground mt-3">
+                  <p className="mb-2">Válassz a menüből az igazolások kezeléséhez:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Ellenőrzésre vár - Jóváhagyásra váró igazolások</li>
+                    <li>Jóváhagyott - Elfogadott igazolások</li>
+                    <li>Összes igazolás - Teljes lista</li>
+                    <li>Diákok - Diákok kezelése és statisztikák</li>
+                  </ul>
+                </div>
+              </div>
               <TeacherTableView filter="all" />
             </div>
           )}

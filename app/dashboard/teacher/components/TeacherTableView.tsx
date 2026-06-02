@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DataTable } from '../data-table';
 import { createColumns } from '../columns';
 import { apiClient } from '@/lib/api';
@@ -322,16 +321,14 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle><h1 className="text-xl">{getTitle()}</h1></CardTitle>
-            <CardDescription>{getDescription()}</CardDescription>
-          </div>
+      <div>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-xl font-semibold">{getTitle()}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{getDescription()}</p>
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div>
         {isLoading ? (
           <div className="py-4">
             <FTVLoadingState 
@@ -358,8 +355,8 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
             }
           />
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
     </>
   );
 }
