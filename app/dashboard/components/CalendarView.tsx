@@ -509,10 +509,11 @@ export function CalendarView() {
                   <span>Szünnap</span>
                 </div>
                 <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400" />
                   <span className="text-green-600 dark:text-green-400">Elfogadva</span>
-                  <span className="text-muted-foreground">/</span>
+                  <span className="w-2 h-2 rounded-full bg-red-500 dark:bg-red-400 ml-1" />
                   <span className="text-red-600 dark:text-red-400">Elutasítva</span>
-                  <span className="text-muted-foreground">/</span>
+                  <span className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400 ml-1" />
                   <span className="text-blue-600 dark:text-blue-400">Függőben</span>
                 </div>
               </div>
@@ -594,26 +595,29 @@ export function CalendarView() {
                               </div>
                             )}
                             
-                            <div className="flex gap-0.5 sm:gap-1 z-10 w-full justify-center flex-wrap">
-                              <Badge 
-                                variant="outline" 
-                                className={`text-[8px] sm:text-[10px] px-0.5 sm:px-1 py-0 h-3.5 sm:h-4 min-w-[16px] sm:min-w-[20px] justify-center bg-green-100 dark:bg-green-900/30 border-green-400 ${stats.approved === 0 ? 'opacity-20' : ''}`}
-                              >
-                                {stats.approved}
-                              </Badge>
-                              <Badge 
-                                variant="outline" 
-                                className={`text-[8px] sm:text-[10px] px-0.5 sm:px-1 py-0 h-3.5 sm:h-4 min-w-[16px] sm:min-w-[20px] justify-center bg-red-100 dark:bg-red-900/30 border-red-400 ${stats.denied === 0 ? 'opacity-20' : ''}`}
-                              >
-                                {stats.denied}
-                              </Badge>
-                              <Badge 
-                                variant="outline" 
-                                className={`text-[8px] sm:text-[10px] px-0.5 sm:px-1 py-0 h-3.5 sm:h-4 min-w-[16px] sm:min-w-[20px] justify-center bg-blue-100 dark:bg-blue-900/30 border-blue-400 ${stats.pending === 0 ? 'opacity-20' : ''}`}
-                              >
-                                {stats.pending}
-                              </Badge>
-                            </div>
+                            {/* Show a small colored dot only for statuses that actually have absences */}
+                            {(stats.approved > 0 || stats.denied > 0 || stats.pending > 0) && (
+                              <div className="flex gap-1 z-10 w-full justify-center items-center h-3 sm:h-4">
+                                {stats.approved > 0 && (
+                                  <span
+                                    className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500 dark:bg-green-400"
+                                    title={`Elfogadva: ${stats.approved}`}
+                                  />
+                                )}
+                                {stats.denied > 0 && (
+                                  <span
+                                    className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500 dark:bg-red-400"
+                                    title={`Elutasítva: ${stats.denied}`}
+                                  />
+                                )}
+                                {stats.pending > 0 && (
+                                  <span
+                                    className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-500 dark:bg-blue-400"
+                                    title={`Függőben: ${stats.pending}`}
+                                  />
+                                )}
+                              </div>
+                            )}
                           </button>
                         )
                       })}

@@ -35,14 +35,16 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
-  ChevronDown,
   X,
   RotateCcw,
   Calendar,
   Clock,
   User,
   ExternalLink,
-  Clapperboard
+  Clapperboard,
+  Filter,
+  Info,
+  Search
 } from "lucide-react"
 import {
   Sheet,
@@ -65,6 +67,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { IgazolasTableRow } from "@/app/dashboard/types"
 import { getPeriodSchedule } from "@/lib/periods"
 
@@ -338,281 +341,283 @@ export function DataTable<TData, TValue>({
     },
   })
 
+  // Count how many advanced filters are currently active (search excluded, it has its own bar)
+  const activeFilterCount =
+    (filterStatus !== "all" ? 1 : 0) +
+    (filterType !== "all" ? 1 : 0) +
+    (dateFrom ? 1 : 0) +
+    (dateTo ? 1 : 0)
+
   return (
     <>
       <div className="space-y-4">
-        {/* Enhanced Filters */}
-        <Card className="border">
-          <Collapsible open={!isSearchCollapsed} onOpenChange={(open) => setIsSearchCollapsed(!open)}>
-            <CardHeader className="pb-4">
-              <CollapsibleTrigger className="w-full cursor-pointer">
-                <div className="flex items-center justify-between font-medium transition-colors">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-muted">
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
-                      </svg>
-                    </div>
-                    <div className="text-left">
-                      <div className="text-lg font-semibold">Keresés és szűrés</div>
-                      <div className="text-sm text-muted-foreground">
-                        Szűrd az igazolásokat és rendezd őket oszlopfejlécre kattintással
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="px-3 py-1">
-                      {table.getFilteredRowModel().rows.length} találat
-                    </Badge>
-                    <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${isSearchCollapsed ? '' : 'rotate-180'}`} />
-                  </div>
-                </div>
-              </CollapsibleTrigger>
-            </CardHeader>
-            <CollapsibleContent>
-              <CardContent className="pt-3 border-t space-y-6">
-            {/* Primary Search */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Keresés</Label>
-              <div className="relative">
-                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+        {/* Compact search & filter toolbar */}
+        <Collapsible open={!isSearchCollapsed} onOpenChange={(open) => setIsSearchCollapsed(!open)}>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Keresés dátum, típus, indoklás vagy státusz alapján..."
                   value={searchValue}
                   onChange={(event) => setSearchValue(event.target.value)}
                   className="pl-10"
                 />
-              </div>
-            </div>
-
-            {/* Filter Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Státusz</Label>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Válassz státuszt" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-muted-foreground"></div>
-                        Minden státusz
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="pending">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400"></div>
-                        Függőben
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="approved">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400"></div>
-                        Jóváhagyva
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="rejected">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-red-500 dark:bg-red-400"></div>
-                        Elutasítva
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Hiányzás típusa</Label>
-                <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Válassz típust" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Minden típus</SelectItem>
-                    {igazolasTipusok.map((tipus) => (
-                      <SelectItem key={tipus} value={tipus}>
-                        {tipus}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Date Range Filter */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Dátum tartomány</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Ettől</Label>
-                  <Input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Eddig</Label>
-                  <Input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Active Filters */}
-            {(filterStatus !== "all" || filterType !== "all" || dateFrom || dateTo || searchValue) && (
-              <div className="flex flex-wrap gap-2 items-center pt-4 border-t">
-                <span className="text-sm font-medium text-muted-foreground">Aktív szűrők:</span>
                 {searchValue && (
-                  <Badge variant="outline" className="gap-2">
-                    Keresés: {searchValue}
-                    <button 
-                      onClick={() => setSearchValue("")} 
-                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
-                    >
-                      <X className="h-3 w-3 cursor-pointer" />
-                    </button>
-                  </Badge>
+                  <button
+                    onClick={() => setSearchValue("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 hover:bg-muted rounded-full p-0.5 transition-colors"
+                    aria-label="Keresés törlése"
+                  >
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </button>
                 )}
-                {filterStatus !== "all" && (
-                  <Badge variant="outline" className="gap-2">
-                    Státusz: {filterStatus === "pending" ? "Függőben" : filterStatus === "approved" ? "Jóváhagyva" : "Elutasítva"}
-                    <button 
-                      onClick={() => setFilterStatus("all")} 
-                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
-                    >
-                      <X className="h-3 w-3 cursor-pointer" />
-                    </button>
-                  </Badge>
-                )}
-                {filterType !== "all" && (
-                  <Badge variant="outline" className="gap-2">
-                    Típus: {filterType}
-                    <button 
-                      onClick={() => setFilterType("all")} 
-                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
-                    >
-                      <X className="h-3 w-3 cursor-pointer" />
-                    </button>
-                  </Badge>
-                )}
-                {dateFrom && (
-                  <Badge variant="outline" className="gap-2">
-                    Ettől: {dateFrom}
-                    <button 
-                      onClick={() => setDateFrom("")} 
-                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
-                    >
-                      <X className="h-3 w-3 cursor-pointer" />
-                    </button>
-                  </Badge>
-                )}
-                {dateTo && (
-                  <Badge variant="outline" className="gap-2">
-                    Eddig: {dateTo}
-                    <button 
-                      onClick={() => setDateTo("")} 
-                      className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
-                    >
-                      <X className="h-3 w-3 cursor-pointer" />
-                    </button>
-                  </Badge>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setFilterStatus("all")
-                    setFilterType("all")
-                    setDateFrom("")
-                    setDateTo("")
-                    setSearchValue("")
-                  }}
-                  className="h-7 px-2 text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 cursor-pointer"
-                >
-                  <RotateCcw className="h-3 w-3 mr-1 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-200" />
-                  Összes törlése
-                </Button>
               </div>
-            )}
-              </CardContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </Card>
 
-        {/* Legend */}
-        <Card className="border">
-          <CardContent className="p-4">
-            <details className="group">
-              <summary className="flex cursor-pointer items-center justify-between font-medium transition-colors">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>Jelmagyarázat</span>
-                </div>
-                <svg
-                  className="h-4 w-4 transition-transform group-open:rotate-180"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </summary>
-              <div className="mt-4 pt-3 border-t space-y-6">
-                {/* Órarend színkódok */}
-                <div>
-                  <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Órarend színkódok</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-blue-500 text-white shadow-sm">0</span>
-                      <span className="text-sm font-medium">Függőben / FTV importált</span>
+              {/* Filter toggle */}
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" size="icon" className="relative shrink-0" aria-label="Szűrők">
+                  <Filter className="h-4 w-4" />
+                  {activeFilterCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+
+              {/* Legend info popover */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="shrink-0" aria-label="Jelmagyarázat">
+                    <Info className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 max-h-[70vh] overflow-y-auto">
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <span className="font-semibold">Jelmagyarázat</span>
                     </div>
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-yellow-500 text-white shadow-sm">0</span>
-                      <span className="text-sm font-medium">Diák korrekció</span>
+                    {/* Órarend színkódok */}
+                    <div>
+                      <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Órarend színkódok</h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                          <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-blue-500 text-white shadow-sm">0</span>
+                          <span className="text-sm font-medium">Függőben / FTV importált</span>
+                        </div>
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                          <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-yellow-500 text-white shadow-sm">0</span>
+                          <span className="text-sm font-medium">Diák korrekció</span>
+                        </div>
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                          <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-green-500 text-white shadow-sm">0</span>
+                          <span className="text-sm font-medium">Jóváhagyva</span>
+                        </div>
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                          <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-red-500 text-white shadow-sm">0</span>
+                          <span className="text-sm font-medium">Elutasítva</span>
+                        </div>
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                          <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-muted text-muted-foreground border">0</span>
+                          <span className="text-sm font-medium">Nincs hiányzás</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-green-500 text-white shadow-sm">0</span>
-                      <span className="text-sm font-medium">Jóváhagyva</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-red-500 text-white shadow-sm">0</span>
-                      <span className="text-sm font-medium">Elutasítva</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-muted text-muted-foreground border">0</span>
-                      <span className="text-sm font-medium">Nincs hiányzás</span>
+                    {/* Beadási késés színkódok */}
+                    <div>
+                      <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Beadási késés</h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                          <div className="w-5 h-5 border rounded bg-white dark:bg-slate-950 flex-shrink-0"></div>
+                          <span className="text-sm font-medium">Kevesebb mint 2 hét</span>
+                        </div>
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                          <div className="w-5 h-5 border rounded bg-yellow-200 dark:bg-yellow-800 flex-shrink-0"></div>
+                          <span className="text-sm font-medium">2 hét - 1 hónap</span>
+                        </div>
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                          <div className="w-5 h-5 border rounded bg-red-200 dark:bg-red-800 flex-shrink-0"></div>
+                          <span className="text-sm font-medium">Több mint 1 hónap</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-                {/* Beadási késés színkódok */}
-                <div>
-                  <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Beadási késés</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <div className="w-5 h-5 border rounded bg-white dark:bg-slate-950 flex-shrink-0"></div>
-                      <span className="text-sm font-medium">Kevesebb mint 2 hét</span>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Advanced filters */}
+            <CollapsibleContent>
+              <Card className="border">
+                <CardContent className="p-4 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">Szűrők</div>
+                    <Badge variant="secondary" className="px-3 py-1">
+                      {table.getFilteredRowModel().rows.length} találat
+                    </Badge>
+                  </div>
+
+                  {/* Filter Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Státusz</Label>
+                      <Select value={filterStatus} onValueChange={setFilterStatus}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Válassz státuszt" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-muted-foreground"></div>
+                              Minden státusz
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="pending">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400"></div>
+                              Függőben
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="approved">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400"></div>
+                              Jóváhagyva
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="rejected">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-red-500 dark:bg-red-400"></div>
+                              Elutasítva
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <div className="w-5 h-5 border rounded bg-yellow-200 dark:bg-yellow-800 flex-shrink-0"></div>
-                      <span className="text-sm font-medium">2 hét - 1 hónap</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <div className="w-5 h-5 border rounded bg-red-200 dark:bg-red-800 flex-shrink-0"></div>
-                      <span className="text-sm font-medium">Több mint 1 hónap</span>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Hiányzás típusa</Label>
+                      <Select value={filterType} onValueChange={setFilterType}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Válassz típust" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Minden típus</SelectItem>
+                          {igazolasTipusok.map((tipus) => (
+                            <SelectItem key={tipus} value={tipus}>
+                              {tipus}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                </div>
-              </div>
-            </details>
-          </CardContent>
-        </Card>
+
+                  {/* Date Range Filter */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Dátum tartomány</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Ettől</Label>
+                        <Input
+                          type="date"
+                          value={dateFrom}
+                          onChange={(e) => setDateFrom(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Eddig</Label>
+                        <Input
+                          type="date"
+                          value={dateTo}
+                          onChange={(e) => setDateTo(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Active Filters */}
+                  {(filterStatus !== "all" || filterType !== "all" || dateFrom || dateTo || searchValue) && (
+                    <div className="flex flex-wrap gap-2 items-center pt-4 border-t">
+                      <span className="text-sm font-medium text-muted-foreground">Aktív szűrők:</span>
+                      {searchValue && (
+                        <Badge variant="outline" className="gap-2">
+                          Keresés: {searchValue}
+                          <button
+                            onClick={() => setSearchValue("")}
+                            className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
+                          >
+                            <X className="h-3 w-3 cursor-pointer" />
+                          </button>
+                        </Badge>
+                      )}
+                      {filterStatus !== "all" && (
+                        <Badge variant="outline" className="gap-2">
+                          Státusz: {filterStatus === "pending" ? "Függőben" : filterStatus === "approved" ? "Jóváhagyva" : "Elutasítva"}
+                          <button
+                            onClick={() => setFilterStatus("all")}
+                            className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
+                          >
+                            <X className="h-3 w-3 cursor-pointer" />
+                          </button>
+                        </Badge>
+                      )}
+                      {filterType !== "all" && (
+                        <Badge variant="outline" className="gap-2">
+                          Típus: {filterType}
+                          <button
+                            onClick={() => setFilterType("all")}
+                            className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
+                          >
+                            <X className="h-3 w-3 cursor-pointer" />
+                          </button>
+                        </Badge>
+                      )}
+                      {dateFrom && (
+                        <Badge variant="outline" className="gap-2">
+                          Ettől: {dateFrom}
+                          <button
+                            onClick={() => setDateFrom("")}
+                            className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
+                          >
+                            <X className="h-3 w-3 cursor-pointer" />
+                          </button>
+                        </Badge>
+                      )}
+                      {dateTo && (
+                        <Badge variant="outline" className="gap-2">
+                          Eddig: {dateTo}
+                          <button
+                            onClick={() => setDateTo("")}
+                            className="ml-1 hover:bg-muted rounded-full p-0.5 transition-colors"
+                          >
+                            <X className="h-3 w-3 cursor-pointer" />
+                          </button>
+                        </Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setFilterStatus("all")
+                          setFilterType("all")
+                          setDateFrom("")
+                          setDateTo("")
+                          setSearchValue("")
+                        }}
+                        className="h-7 px-2 text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 cursor-pointer"
+                      >
+                        <RotateCcw className="h-3 w-3 mr-1 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-200" />
+                        Összes törlése
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
 
         {/* FTV Sync Status */}
         {ftvSyncStatus && (
