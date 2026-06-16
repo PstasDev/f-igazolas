@@ -1,7 +1,6 @@
 "use client"
 
 import { useRole } from "@/app/context/RoleContext"
-import { useExperimentalFeatures } from "@/app/context/ExperimentalFeaturesContext"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Spinner } from "@/components/ui/spinner"
@@ -23,7 +22,6 @@ import { PasskeySetupDrawer } from "@/components/passkey-setup-drawer"
 
 export default function Page() {
   const { isAuthenticated, user, isLoading } = useRole()
-  const { ekretaMulasztasokEnabled } = useExperimentalFeatures()
   const router = useRouter()
   const [currentView, setCurrentView] = useState<string>('igazolasok')
 
@@ -136,7 +134,7 @@ export default function Page() {
                   <MultiStepIgazolasForm />
                 </div>
               )}
-              {currentView === 'mulasztasok' && ekretaMulasztasokEnabled && (
+              {currentView === 'mulasztasok' && (
                 <div>
                   <MulasztasokView />
                 </div>
