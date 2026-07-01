@@ -8,6 +8,7 @@ import { Calendar, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { apiClient } from '@/lib/api';
 import { Igazolas } from '@/lib/types';
+import { mapApiResponseToPeriods } from '@/lib/periods';
 import { getIgazolasType, isMultiDayAbsence, buildCalendarGrid, getDayOfWeekShort } from '@/app/dashboard/types';
 import { toast } from 'sonner';
 import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
@@ -95,24 +96,15 @@ export function StudentIgazolasokHistory({ studentId }: StudentIgazolasokHistory
     </Badge>;
   };
 
-  const getHoursFromDateRange = (start: string, end: string) => {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    const startHour = startDate.getHours();
-    const endHour = endDate.getHours();
-    
-    const hours: number[] = [];
-    for (let h = Math.max(0, startHour - 8); h <= Math.min(8, endHour - 8); h++) {
-      if (h >= 0 && h <= 8) {
-        hours.push(h);
-      }
-    }
-    return hours;
-  };
-
-  const getHoursDisplay = (start: string, end: string) => {
-    const hours = getHoursFromDateRange(start, end);
-    return hours.map(h => (
+  const getHoursDisplay = (igazolas: Igazolas) => {
+    const { originalPeriods } = mapApiResponseToPeriods(
+      igazolas.eleje,
+      igazolas.vege,
+      igazolas.diak_extra_ido_elotte,
+      igazolas.diak_extra_ido_utana,
+      igazolas.reszletes_idopontok
+    );
+    return originalPeriods.map(h => (
       <span
         key={h}
         className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
@@ -271,7 +263,7 @@ export function StudentIgazolasokHistory({ studentId }: StudentIgazolasokHistory
                             </TooltipProvider>
                           ) : (
                             <div className="flex flex-wrap gap-1">
-                              {getHoursDisplay(igazolas.eleje, igazolas.vege)}
+                              {getHoursDisplay(igazolas)}
                             </div>
                           )}
                         </TableCell>

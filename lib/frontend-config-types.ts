@@ -93,16 +93,22 @@ export interface FrontendConfig {
    */
   igazolasForm?: {
     /**
-     * When true, the period selector on the "new igazolás" form lets the
-     * student tap individual periods to (de)select them, so non-contiguous
-     * ("gap") selections like periods 1 and 3 are possible. The swipe/drag
-     * behaviour is still available: swipe to make a contiguous selection,
-     * then tap to add/remove individual periods.
-     * When false (default), only the classic consecutive swipe/drag
-     * selection is used.
+     * Controls the interaction model of the period selector on the
+     * "new igazolás" form.
+     *
+     * When false (default), students select periods individually by
+     * tapping — each tap toggles a single period in the selection.
+     * Non-contiguous ("gap") selections such as periods 1 and 3 are
+     * possible without any swipe gesture.
+     *
+     * When true, the classic swipe/drag gesture is additionally enabled:
+     * swiping across periods selects a contiguous range and replaces the
+     * current selection, while tapping still toggles individual periods
+     * so gaps can be produced afterwards.
+     *
      * @default false
      */
-    individualPeriodSelection?: boolean;
+    swipePeriodSelection?: boolean;
   };
 }
 
@@ -126,7 +132,7 @@ export const DEFAULT_FRONTEND_CONFIG: FrontendConfig = {
     smartFilter: false,
   },
   igazolasForm: {
-    individualPeriodSelection: false,
+    swipePeriodSelection: false,
   },
 };
 

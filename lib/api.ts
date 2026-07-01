@@ -9,6 +9,8 @@ import type {
   IgazolasTipus,
   Igazolas,
   IgazolasCreateRequest,
+  IgazolasEditRequest,
+  IgazolasUndoResponse,
   ErrorResponse,
   QuickActionRequest,
   BulkQuickActionRequest,
@@ -430,6 +432,24 @@ class APIClient {
   async deleteIgazolas(igazolasId: number): Promise<void> {
     return this.fetchWithAuth<void>(`/igazolas/${igazolasId}`, {
       method: 'DELETE',
+    });
+  }
+
+  // Student edit endpoint - edit own pending/rejected igazolás
+  async editIgazolas(
+    igazolasId: number,
+    data: IgazolasEditRequest
+  ): Promise<Igazolas> {
+    return this.fetchWithAuth<Igazolas>(`/igazolas/${igazolasId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Student undo endpoint - withdraw own pending/rejected igazolás
+  async undoIgazolas(igazolasId: number): Promise<IgazolasUndoResponse> {
+    return this.fetchWithAuth<IgazolasUndoResponse>(`/igazolas/${igazolasId}/undo`, {
+      method: 'POST',
     });
   }
 

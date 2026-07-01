@@ -59,8 +59,8 @@ const IMAGE_ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 export function MultiStepIgazolasForm() {
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
   const { config } = useFrontendConfig();
-  const individualPeriodSelectionEnabled =
-    config.igazolasForm?.individualPeriodSelection ?? false;
+  const swipePeriodSelectionEnabled =
+    config.igazolasForm?.swipePeriodSelection ?? false;
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [igazolasTipusok, setIgazolasTipusok] = useState<IgazolasTipus[]>([]);
   const [filteredIgazolasTipusok, setFilteredIgazolasTipusok] = useState<IgazolasTipus[]>([]);
@@ -383,14 +383,17 @@ export function MultiStepIgazolasForm() {
     }
   };
 
-  // Period selection (swipe + optional tap-to-toggle).
+  // Period selection interaction model.
   //
-  // - When `individualPeriodSelectionEnabled` is false, dragging replaces the
-  //   selection with a contiguous range (classic behaviour).
-  // - When enabled, dragging still replaces the selection with a contiguous
-  //   range, and a "tap" (mouse/touch down + up without moving to another
-  //   period) toggles that period in the current selection so students can
-  //   pick non-consecutive periods with gaps in between.
+  // - Default (`swipePeriodSelectionEnabled` = false): tap-to-toggle only.
+  //   Each mouse/touch down on a period cell toggles that single period in
+  //   the current selection. Dragging is ignored, so non-contiguous
+  //   ("gap") selections like periods 1 and 3 are the natural result.
+  // - When `swipePeriodSelectionEnabled` is true: the classic swipe/drag
+  //   gesture is additionally available and replaces the selection with a
+  //   contiguous range while dragging. A tap (down + up on the same cell
+  //   without moving) still toggles that single period in the previous
+  //   selection so gaps can be produced afterwards.
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragMoved, setDragMoved] = useState(false);
@@ -403,34 +406,37 @@ export function MultiStepIgazolasForm() {
     return out;
   };
 
+  const togglePeriod = (period: number, base: number[]): number[] => {
+    return base.includes(period)
+      ? base.filter((x) => x !== period)
+      : [...base, period].sort((a, b) => a - b);
+  };
+
   const beginPeriodSelection = (period: number) => {
     setIsDragging(true);
     setDragStart(period);
     setDragMoved(false);
     selectionBeforeDrag.current = getSelectedPeriods();
-    if (!individualPeriodSelectionEnabled) {
-      // Classic behaviour: start a fresh contiguous selection at this period.
-      updateFormData({ selectedPeriods: [period] });
-    }
-    // When individual selection is enabled, we defer touching the selection
-    // until we know whether this is a drag or a tap.
+    // Defer changing the selection until we know whether this is a drag
+    // (only meaningful when swipe is enabled) or a tap.
   };
 
   const extendPeriodSelection = (period: number) => {
     if (!isDragging || dragStart === null) return;
+    // Only the swipe/drag mode reacts to moving across cells; in the
+    // default tap-only mode we ignore drag movement so that the student
+    // has to release on the same cell to toggle it (matching the
+    // "individual period selection" feedback we received from students).
+    if (!swipePeriodSelectionEnabled) return;
     if (period !== dragStart) setDragMoved(true);
     updateFormData({ selectedPeriods: rangeBetween(dragStart, period) });
   };
 
   const finalizePeriodSelection = () => {
     if (!isDragging) return;
-    if (individualPeriodSelectionEnabled && !dragMoved && dragStart !== null) {
-      // Treat as a tap → toggle this single period in the previous selection.
-      const p = dragStart;
-      const prev = selectionBeforeDrag.current;
-      const next = prev.includes(p)
-        ? prev.filter((x) => x !== p)
-        : [...prev, p].sort((a, b) => a - b);
+    if (dragStart !== null && !dragMoved) {
+      // Tap on a single cell → toggle that period in the previous selection.
+      const next = togglePeriod(dragStart, selectionBeforeDrag.current);
       updateFormData({ selectedPeriods: next });
     }
     setIsDragging(false);
@@ -471,7 +477,7 @@ export function MultiStepIgazolasForm() {
       document.removeEventListener('touchend', handleGlobalUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDragging, dragStart, dragMoved, individualPeriodSelectionEnabled]);
+  }, [isDragging, dragStart, dragMoved, swipePeriodSelectionEnabled]);
 
   const resetForm = () => {
     setFormData(INITIAL_FORM_DATA);
@@ -736,9 +742,9 @@ export function MultiStepIgazolasForm() {
               </TooltipProvider>
 
               <p className="text-xs text-muted-foreground text-center">
-                {individualPeriodSelectionEnabled
+                {swipePeriodSelectionEnabled
                   ? 'Húzással összefüggő sávot jelölhetsz ki, koppintással pedig egyesével adhatsz hozzá vagy vehetsz el órákat (a köztes órák üresen maradhatnak).'
-                  : 'Húzd az ujjadat / kurzort az órák felett a kiválasztásukhoz.'}
+                  : 'Koppints az órákra a kiválasztásukhoz. Nem összefüggő szakaszok is megadhatók (pl. 1. és 3. óra).'}
               </p>
 
               <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">

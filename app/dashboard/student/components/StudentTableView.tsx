@@ -96,6 +96,7 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
     isSyncing,
     metadata,
     syncNow,
+    refresh,
   } = useFTVSync({
     fetchFunction: (mode) => apiClient.getMyIgazolas(mode),
     autoSync: isFtvRegistered ?? false, // Only auto-sync if FTV registered
@@ -203,6 +204,8 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
           <DataTable 
             columns={studentColumns} 
             data={tableData}
+            studentActions
+            onDataChange={refresh}
             ftvSyncStatus={
               isFtvRegistered && metadata ? (
                 <FTVSyncStatus
