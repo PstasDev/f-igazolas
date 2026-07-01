@@ -737,7 +737,7 @@ export function MultiStepIgazolasForm() {
 
               <p className="text-xs text-muted-foreground text-center">
                 {individualPeriodSelectionEnabled
-                  ? 'Húzd a húzással sávot jelölhetsz ki, koppintással pedig egyesével adhatsz hozzá vagy vehetsz el órákat (a köztes órák üresen maradhatnak).'
+                  ? 'Húzással összefüggő sávot jelölhetsz ki, koppintással pedig egyesével adhatsz hozzá vagy vehetsz el órákat (a köztes órák üresen maradhatnak).'
                   : 'Húzd az ujjadat / kurzort az órák felett a kiválasztásukhoz.'}
               </p>
 
