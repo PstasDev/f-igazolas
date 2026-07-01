@@ -108,6 +108,28 @@ export interface Igazolas {
   allapot: 'Függőben' | 'Elfogadva' | 'Elutasítva';
   megjegyzes_tanar?: string;
   kretaban_rogzitettem: boolean;
+  undoed?: boolean;
+}
+
+export interface IgazolasEditRequest {
+  eleje?: string;
+  vege?: string;
+  reszletes_idopontok?: ReszletesIdopont[] | null;
+  tipus?: number;
+  megjegyzes_diak?: string;
+  diak?: boolean;
+  korrigalt?: boolean;
+  diak_extra_ido_elotte?: number;
+  diak_extra_ido_utana?: number;
+  imgDriveURL?: string;
+  bkk_verification?: object;
+  sub_form_data?: Record<string, string | number>;
+}
+
+export interface IgazolasUndoResponse {
+  success: boolean;
+  message?: string;
+  id?: number;
 }
 
 export interface IgazolasCreateRequest {
