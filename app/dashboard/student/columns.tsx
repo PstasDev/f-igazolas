@@ -9,6 +9,7 @@ import { BKKVerificationBadge } from "@/components/ui/BKKVerificationBadge"
 import { Calendar, ArrowUpDown, ArrowUp, ArrowDown, Clapperboard, FileText, Image } from "lucide-react"
 import { getPeriodSchedule } from "@/lib/periods"
 import { apiClient } from "@/lib/api"
+import { toast } from "sonner"
 
 // Google Drive SVG Icon Component (kept for backwards-compatible legacy links)
 const GoogleDriveIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
@@ -35,8 +36,7 @@ async function openAttachment(row: IgazolasTableRow) {
         win.addEventListener('load', () => URL.revokeObjectURL(blobUrl), { once: true });
       }
     } catch {
-      // Fall back to trying the direct URL if blob fetch fails
-      window.open(row.image_url, '_blank', 'noopener,noreferrer');
+      toast.error('A kép megnyitása nem sikerült. Kérjük, próbáld újra.');
     }
   } else if (row.imgDriveURL) {
     window.open(row.imgDriveURL, '_blank', 'noopener,noreferrer');

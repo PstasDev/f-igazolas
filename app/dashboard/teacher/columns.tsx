@@ -11,6 +11,7 @@ import { Calendar, FileText, ArrowUpDown, ArrowUp, ArrowDown, Clapperboard, Imag
 import { QuickActionButtons } from "./components/QuickActionButtons"
 import { getPeriodSchedule } from "@/lib/periods"
 import { apiClient } from "@/lib/api"
+import { toast } from "sonner"
 
 interface ActionHandlers {
   onApprove?: (id: string) => void;
@@ -42,7 +43,7 @@ async function openAttachment(row: IgazolasTableRow) {
         win.addEventListener('load', () => URL.revokeObjectURL(blobUrl), { once: true });
       }
     } catch {
-      window.open(row.image_url, '_blank', 'noopener,noreferrer');
+      toast.error('A kép megnyitása nem sikerült. Kérjük, próbáld újra.');
     }
   } else if (row.imgDriveURL) {
     window.open(row.imgDriveURL, '_blank', 'noopener,noreferrer');
