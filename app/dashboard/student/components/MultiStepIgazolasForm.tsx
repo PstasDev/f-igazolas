@@ -392,6 +392,8 @@ export function MultiStepIgazolasForm() {
   const [dragMoved, setDragMoved] = useState(false);
   const selectionBeforeDrag = useRef<number[]>([]);
   const lastTouchTime = useRef(0);
+  /** Browsers fire a synthetic mousedown ~300 ms after touchend; 500 ms gives a safe margin. */
+  const TOUCH_MOUSE_SUPPRESSION_MS = 500;
 
   const rangeBetween = (a: number, b: number): number[] => {
     const [lo, hi] = a <= b ? [a, b] : [b, a];
@@ -438,7 +440,7 @@ export function MultiStepIgazolasForm() {
 
   const handlePeriodMouseDown = (period: number) => {
     // Suppress the synthetic mousedown that browsers fire after touchend.
-    if (Date.now() - lastTouchTime.current < 500) return;
+    if (Date.now() - lastTouchTime.current < TOUCH_MOUSE_SUPPRESSION_MS) return;
     beginPeriodSelection(period);
   };
   const handlePeriodMouseEnter = (period: number) => extendPeriodSelection(period);
