@@ -87,6 +87,23 @@ export interface FrontendConfig {
      */
     smartFilter?: boolean;
   };
+
+  /**
+   * Igazolás submission form preferences
+   */
+  igazolasForm?: {
+    /**
+     * When true, the period selector on the "new igazolás" form lets the
+     * student tap individual periods to (de)select them, so non-contiguous
+     * ("gap") selections like periods 1 and 3 are possible. The swipe/drag
+     * behaviour is still available: swipe to make a contiguous selection,
+     * then tap to add/remove individual periods.
+     * When false (default), only the classic consecutive swipe/drag
+     * selection is used.
+     * @default false
+     */
+    individualPeriodSelection?: boolean;
+  };
 }
 
 /**
@@ -107,6 +124,9 @@ export const DEFAULT_FRONTEND_CONFIG: FrontendConfig = {
   },
   dashboard: {
     smartFilter: false,
+  },
+  igazolasForm: {
+    individualPeriodSelection: false,
   },
 };
 
@@ -138,6 +158,10 @@ export function mergeFrontendConfig(
     dashboard: {
       ...base.dashboard,
       ...updates.dashboard,
+    },
+    igazolasForm: {
+      ...base.igazolasForm,
+      ...updates.igazolasForm,
     },
   };
 }

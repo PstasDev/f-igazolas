@@ -35,7 +35,8 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
     igazolas.eleje,
     igazolas.vege,
     igazolas.diak_extra_ido_elotte,
-    igazolas.diak_extra_ido_utana
+    igazolas.diak_extra_ido_utana,
+    igazolas.reszletes_idopontok
   );
   
   // Map allapot to the new status structure

@@ -92,26 +92,90 @@ export function getPeriodSchedule(periodIndex: number): string {
 }
 
 /**
+ * Calculate impacted periods from a list of sub-intervals (reszletes_idopontok).
+ * Returns the sorted union of periods impacted by any of the intervals.
+ */
+export function getImpactedPeriodsFromIntervals(
+  intervals: Array<{ eleje: string; vege: string }>
+): number[] {
+  const impacted = new Set<number>();
+  intervals.forEach(({ eleje, vege }) => {
+    const s = new Date(eleje);
+    const e = new Date(vege);
+    getImpactedPeriods(s, e).forEach((p) => impacted.add(p));
+  });
+  return Array.from(impacted).sort((a, b) => a - b);
+}
+
+/**
+ * Group a set of selected period indices into consecutive runs.
+ * Example: [0, 2, 3, 4, 6] → [[0], [2, 3, 4], [6]]
+ */
+export function groupConsecutivePeriods(periods: number[]): number[][] {
+  if (periods.length === 0) return [];
+  const sorted = [...new Set(periods)].sort((a, b) => a - b);
+  const runs: number[][] = [[sorted[0]]];
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === sorted[i - 1] + 1) {
+      runs[runs.length - 1].push(sorted[i]);
+    } else {
+      runs.push([sorted[i]]);
+    }
+  }
+  return runs;
+}
+
+/**
+ * Convert a list of selected period indices for a given date into
+ * `reszletes_idopontok` (an array of {eleje, vege} datetime strings).
+ *
+ * - If the selection is empty or forms a single consecutive run, returns
+ *   `null` (the outer eleje/vege already fully describes the absence).
+ * - Otherwise, returns one interval per consecutive run.
+ *
+ * Datetimes are emitted in the same "YYYY-MM-DDTHH:mm" local form used
+ * elsewhere in the form so the backend receives values consistent with the
+ * outer `eleje`/`vege`.
+ */
+export function buildReszletesIdopontok(
+  dateStr: string,
+  periods: number[]
+): Array<{ eleje: string; vege: string }> | null {
+  const runs = groupConsecutivePeriods(periods);
+  if (runs.length <= 1) return null;
+  return runs.map((run) => {
+    const first = BELL_SCHEDULE[run[0]];
+    const last = BELL_SCHEDULE[run[run.length - 1]];
+    return {
+      eleje: `${dateStr}T${first.start}`,
+      vege: `${dateStr}T${last.end}`,
+    };
+  });
+}
+
+/**
  * Enhanced function to map API response to periods using the corrected logic
  */
 export function mapApiResponseToPeriods(
   startTime: string,
   endTime: string,
   minutesBefore?: number | null,
-  minutesAfter?: number | null
+  minutesAfter?: number | null,
+  reszletesIdopontok?: Array<{ eleje: string; vege: string }> | null
 ): { originalPeriods: number[]; correctedPeriods: number[] } {
-  const start = new Date(startTime);
-  const end = new Date(endTime);
-  
-  // Get the original impacted periods based on start/end times
-  const originalPeriods = getImpactedPeriods(start, end);
-  
+  // If detailed sub-intervals are provided, use them to compute the impacted
+  // periods so any "gap" periods (e.g. period 2 between 1 and 3) remain gray.
+  const originalPeriods =
+    reszletesIdopontok && reszletesIdopontok.length > 0
+      ? getImpactedPeriodsFromIntervals(reszletesIdopontok)
+      : getImpactedPeriods(new Date(startTime), new Date(endTime));
+
   // Calculate corrected periods based on student's extra time
   const correctedPeriods = getCorrectedPeriods(
     originalPeriods,
     minutesBefore || 0,
     minutesAfter || 0
   );
-  
+
   return { originalPeriods, correctedPeriods };
 }

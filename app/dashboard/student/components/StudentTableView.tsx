@@ -27,9 +27,10 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
     igazolas.eleje,
     igazolas.vege,
     igazolas.diak_extra_ido_elotte,
-    igazolas.diak_extra_ido_utana
+    igazolas.diak_extra_ido_utana,
+    igazolas.reszletes_idopontok
   );
-  
+
   return {
     id: igazolas.id.toString(),
     studentId: igazolas.profile.user.id.toString(),

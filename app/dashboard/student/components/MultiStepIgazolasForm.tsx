@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,9 +16,10 @@ import MavLogo from '@/components/icons/MavLogo';
 import { apiClient } from '@/lib/api';
 import { IgazolasTipus, IgazolasCreateRequest, Profile } from '@/lib/types';
 import { getIgazolasType } from '../../types';
-import { BELL_SCHEDULE, getPeriodSchedule } from '@/lib/periods';
+import { BELL_SCHEDULE, getPeriodSchedule, buildReszletesIdopontok } from '@/lib/periods';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { useFrontendConfig } from '@/app/context/FrontendConfigContext';
 import { BKKDisruptionSelector } from './BKKDisruptionSelector';
 import { ProcessedBKKAlert, ProcessedVehiclePosition, getVehicleTypeEmoji, getVehicleTypeName, getBKKColors } from '@/lib/bkk-types';
 import { createDisruptionVerification, createVehicleVerification, BKKVerification } from '@/lib/bkk-verification-schema';
@@ -27,7 +28,13 @@ interface FormData {
   date: string;
   endDate: string; // For multi-day absences
   isMultiDay: boolean; // Toggle between single day and multi-day
-  periodRange: number[]; // [startPeriod, endPeriod] for consecutive periods
+  /**
+   * Sorted, unique list of selected period indices for single-day absences.
+   * When individual period selection is disabled this is always a contiguous
+   * run (equivalent to the old [start..end] range). When enabled, gaps are
+   * allowed and are transmitted as `reszletes_idopontok`.
+   */
+  selectedPeriods: number[];
   tipus: number | null;
   megjegyzes_diak: string;
   bkkDisruption?: {
@@ -41,7 +48,7 @@ const INITIAL_FORM_DATA: FormData = {
   date: '',
   endDate: '',
   isMultiDay: false,
-  periodRange: [0, 2], // Default to first 3 periods (0, 1, 2)
+  selectedPeriods: [0, 1, 2], // Default to first 3 periods
   tipus: null,
   megjegyzes_diak: '',
 };
@@ -51,6 +58,9 @@ const IMAGE_ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export function MultiStepIgazolasForm() {
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
+  const { config } = useFrontendConfig();
+  const individualPeriodSelectionEnabled =
+    config.igazolasForm?.individualPeriodSelection ?? false;
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [igazolasTipusok, setIgazolasTipusok] = useState<IgazolasTipus[]>([]);
   const [filteredIgazolasTipusok, setFilteredIgazolasTipusok] = useState<IgazolasTipus[]>([]);
@@ -86,7 +96,7 @@ export function MultiStepIgazolasForm() {
               date: dateStr,
               endDate: endDateStr,
               isMultiDay: true,
-              periodRange: [0, BELL_SCHEDULE.length - 1], // Full day coverage
+              selectedPeriods: Array.from({ length: BELL_SCHEDULE.length }, (_, i) => i),
               megjegyzes_diak: parsed.megjegyzes_diak || '',
             });
           } else {
@@ -116,10 +126,13 @@ export function MultiStepIgazolasForm() {
               endPeriod = i; // Keep updating to last period if we don't break
             }
             
+            const periods: number[] = [];
+            for (let p = startPeriod; p <= endPeriod; p++) periods.push(p);
+
             setFormData({
               ...INITIAL_FORM_DATA,
               date: dateStr,
-              periodRange: [startPeriod, endPeriod],
+              selectedPeriods: periods,
               megjegyzes_diak: parsed.megjegyzes_diak || '',
             });
           }
@@ -203,14 +216,9 @@ export function MultiStepIgazolasForm() {
     setFormData(prev => ({ ...prev, ...updates }));
   };
 
-  // Helper function to get consecutive periods from range
-  const getConsecutivePeriods = (): number[] => {
-    const [start, end] = formData.periodRange;
-    const periods = [];
-    for (let i = start; i <= end; i++) {
-      periods.push(i);
-    }
-    return periods;
+  // Helper function to get the currently selected periods (sorted, unique)
+  const getSelectedPeriods = (): number[] => {
+    return [...new Set(formData.selectedPeriods)].sort((a, b) => a - b);
   };
 
   // Calculate datetime strings for API submission
@@ -219,8 +227,9 @@ export function MultiStepIgazolasForm() {
       // For multi-day absences, start at the beginning of the day
       return `${formData.date}T${BELL_SCHEDULE[0]?.start || '08:00'}`;
     } else {
-      if (formData.periodRange.length === 2) {
-        const firstPeriod = formData.periodRange[0];
+      const periods = getSelectedPeriods();
+      if (periods.length > 0) {
+        const firstPeriod = periods[0];
         const startTime = BELL_SCHEDULE[firstPeriod]?.start || '08:00';
         return `${formData.date}T${startTime}`;
       }
@@ -234,8 +243,9 @@ export function MultiStepIgazolasForm() {
       const endDate = formData.endDate || formData.date;
       return `${endDate}T${BELL_SCHEDULE[BELL_SCHEDULE.length - 1]?.end || '16:00'}`;
     } else {
-      if (formData.periodRange.length === 2) {
-        const lastPeriod = formData.periodRange[1];
+      const periods = getSelectedPeriods();
+      if (periods.length > 0) {
+        const lastPeriod = periods[periods.length - 1];
         const endTime = BELL_SCHEDULE[lastPeriod]?.end || '16:00';
         return `${formData.date}T${endTime}`;
       }
@@ -246,6 +256,11 @@ export function MultiStepIgazolasForm() {
   const handleSubmit = async () => {
     if (!formData.tipus) {
       toast.error('Kérlek válassz igazolás típust');
+      return;
+    }
+
+    if (!formData.isMultiDay && getSelectedPeriods().length === 0) {
+      toast.error('Kérlek válassz ki legalább egy tanórát');
       return;
     }
 
@@ -294,6 +309,19 @@ export function MultiStepIgazolasForm() {
         diak: true,
         korrigalt: false,
       };
+
+      // For single-day absences, if the selected periods contain a gap
+      // (e.g. 1 + 3 with period 2 skipped), send the individual sub-intervals
+      // so the backend records the "period gap" instead of a solid range.
+      if (!formData.isMultiDay) {
+        const reszletes = buildReszletesIdopontok(
+          formData.date,
+          getSelectedPeriods()
+        );
+        if (reszletes) {
+          requestData.reszletes_idopontok = reszletes;
+        }
+      }
 
       // Only add optional fields if they have meaningful values
       if (formData.megjegyzes_diak && formData.megjegyzes_diak.trim() !== '') {
@@ -355,67 +383,95 @@ export function MultiStepIgazolasForm() {
     }
   };
 
-  // Swipeable period selection
+  // Period selection (swipe + optional tap-to-toggle).
+  //
+  // - When `individualPeriodSelectionEnabled` is false, dragging replaces the
+  //   selection with a contiguous range (classic behaviour).
+  // - When enabled, dragging still replaces the selection with a contiguous
+  //   range, and a "tap" (mouse/touch down + up without moving to another
+  //   period) toggles that period in the current selection so students can
+  //   pick non-consecutive periods with gaps in between.
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<number | null>(null);
+  const [dragMoved, setDragMoved] = useState(false);
+  const selectionBeforeDrag = useRef<number[]>([]);
 
-  const handlePeriodMouseDown = (period: number) => {
-    setIsDragging(true);
-    setDragStart(period);
-    updateFormData({ periodRange: [period, period] });
+  const rangeBetween = (a: number, b: number): number[] => {
+    const [lo, hi] = a <= b ? [a, b] : [b, a];
+    const out: number[] = [];
+    for (let i = lo; i <= hi; i++) out.push(i);
+    return out;
   };
 
-  const handlePeriodMouseEnter = (period: number) => {
-    if (isDragging && dragStart !== null) {
-      const start = Math.min(dragStart, period);
-      const end = Math.max(dragStart, period);
-      updateFormData({ periodRange: [start, end] });
+  const beginPeriodSelection = (period: number) => {
+    setIsDragging(true);
+    setDragStart(period);
+    setDragMoved(false);
+    selectionBeforeDrag.current = getSelectedPeriods();
+    if (!individualPeriodSelectionEnabled) {
+      // Classic behaviour: start a fresh contiguous selection at this period.
+      updateFormData({ selectedPeriods: [period] });
     }
+    // When individual selection is enabled, we defer touching the selection
+    // until we know whether this is a drag or a tap.
   };
 
-  const handlePeriodTouchStart = (period: number) => {
-    setIsDragging(true);
-    setDragStart(period);
-    updateFormData({ periodRange: [period, period] });
+  const extendPeriodSelection = (period: number) => {
+    if (!isDragging || dragStart === null) return;
+    if (period !== dragStart) setDragMoved(true);
+    updateFormData({ selectedPeriods: rangeBetween(dragStart, period) });
   };
+
+  const finalizePeriodSelection = () => {
+    if (!isDragging) return;
+    if (individualPeriodSelectionEnabled && !dragMoved && dragStart !== null) {
+      // Treat as a tap → toggle this single period in the previous selection.
+      const p = dragStart;
+      const prev = selectionBeforeDrag.current;
+      const next = prev.includes(p)
+        ? prev.filter((x) => x !== p)
+        : [...prev, p].sort((a, b) => a - b);
+      updateFormData({ selectedPeriods: next });
+    }
+    setIsDragging(false);
+    setDragStart(null);
+    setDragMoved(false);
+  };
+
+  const handlePeriodMouseDown = (period: number) => beginPeriodSelection(period);
+  const handlePeriodMouseEnter = (period: number) => extendPeriodSelection(period);
+
+  const handlePeriodTouchStart = (period: number) => beginPeriodSelection(period);
 
   const handlePeriodTouchMove = (e: React.TouchEvent) => {
     if (!isDragging || dragStart === null) return;
-    
+
     const touch = e.touches[0];
     const element = document.elementFromPoint(touch.clientX, touch.clientY);
     const periodAttr = element?.getAttribute('data-period');
-    
+
     if (periodAttr) {
       const period = parseInt(periodAttr);
-      const start = Math.min(dragStart, period);
-      const end = Math.max(dragStart, period);
-      updateFormData({ periodRange: [start, end] });
+      extendPeriodSelection(period);
     }
   };
 
-  const handlePeriodTouchEnd = () => {
-    setIsDragging(false);
-    setDragStart(null);
-  };
+  const handlePeriodTouchEnd = () => finalizePeriodSelection();
 
   useEffect(() => {
-    // Add global mouse up listener to handle drag end outside periods
-    const handleGlobalMouseUp = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        setDragStart(null);
-      }
-    };
+    // Add global mouse/touch up listener so drag/tap always finalizes
+    // even if the pointer is released outside a period cell.
+    const handleGlobalUp = () => finalizePeriodSelection();
 
-    document.addEventListener('mouseup', handleGlobalMouseUp);
-    document.addEventListener('touchend', handleGlobalMouseUp);
-    
+    document.addEventListener('mouseup', handleGlobalUp);
+    document.addEventListener('touchend', handleGlobalUp);
+
     return () => {
-      document.removeEventListener('mouseup', handleGlobalMouseUp);
-      document.removeEventListener('touchend', handleGlobalMouseUp);
+      document.removeEventListener('mouseup', handleGlobalUp);
+      document.removeEventListener('touchend', handleGlobalUp);
     };
-  }, [isDragging]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDragging, dragStart, dragMoved, individualPeriodSelectionEnabled]);
 
   const resetForm = () => {
     setFormData(INITIAL_FORM_DATA);
@@ -541,7 +597,9 @@ export function MultiStepIgazolasForm() {
                   updateFormData({ 
                     isMultiDay,
                     endDate: isMultiDay ? formData.date : '',
-                    periodRange: isMultiDay ? [0, BELL_SCHEDULE.length - 1] : formData.periodRange
+                    selectedPeriods: isMultiDay
+                      ? Array.from({ length: BELL_SCHEDULE.length }, (_, i) => i)
+                      : formData.selectedPeriods
                   });
                 }}
                 className="mr-2"
@@ -643,18 +701,18 @@ export function MultiStepIgazolasForm() {
                   onTouchEnd={handlePeriodTouchEnd}
                 >
                   {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((h) => {
-                    const isInRange = h >= formData.periodRange[0] && h <= formData.periodRange[1];
-                    
+                    const isSelected = formData.selectedPeriods.includes(h);
+
                     let bgColor = "period-inactive";
                     let glowColor = "";
                     let tooltipText = `Nincs kiválasztva\n${getPeriodSchedule(h)}`;
-                    
-                    if (isInRange) {
+
+                    if (isSelected) {
                       bgColor = "period-pending";
                       glowColor = "period-glow-blue";
                       tooltipText = `Kiválasztott óra\n${getPeriodSchedule(h)}`;
                     }
-                    
+
                     return (
                       <Tooltip key={h}>
                         <TooltipTrigger asChild>
@@ -663,7 +721,7 @@ export function MultiStepIgazolasForm() {
                             onMouseDown={() => handlePeriodMouseDown(h)}
                             onMouseEnter={() => handlePeriodMouseEnter(h)}
                             onTouchStart={() => handlePeriodTouchStart(h)}
-                            className={`inline-flex items-center justify-center w-10 h-10 text-sm font-bold rounded-lg cursor-pointer transition-all duration-200 ease-in-out transform ${bgColor} ${isInRange ? glowColor : ''} hover:scale-110 active:scale-95 touch-none`}
+                            className={`inline-flex items-center justify-center w-10 h-10 text-sm font-bold rounded-lg cursor-pointer transition-all duration-200 ease-in-out transform ${bgColor} ${isSelected ? glowColor : ''} hover:scale-110 active:scale-95 touch-none`}
                           >
                             {h}
                           </span>
@@ -677,14 +735,24 @@ export function MultiStepIgazolasForm() {
                 </div>
               </TooltipProvider>
 
+              <p className="text-xs text-muted-foreground text-center">
+                {individualPeriodSelectionEnabled
+                  ? 'Húzd a húzással sávot jelölhetsz ki, koppintással pedig egyesével adhatsz hozzá vagy vehetsz el órákat (a köztes órák üresen maradhatnak).'
+                  : 'Húzd az ujjadat / kurzort az órák felett a kiválasztásukhoz.'}
+              </p>
+
               <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
                 <p className="text-sm text-blue-800 dark:text-blue-200">
                   <strong>Kiválasztott órák:</strong>{' '}
-                  {getConsecutivePeriods().map(i => BELL_SCHEDULE[i]?.name).join(', ')}
+                  {getSelectedPeriods().length > 0
+                    ? getSelectedPeriods().map(i => BELL_SCHEDULE[i]?.name).join(', ')
+                    : '—'}
                 </p>
-                <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
-                  Időtartam: {BELL_SCHEDULE[formData.periodRange[0]]?.start} - {BELL_SCHEDULE[formData.periodRange[1]]?.end}
-                </p>
+                {getSelectedPeriods().length > 0 && (
+                  <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+                    Időtartam: {BELL_SCHEDULE[getSelectedPeriods()[0]]?.start} - {BELL_SCHEDULE[getSelectedPeriods()[getSelectedPeriods().length - 1]]?.end}
+                  </p>
+                )}
               </div>
             </div>
           </>
@@ -985,7 +1053,7 @@ export function MultiStepIgazolasForm() {
                     <div>
                       <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">Időszak</Label>
                       <p className="text-sm">
-                        {getConsecutivePeriods().map(i => BELL_SCHEDULE[i]?.name).join(', ')}
+                        {getSelectedPeriods().map(i => BELL_SCHEDULE[i]?.name).join(', ')}
                       </p>
                     </div>
                   )}

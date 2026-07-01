@@ -70,12 +70,28 @@ export interface IgazolasTipus {
   requires_studios: boolean;
 }
 
+/**
+ * A single sub-interval of absence within an Igazolás.
+ * Used inside `reszletes_idopontok` to describe non-contiguous absences.
+ */
+export interface ReszletesIdopont {
+  eleje: string; // ISO datetime string
+  vege: string;  // ISO datetime string
+}
+
 export interface Igazolas {
   id: number;
   profile: Profile;
   mulasztasok: Mulasztas[];
-  eleje: string; // ISO datetime string
-  vege: string; // ISO datetime string
+  eleje: string; // ISO datetime string – outer bounding range start
+  vege: string;  // ISO datetime string – outer bounding range end
+  /**
+   * Optional list of individual absence sub-intervals within [eleje, vege].
+   * - `null` / omitted → the student was absent for the entire eleje–vege span.
+   * - Non-empty array → the student was absent only during the listed intervals,
+   *   with gaps in between (e.g. absent for periods 1 and 3, present for 2).
+   */
+  reszletes_idopontok?: ReszletesIdopont[] | null;
   tipus: IgazolasTipus;
   megjegyzes?: string;
   rogzites_datuma: string; // ISO date string
@@ -95,8 +111,15 @@ export interface Igazolas {
 }
 
 export interface IgazolasCreateRequest {
-  eleje: string; // ISO datetime string
-  vege: string; // ISO datetime string
+  eleje: string; // ISO datetime string – outer bounding range start
+  vege: string;  // ISO datetime string – outer bounding range end
+  /**
+   * Optional list of individual absence sub-intervals within [eleje, vege].
+   * Omit (or pass `null`) if the student was absent for the entire span.
+   * Provide a non-empty array of {eleje, vege} objects when there are gaps
+   * (e.g. absent for periods 1 and 3 but present in period 2).
+   */
+  reszletes_idopontok?: ReszletesIdopont[] | null;
   tipus: number; // IgazolasTipus ID
   megjegyzes_diak?: string;
   diak?: boolean;
@@ -162,8 +185,10 @@ export interface TeacherCommentUpdateResponse {
 // Diakjaim (Students Management) types
 export interface IgazolasSimple {
   id: number;
-  eleje: string; // ISO datetime string
-  vege: string; // ISO datetime string
+  eleje: string; // ISO datetime string – outer bounding range start
+  vege: string;  // ISO datetime string – outer bounding range end
+  /** See {@link Igazolas.reszletes_idopontok}. */
+  reszletes_idopontok?: ReszletesIdopont[] | null;
   tipus: IgazolasTipus;
   allapot: 'Függőben' | 'Elfogadva' | 'Elutasítva';
   rogzites_datuma: string; // ISO date string
