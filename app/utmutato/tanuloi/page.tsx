@@ -83,7 +83,7 @@ export default function TanuloiUtmutato() {
               Szent László Gimnázium F Tagozat - Igazoláskezelő Rendszer
             </p>
             <p className="text-sm text-muted-foreground">
-              Utoljára frissítve: 2025. november 2.
+              Utoljára frissítve: 2026. július 1.
             </p>
           </div>
 
@@ -401,39 +401,57 @@ export default function TanuloiUtmutato() {
               <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">
                 5
               </span>
-              Dokumentum csatolása
+              Kép csatolása
             </h2>
             
             <div className="space-y-4 ml-10">
               <p className="text-muted-foreground">
-                Az igazoláshoz támogató dokumentumot is csatolhatsz Google Drive-on keresztül.
+                Az igazoláshoz támogató dokumentumot csatolhatsz képfeltöltéssel közvetlenül a rendszerbe.
               </p>
 
               <Alert>
                 <Upload className="h-4 w-4" />
-                <AlertTitle>Google Drive használata</AlertTitle>
+                <AlertTitle>Képfeltöltés</AlertTitle>
                 <AlertDescription>
-                  A dokumentumokat Google Drive-on kell tárolni és megosztani az osztályfőnökkel.
+                  A dokumentumokat (pl. orvosi igazolás, közlekedési igazolás fotója) közvetlenül feltöltheted az igazoláskezelő rendszerbe.
+                  Nincs szükség Google Drive-ra vagy más külső szolgáltatásra.
                 </AlertDescription>
               </Alert>
 
               <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
                 <h4 className="font-semibold text-sm">Lépések:</h4>
                 <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
-                  <li>Hozz létre egy &quot;Igazolások&quot; nevű mappát a Google Drive-odban</li>
-                  <li>Oszd meg a mappát az osztályfőnököddel megtekintő jogosultsággal</li>
-                  <li>Töltsd fel a dokumentumot (orvosi papír, közlekedési igazolás, stb.)</li>
-                  <li>Másold ki a dokumentum linkjét (jobb klikk → Link másolása)</li>
-                  <li>Illeszd be a linket a &quot;Dokumentum URL&quot; mezőbe</li>
+                  <li>Az igazolás beküldési űrlap &quot;Kép feltöltése&quot; szekciójára kattints</li>
+                  <li>Válaszd ki a képet a készülékedről (JPEG, PNG vagy WebP formátum)</li>
+                  <li>Ellenőrizd, hogy a fájl mérete nem haladja meg a 10 MB-ot</li>
+                  <li>Küld be az igazolást — a kép automatikusan feltöltődik</li>
                 </ol>
               </div>
 
               <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  💡 <strong>Tipp:</strong> A mappa megosztást csak egyszer kell beállítani! 
-                  Utána már csak fel kell töltened az új dokumentumokat.
+                  💡 <strong>Tipp:</strong> A kép csak te és az osztályfőnököd számára lesz elérhető, mások nem láthatják.
                 </p>
               </div>
+
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <h4 className="font-semibold text-sm mb-2">Elfogadott formátumok:</h4>
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  <li>• JPEG / JPG (.jpg, .jpeg)</li>
+                  <li>• PNG (.png)</li>
+                  <li>• WebP (.webp)</li>
+                  <li>• Maximum fájlméret: 10 MB</li>
+                </ul>
+              </div>
+
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Visszafelé kompatibilitás</AlertTitle>
+                <AlertDescription>
+                  Korábban Google Drive linkkel csatolt dokumentumok továbbra is elérhetők maradnak.
+                  Az új igazolásoknál azonban a közvetlen képfeltöltést ajánljuk.
+                </AlertDescription>
+              </Alert>
             </div>
           </section>
 
@@ -586,7 +604,7 @@ export default function TanuloiUtmutato() {
                   </li>
                   <li className="flex items-start gap-2">
                     <Eye className="h-4 w-4 mt-1 text-blue-500" />
-                    <span>Csatolt dokumentum linkje (ha van)</span>
+                    <span>Csatolt kép (ha van feltöltve)</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Eye className="h-4 w-4 mt-1 text-blue-500" />
@@ -681,7 +699,7 @@ export default function TanuloiUtmutato() {
               <div className="p-4 border rounded-lg space-y-2">
                 <h4 className="font-medium">Ellenőrizd az adatokat</h4>
                 <p className="text-sm text-muted-foreground">
-                  Gyakori hibaforrás az érvénytelen Google Drive link vagy rossz dátum megadás. 
+                  Gyakori hibaforrás a helytelen dátum megadás vagy nem megfelelő képformátum feltöltése. 
                   Mindig győződj meg róla, hogy minden adat helyes!
                 </p>
               </div>

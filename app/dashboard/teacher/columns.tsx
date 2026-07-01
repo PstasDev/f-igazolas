@@ -7,9 +7,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Button } from "@/components/ui/button"
 import { IgazolasTableRow, getIgazolasType, isMultiDayAbsence, buildCalendarGrid, getDayOfWeekShort } from "@/app/dashboard/types"
 import { BKKVerificationBadge } from "@/components/ui/BKKVerificationBadge"
-import { Calendar, FileText, ArrowUpDown, ArrowUp, ArrowDown, Clapperboard } from "lucide-react"
+import { Calendar, FileText, ArrowUpDown, ArrowUp, ArrowDown, Clapperboard, Image } from "lucide-react"
 import { QuickActionButtons } from "./components/QuickActionButtons"
 import { getPeriodSchedule } from "@/lib/periods"
+import { apiClient } from "@/lib/api"
+import { toast } from "sonner"
 
 interface ActionHandlers {
   onApprove?: (id: string) => void;
@@ -17,7 +19,7 @@ interface ActionHandlers {
   onSetPending?: (id: string) => void;
 }
 
-// Google Drive SVG Icon Component
+// Google Drive SVG Icon Component (kept for backwards-compatible legacy links)
 const GoogleDriveIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
   <svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" className={className}>
     <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
@@ -28,6 +30,25 @@ const GoogleDriveIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
     <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
   </svg>
 )
+
+// Helper: open a server-stored image (requires auth) or a legacy Drive URL
+async function openAttachment(row: IgazolasTableRow) {
+  const igazolasId = parseInt(row.id, 10);
+  if (row.image_url) {
+    try {
+      const blob = await apiClient.getIgazolasImageBlob(igazolasId);
+      const blobUrl = URL.createObjectURL(blob);
+      const win = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+      if (win) {
+        win.addEventListener('load', () => URL.revokeObjectURL(blobUrl), { once: true });
+      }
+    } catch {
+      toast.error('A kép megnyitása nem sikerült. Kérjük, próbáld újra.');
+    }
+  } else if (row.imgDriveURL) {
+    window.open(row.imgDriveURL, '_blank', 'noopener,noreferrer');
+  }
+}
 
 export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<IgazolasTableRow>[] => [
   {
@@ -359,14 +380,14 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
     maxSize: 400,
     cell: ({ row }) => {
       const reason = row.getValue("status") as string
-      const imageUrl = row.original.imageUrl || row.original.imgDriveURL
+      const hasServerImage = !!row.original.image_url
+      const hasLegacyUrl = !!row.original.imgDriveURL && !row.original.image_url
+      const hasAttachment = hasServerImage || hasLegacyUrl
       const hasBKKVerification = row.original.bkk_verification
       
       const handleImageClick = (e: React.MouseEvent) => {
         e.stopPropagation()
-        if (imageUrl) {
-          window.open(imageUrl, '_blank', 'noopener,noreferrer')
-        }
+        openAttachment(row.original)
       }
       
       return (
@@ -375,13 +396,16 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
             <span className="text-sm break-words whitespace-normal leading-relaxed">{reason}</span>
           )}
           <div className="flex flex-wrap gap-2">
-            {imageUrl && (
+            {hasAttachment && (
               <Badge 
                 variant="emerald" 
                 className="w-fit cursor-pointer hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors"
                 onClick={handleImageClick}
               >
-                <GoogleDriveIcon className="h-3 w-3 mr-1" />
+                {hasServerImage
+                  ? <Image className="h-3 w-3 mr-1" />
+                  : <GoogleDriveIcon className="h-3 w-3 mr-1" />
+                }
                 Kép csatolva
               </Badge>
             )}
