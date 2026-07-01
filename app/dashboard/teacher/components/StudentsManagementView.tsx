@@ -49,7 +49,7 @@ import {
 import { StudentIgazolasokHistory } from './StudentIgazolasokHistory';
 import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
 import { apiClient } from '@/lib/api';
-import { DiakjaSignle, DiakjaCreateRequest } from '@/lib/types';
+import { DiakjaSignle, DiakjaCreateRequest, TeacherClassInfo } from '@/lib/types';
 import { toast } from 'sonner';
 import { Spinner } from '@/components/ui/spinner';
 import * as XLSX from 'xlsx';
@@ -72,6 +72,10 @@ export function StudentsManagementView() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'pending' | 'none'>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+
+  // Multi-class support
+  const [teacherClasses, setTeacherClasses] = useState<TeacherClassInfo[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState<number | 'all'>('all');
   
   // New student form state
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -83,10 +87,10 @@ export function StudentsManagementView() {
   // Bulk operations - TODO: Implement bulk operations in future
   // const [selectedStudentIds, setSelectedStudentIds] = useState<Set<number>>(new Set());
 
-  const fetchStudents = async () => {
+  const fetchStudents = async (classId?: number) => {
     try {
       setIsLoading(true);
-      const studentsData = await apiClient.getDiakjaim();
+      const studentsData = await apiClient.getDiakjaim(classId);
       setStudents(studentsData);
       setFilteredStudents(studentsData);
     } catch (error) {
@@ -98,8 +102,28 @@ export function StudentsManagementView() {
   };
 
   useEffect(() => {
-    fetchStudents();
+    const init = async () => {
+      try {
+        const classes = await apiClient.getMyTeacherClasses();
+        setTeacherClasses(classes);
+      } catch {
+        // If the endpoint doesn't exist yet, silently ignore and show all students
+        setTeacherClasses([]);
+      }
+      await fetchStudents();
+    };
+    void init();
   }, []);
+
+  const handleClassChange = async (value: string) => {
+    const classId = value === 'all' ? 'all' : parseInt(value);
+    setSelectedClassId(classId);
+    setSearchTerm('');
+    setStatusFilter('all');
+    setDateFrom('');
+    setDateTo('');
+    await fetchStudents(classId === 'all' ? undefined : classId);
+  };
 
   // Filter students based on search and status
   useEffect(() => {
@@ -378,10 +402,28 @@ export function StudentsManagementView() {
           </TabsList>
           
           <div className="flex items-center gap-2">
+            {teacherClasses.length > 1 && (
+              <Select
+                value={selectedClassId.toString()}
+                onValueChange={handleClassChange}
+              >
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="Osztály szűrő" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Összes osztály</SelectItem>
+                  {teacherClasses.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id.toString()}>
+                      {cls.name}{cls.is_primary ? ' (elsődleges)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button
               variant="outline"
               size="sm"
-              onClick={() => fetchStudents()}
+              onClick={() => fetchStudents(selectedClassId === 'all' ? undefined : selectedClassId)}
               disabled={isLoading}
             >
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -573,6 +615,9 @@ export function StudentsManagementView() {
                       <TableHead className="sticky left-0 z-10 bg-background min-w-[200px]">Név</TableHead>
                       <TableHead className="hidden lg:table-cell min-w-[180px]">Felhasználónév</TableHead>
                       <TableHead className="hidden xl:table-cell min-w-[250px]">Email</TableHead>
+                      {teacherClasses.length > 1 && selectedClassId === 'all' && (
+                        <TableHead className="hidden md:table-cell min-w-[120px]">Osztály</TableHead>
+                      )}
                       <TableHead className="text-center min-w-[100px]">Függő</TableHead>
                       <TableHead className="hidden md:table-cell min-w-[140px]">Utolsó művelet</TableHead>
                       <TableHead className="sticky right-0 z-10 bg-background text-center min-w-[70px]">
@@ -583,7 +628,7 @@ export function StudentsManagementView() {
                   <TableBody>
                     {filteredStudents.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={teacherClasses.length > 1 && selectedClassId === 'all' ? 7 : 6} className="h-24 text-center text-muted-foreground">
                           Nincs megjeleníthető diák
                         </TableCell>
                       </TableRow>
@@ -613,6 +658,13 @@ export function StudentsManagementView() {
                                 {student.email || 'Nincs email'}
                               </span>
                             </TableCell>
+                            {teacherClasses.length > 1 && selectedClassId === 'all' && (
+                              <TableCell className="hidden md:table-cell text-sm text-muted-foreground select-text">
+                                <span className="whitespace-nowrap">
+                                  {student.osztaly?.nev ?? '–'}
+                                </span>
+                              </TableCell>
+                            )}
                             <TableCell className="text-center select-text">
                               {stats.pending > 0 ? (
                                 <div className="inline-flex items-center justify-center min-w-[60px] px-3 py-1.5 rounded-md bg-orange-500/10 dark:bg-orange-500/20 border border-orange-500/30">

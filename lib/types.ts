@@ -204,6 +204,15 @@ export interface TeacherCommentUpdateResponse {
   message: string;
 }
 
+// Teacher class assignment info (Feature #8: Multiple Class Support)
+export interface TeacherClassInfo {
+  id: number;
+  name: string;
+  is_primary: boolean;
+  assigned_date: string;
+  delegation_end_date?: string | null;
+}
+
 // Diakjaim (Students Management) types
 export interface IgazolasSimple {
   id: number;
@@ -225,6 +234,7 @@ export interface DiakjaSignle {
   email?: string;
   last_action?: string; // ISO datetime string
   igazolasok: IgazolasSimple[];
+  osztaly?: OsztalySimple; // Present when the endpoint returns class info (multi-class support)
 }
 
 export interface DiakjaCreateRequest {

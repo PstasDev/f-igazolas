@@ -46,6 +46,7 @@ import type {
   MulasztasDeleteResponse,
   IgazolasImageUploadResponse,
   IgazolasImageDeleteResponse,
+  TeacherClassInfo,
 } from './types';
 import { SystemMessage } from './system-message-types';
 
@@ -506,8 +507,15 @@ class APIClient {
 
   // Diakjaim endpoints (for class teachers only)
 
-  async getDiakjaim(): Promise<DiakjaSignle[]> {
-    return this.fetchWithAuth<DiakjaSignle[]>('/diakjaim');
+  async getDiakjaim(classId?: number): Promise<DiakjaSignle[]> {
+    const endpoint = classId != null ? `/diakjaim?class_id=${classId}` : '/diakjaim';
+    return this.fetchWithAuth<DiakjaSignle[]>(endpoint);
+  }
+
+  // Get the list of classes the current teacher is assigned to (Feature #8: Multiple Class Support)
+  async getMyTeacherClasses(): Promise<TeacherClassInfo[]> {
+    const response = await this.fetchWithAuth<{ classes: TeacherClassInfo[] }>('/teachers/my-classes');
+    return response.classes;
   }
 
   async createDiakjaim(data: DiakjaCreateRequest[]): Promise<DiakjaCreateResponse> {
