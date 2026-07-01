@@ -362,48 +362,6 @@ export function SettingsDialog() {
                 </div>
               </FieldSet>
 
-              {!isTeacher && (
-                <FieldSet>
-                  <FieldLabel htmlFor="swipe-period-selection">
-                    Tanóra-kiválasztás módja új igazolás beküldésénél
-                  </FieldLabel>
-                  <FieldDescription>
-                    Alapértelmezés szerint az új igazolás űrlapján koppintással
-                    választhatod ki egyesével a hiányzással érintett órákat, így
-                    nem összefüggő szakaszok is megadhatók (pl. 1. és 3. óra, a
-                    2. üresen marad). Ha bekapcsolod ezt a beállítást, a
-                    korábbi húzással történő tartomány-kijelölés is elérhető
-                    lesz a koppintás mellett.
-                  </FieldDescription>
-                  <Field orientation="horizontal">
-                    <FieldContent>
-                      <FieldTitle>
-                        Húzással történő tartomány-kijelölés engedélyezése
-                      </FieldTitle>
-                      <FieldDescription>
-                        A koppintással történő (de)kiválasztás továbbra is elérhető marad.
-                      </FieldDescription>
-                    </FieldContent>
-                    <Switch
-                      id="swipe-period-selection"
-                      checked={config.igazolasForm?.swipePeriodSelection ?? false}
-                      onCheckedChange={async (checked) => {
-                        try {
-                          await updateConfig({
-                            igazolasForm: {
-                              ...config.igazolasForm,
-                              swipePeriodSelection: checked,
-                            },
-                          })
-                        } catch (error) {
-                          console.error('Failed to update swipePeriodSelection config:', error)
-                          toast.error('Nem sikerült menteni a beállítást')
-                        }
-                      }}
-                    />
-                  </Field>
-                </FieldSet>
-              )}
             </FieldGroup>
           </div>
         )

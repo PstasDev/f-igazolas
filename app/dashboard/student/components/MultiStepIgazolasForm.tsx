@@ -19,7 +19,6 @@ import { getIgazolasType } from '../../types';
 import { BELL_SCHEDULE, getPeriodSchedule, buildReszletesIdopontok } from '@/lib/periods';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { useFrontendConfig } from '@/app/context/FrontendConfigContext';
 import { BKKDisruptionSelector } from './BKKDisruptionSelector';
 import { ProcessedBKKAlert, ProcessedVehiclePosition, getVehicleTypeEmoji, getVehicleTypeName, getBKKColors } from '@/lib/bkk-types';
 import { createDisruptionVerification, createVehicleVerification, BKKVerification } from '@/lib/bkk-verification-schema';
@@ -58,9 +57,6 @@ const IMAGE_ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export function MultiStepIgazolasForm() {
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
-  const { config } = useFrontendConfig();
-  const swipePeriodSelectionEnabled =
-    config.igazolasForm?.swipePeriodSelection ?? false;
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [igazolasTipusok, setIgazolasTipusok] = useState<IgazolasTipus[]>([]);
   const [filteredIgazolasTipusok, setFilteredIgazolasTipusok] = useState<IgazolasTipus[]>([]);
@@ -383,21 +379,19 @@ export function MultiStepIgazolasForm() {
     }
   };
 
-  // Period selection interaction model.
-  //
-  // - Default (`swipePeriodSelectionEnabled` = false): tap-to-toggle only.
-  //   Each mouse/touch down on a period cell toggles that single period in
-  //   the current selection. Dragging is ignored, so non-contiguous
-  //   ("gap") selections like periods 1 and 3 are the natural result.
-  // - When `swipePeriodSelectionEnabled` is true: the classic swipe/drag
-  //   gesture is additionally available and replaces the selection with a
-  //   contiguous range while dragging. A tap (down + up on the same cell
-  //   without moving) still toggles that single period in the previous
-  //   selection so gaps can be produced afterwards.
+  // Period selection interaction model:
+  // - Tap (pointer down + up on the same cell): toggles that period in the
+  //   current selection, enabling non-contiguous selections (e.g. 1 and 3).
+  // - Swipe/drag (pointer moves to another cell while held): adds the dragged
+  //   contiguous range to the selection that existed before the drag started,
+  //   so multiple disjoint intervals can be built up (e.g. 1–3 + 4–6).
+  // On touch devices the browser fires synthetic mouse events after touchend;
+  // we suppress them using a recency check on lastTouchTime.
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragMoved, setDragMoved] = useState(false);
   const selectionBeforeDrag = useRef<number[]>([]);
+  const lastTouchTime = useRef(0);
 
   const rangeBetween = (a: number, b: number): number[] => {
     const [lo, hi] = a <= b ? [a, b] : [b, a];
@@ -417,19 +411,17 @@ export function MultiStepIgazolasForm() {
     setDragStart(period);
     setDragMoved(false);
     selectionBeforeDrag.current = getSelectedPeriods();
-    // Defer changing the selection until we know whether this is a drag
-    // (only meaningful when swipe is enabled) or a tap.
+    // Defer changing the selection until we know whether this is a drag or a tap.
   };
 
   const extendPeriodSelection = (period: number) => {
     if (!isDragging || dragStart === null) return;
-    // Only the swipe/drag mode reacts to moving across cells; in the
-    // default tap-only mode we ignore drag movement so that the student
-    // has to release on the same cell to toggle it (matching the
-    // "individual period selection" feedback we received from students).
-    if (!swipePeriodSelectionEnabled) return;
     if (period !== dragStart) setDragMoved(true);
-    updateFormData({ selectedPeriods: rangeBetween(dragStart, period) });
+    // Merge the dragged range with the pre-drag selection so previous
+    // intervals are preserved (additive swipe).
+    const dragged = rangeBetween(dragStart, period);
+    const merged = [...new Set([...selectionBeforeDrag.current, ...dragged])].sort((a, b) => a - b);
+    updateFormData({ selectedPeriods: merged });
   };
 
   const finalizePeriodSelection = () => {
@@ -444,10 +436,17 @@ export function MultiStepIgazolasForm() {
     setDragMoved(false);
   };
 
-  const handlePeriodMouseDown = (period: number) => beginPeriodSelection(period);
+  const handlePeriodMouseDown = (period: number) => {
+    // Suppress the synthetic mousedown that browsers fire after touchend.
+    if (Date.now() - lastTouchTime.current < 500) return;
+    beginPeriodSelection(period);
+  };
   const handlePeriodMouseEnter = (period: number) => extendPeriodSelection(period);
 
-  const handlePeriodTouchStart = (period: number) => beginPeriodSelection(period);
+  const handlePeriodTouchStart = (period: number) => {
+    lastTouchTime.current = Date.now();
+    beginPeriodSelection(period);
+  };
 
   const handlePeriodTouchMove = (e: React.TouchEvent) => {
     if (!isDragging || dragStart === null) return;
@@ -477,7 +476,7 @@ export function MultiStepIgazolasForm() {
       document.removeEventListener('touchend', handleGlobalUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDragging, dragStart, dragMoved, swipePeriodSelectionEnabled]);
+  }, [isDragging, dragStart, dragMoved]);
 
   const resetForm = () => {
     setFormData(INITIAL_FORM_DATA);
@@ -742,9 +741,7 @@ export function MultiStepIgazolasForm() {
               </TooltipProvider>
 
               <p className="text-xs text-muted-foreground text-center">
-                {swipePeriodSelectionEnabled
-                  ? 'Húzással összefüggő sávot jelölhetsz ki, koppintással pedig egyesével adhatsz hozzá vagy vehetsz el órákat (a köztes órák üresen maradhatnak).'
-                  : 'Koppints az órákra a kiválasztásukhoz. Nem összefüggő szakaszok is megadhatók (pl. 1. és 3. óra).'}
+                Koppints az órákra az egyesével való ki- vagy bejelöléshez, vagy húzd az ujjadat / kurzort több óra felett egy összefüggő sáv kijelöléséhez. Így nem összefüggő szakaszok is megadhatók (pl. 1–3. + 5–6. óra).
               </p>
 
               <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
