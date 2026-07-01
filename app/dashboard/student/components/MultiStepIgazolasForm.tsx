@@ -10,8 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Calendar, Clock, FileText, Check, HelpCircle, ExternalLink, Folder, Share, Copy, Paperclip } from 'lucide-react';
+import { Calendar, Clock, FileText, Check, Upload, Image, X as XIcon, Paperclip } from 'lucide-react';
 import BKKLogo from '@/components/icons/BKKLogo';
 import MavLogo from '@/components/icons/MavLogo';
 import { apiClient } from '@/lib/api';
@@ -31,7 +30,6 @@ interface FormData {
   periodRange: number[]; // [startPeriod, endPeriod] for consecutive periods
   tipus: number | null;
   megjegyzes_diak: string;
-  imgDriveURL: string;
   bkkDisruption?: {
     type: 'alert' | 'vehicle';
     data: ProcessedBKKAlert | ProcessedVehiclePosition;
@@ -46,11 +44,14 @@ const INITIAL_FORM_DATA: FormData = {
   periodRange: [0, 2], // Default to first 3 periods (0, 1, 2)
   tipus: null,
   megjegyzes_diak: '',
-  imgDriveURL: '',
 };
+
+const IMAGE_MAX_SIZE_MB = 10;
+const IMAGE_ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export function MultiStepIgazolasForm() {
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [igazolasTipusok, setIgazolasTipusok] = useState<IgazolasTipus[]>([]);
   const [filteredIgazolasTipusok, setFilteredIgazolasTipusok] = useState<IgazolasTipus[]>([]);
   const [mostUsedTipusok, setMostUsedTipusok] = useState<IgazolasTipus[]>([]);
@@ -299,18 +300,28 @@ export function MultiStepIgazolasForm() {
         requestData.megjegyzes_diak = formData.megjegyzes_diak.trim();
       }
 
-      if (formData.imgDriveURL && formData.imgDriveURL.trim() !== '') {
-        requestData.imgDriveURL = formData.imgDriveURL.trim();
-      }
-
       if (bkkVerification) {
         requestData.bkk_verification = bkkVerification;
       }
 
       console.log('Sending request data:', JSON.stringify(requestData, null, 2));
 
-      await apiClient.createIgazolas(requestData);
-      toast.success('Igazolás sikeresen beküldve!');
+      const createdIgazolas = await apiClient.createIgazolas(requestData);
+
+      // Upload image if one was selected
+      if (imageFile) {
+        try {
+          await apiClient.uploadIgazolasImage(createdIgazolas.id, imageFile);
+          toast.success('Igazolás sikeresen beküldve!');
+        } catch (uploadError) {
+          // Igazolás was created but image upload failed — inform the user
+          console.error('Image upload failed:', uploadError);
+          const uploadMsg = uploadError instanceof Error ? uploadError.message : 'Ismeretlen hiba';
+          toast.warning(`Igazolás beküldve, de a kép feltöltése sikertelen: ${uploadMsg}`);
+        }
+      } else {
+        toast.success('Igazolás sikeresen beküldve!');
+      }
       
       // Navigate back to the igazolások list
       window.location.hash = 'igazolasok';
@@ -888,156 +899,64 @@ export function MultiStepIgazolasForm() {
                 </div>
                 
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="imgDriveURL">Dokumentum URL</Label>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <HelpCircle className="w-4 h-4 mr-2" />
-                          Útmutató
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle className="flex items-center gap-2">
-                            <Folder className="w-5 h-5" />
-                            Google Drive mappa megosztás útmutató
-                          </DialogTitle>
-                          <DialogDescription>
-                            Kövesd ezeket a lépéseket a dokumentumok helyes megosztásához
-                          </DialogDescription>
-                        </DialogHeader>
-                        
-                        <div className="space-y-6">
-                          <div className="p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
-                            <p className="text-sm text-amber-800 dark:text-amber-200">
-                              <strong>Fontos:</strong> Ez az útmutató egyszeri beállítást igényel. Miután beállítottad a mappát, minden új dokumentumot csak fel kell töltened, és a linkjét meg kell adnod.
-                            </p>
-                          </div>
-                          
-                          {/* Step 1 */}
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded-full text-sm font-bold">1</div>
-                              <h3 className="text-lg font-semibold">Mappa létrehozása Google Drive-ban</h3>
-                            </div>
-                            <div className="ml-11 space-y-2">
-                              <p className="text-sm text-gray-600 dark:text-gray-300">Nyisd meg a Google Drive-ot és hozz létre egy új mappát &quot;Igazolások&quot; néven.</p>
-                              <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
-                                <Folder className="w-4 h-4 text-blue-500" />
-                                <code className="text-sm">Igazolások</code>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Step 2 */}
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded-full text-sm font-bold">2</div>
-                              <h3 className="text-lg font-semibold">Mappa megosztása az osztályfőnökkel</h3>
-                            </div>
-                            <div className="ml-11 space-y-2">
-                              <p className="text-sm text-gray-600 dark:text-gray-300">Jobb klikk a mappára → &quot;Megosztás&quot; → Add hozzá az osztályfőnök email címét</p>
-                              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <Share className="w-4 h-4 text-green-500" />
-                                  <span className="text-sm font-medium">Jogosultság: &quot;Megtekintő&quot;</span>
-                                </div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Az osztályfőnök így láthatja a feltöltött dokumentumokat</p>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Step 3 */}
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded-full text-sm font-bold">3</div>
-                              <h3 className="text-lg font-semibold">Dokumentum feltöltése</h3>
-                            </div>
-                            <div className="ml-11 space-y-2">
-                              <p className="text-sm text-gray-600 dark:text-gray-300">Töltsd fel a szükséges dokumentumokat a mappába:</p>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-red-600 dark:text-red-400">🏥</span>
-                                    <span className="text-sm font-medium">Orvosi igazolás</span>
-                                  </div>
-                                  <p className="text-xs text-gray-600 dark:text-gray-300">Orvosi papírok, szakorvosi leletek</p>
-                                </div>
-                                <div className="p-3 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-md">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-orange-600 dark:text-orange-400">🚇</span>
-                                    <span className="text-sm font-medium">Közlekedési igazolás</span>
-                                  </div>
-                                  <p className="text-xs text-gray-600 dark:text-gray-300">MÁV, BKK késési igazolások</p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Step 4 */}
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded-full text-sm font-bold">4</div>
-                              <h3 className="text-lg font-semibold">Dokumentum link másolása</h3>
-                            </div>
-                            <div className="ml-11 space-y-2">
-                              <p className="text-sm text-gray-600 dark:text-gray-300">Jobb klikk a dokumentumra → &quot;Link másolása&quot;</p>
-                              <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Copy className="w-4 h-4 text-blue-500" />
-                                  <span className="text-sm font-medium">Példa link:</span>
-                                </div>
-                                <code className="text-xs bg-white dark:bg-gray-800 p-2 rounded border block break-all">
-                                  https://drive.google.com/file/d/1abc...xyz/view?usp=sharing
-                                </code>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Step 5 */}
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center justify-center w-8 h-8 bg-green-500 text-white rounded-full text-sm font-bold">5</div>
-                              <h3 className="text-lg font-semibold">Link beillesztése ide</h3>
-                            </div>
-                            <div className="ml-11 space-y-2">
-                              <p className="text-sm text-gray-600 dark:text-gray-300">Illeszd be a kimásolt linket a &quot;Dokumentum URL&quot; mezőbe</p>
-                              <div className="p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
-                                <div className="flex items-center gap-2">
-                                  <Check className="w-4 h-4 text-green-500" />
-                                  <span className="text-sm">A link automatikusan elérhető lesz az osztályfőnök számára</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
-                            <div className="flex items-start gap-3">
-                              <ExternalLink className="w-5 h-5 text-blue-500 mt-0.5" />
-                              <div>
-                                <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-1">Hasznos tipp</h4>
-                                <p className="text-sm text-blue-700 dark:text-blue-300">
-                                  Minden új igazolásnál csak fel kell töltened a dokumentumot a már megosztott mappába, 
-                                  majd a dokumentum linkjét be kell illesztened. A mappa megosztást csak egyszer kell beállítani!
-                                </p>
-                              </div>
-                            </div>
-                          </div>
+                  <Label htmlFor="imageFile">
+                    Kép feltöltése
+                    <span className="text-muted-foreground text-sm ml-2">(opcionális)</span>
+                  </Label>
+                  <div className="space-y-2">
+                    {imageFile ? (
+                      <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 rounded-md">
+                        <Image className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{imageFile.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {(imageFile.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
                         </div>
-                      </DialogContent>
-                    </Dialog>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setImageFile(null)}
+                          aria-label="Kép eltávolítása"
+                        >
+                          <XIcon className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <label
+                        htmlFor="imageFile"
+                        className="flex items-center justify-center gap-2 w-full p-4 border-2 border-dashed border-muted-foreground/30 rounded-md cursor-pointer hover:border-muted-foreground/60 hover:bg-muted/30 transition-colors"
+                      >
+                        <Upload className="w-5 h-5 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          Kattints vagy húzz ide egy képet
+                        </span>
+                        <Input
+                          id="imageFile"
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="sr-only"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] ?? null;
+                            if (!file) return;
+                            if (!IMAGE_ACCEPTED_TYPES.includes(file.type)) {
+                              toast.error('Csak JPEG, PNG vagy WebP formátum fogadható el.');
+                              return;
+                            }
+                            if (file.size > IMAGE_MAX_SIZE_MB * 1024 * 1024) {
+                              toast.error(`A fájl mérete nem haladhatja meg a ${IMAGE_MAX_SIZE_MB} MB-ot.`);
+                              return;
+                            }
+                            setImageFile(file);
+                          }}
+                        />
+                      </label>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Elfogadott formátumok: JPEG, PNG, WebP — max. {IMAGE_MAX_SIZE_MB} MB.
+                    </p>
                   </div>
-                  <Input
-                    id="imgDriveURL"
-                    type="url"
-                    placeholder="https://drive.google.com/file/d/..."
-                    value={formData.imgDriveURL}
-                    onChange={(e) => updateFormData({ imgDriveURL: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Illeszd be a Google Drive dokumentum linkjét a támogató dokumentumhoz.
-                  </p>
                 </div>
               </div>
             </div>
@@ -1095,17 +1014,14 @@ export function MultiStepIgazolasForm() {
                     </div>
                   )}
                   
-                  {formData.imgDriveURL && (
+                  {imageFile && (
                     <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">Dokumentum</Label>
-                      <a 
-                        href={formData.imgDriveURL} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        Támogató dokumentum megtekintése
-                      </a>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">Csatolt kép</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Image className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-sm">{imageFile.name}</span>
+                        <span className="text-xs text-muted-foreground">({(imageFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                      </div>
                     </div>
                   )}
                   

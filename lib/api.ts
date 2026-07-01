@@ -42,6 +42,8 @@ import type {
   MulasztasAnalysis,
   MulasztasUploadResponse,
   MulasztasDeleteResponse,
+  IgazolasImageUploadResponse,
+  IgazolasImageDeleteResponse,
 } from './types';
 import { SystemMessage } from './system-message-types';
 
@@ -240,6 +242,69 @@ class APIClient {
     return requestPromise;
   }
 
+  // Upload a file with JWT authentication (multipart/form-data, no Content-Type header)
+  private async uploadWithAuth<T>(endpoint: string, formData: FormData): Promise<T> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {};
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const url = `${this.baseUrl}${endpoint}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        this.removeToken();
+        if (this.onAuthError) {
+          this.onAuthError();
+        }
+      }
+      const errorData: ErrorResponse = await response.json().catch(() => ({
+        error: 'Upload failed',
+        detail: `HTTP ${response.status}: ${response.statusText}`,
+      }));
+      const error = new Error(errorData.detail || errorData.error) as APIError;
+      error.status = response.status;
+      error.detail = errorData.detail;
+      throw error;
+    }
+
+    return response.json();
+  }
+
+  // Fetch a binary blob with JWT authentication
+  private async fetchBlobWithAuth(endpoint: string): Promise<Blob> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {};
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const url = `${this.baseUrl}${endpoint}`;
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        this.removeToken();
+        if (this.onAuthError) {
+          this.onAuthError();
+        }
+      }
+      const error = new Error(`HTTP ${response.status}: ${response.statusText}`) as APIError;
+      error.status = response.status;
+      throw error;
+    }
+
+    return response.blob();
+  }
+
   // Authentication endpoints
 
   async login(credentials: LoginRequest): Promise<TokenResponse> {
@@ -364,6 +429,24 @@ class APIClient {
 
   async deleteIgazolas(igazolasId: number): Promise<void> {
     return this.fetchWithAuth<void>(`/igazolas/${igazolasId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Igazolás Image endpoints
+
+  async uploadIgazolasImage(igazolasId: number, file: File): Promise<IgazolasImageUploadResponse> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return this.uploadWithAuth<IgazolasImageUploadResponse>(`/igazolas/${igazolasId}/image`, formData);
+  }
+
+  async getIgazolasImageBlob(igazolasId: number): Promise<Blob> {
+    return this.fetchBlobWithAuth(`/igazolas/${igazolasId}/image`);
+  }
+
+  async deleteIgazolasImage(igazolasId: number): Promise<IgazolasImageDeleteResponse> {
+    return this.fetchWithAuth<IgazolasImageDeleteResponse>(`/igazolas/${igazolasId}/image`, {
       method: 'DELETE',
     });
   }

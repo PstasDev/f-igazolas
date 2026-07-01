@@ -86,6 +86,7 @@ export interface Igazolas {
   diak_extra_ido_elotte?: number;
   diak_extra_ido_utana?: number;
   imgDriveURL?: string;
+  image_url?: string | null; // Server-stored image URL (new); null = no image
   bkk_verification?: object; // BKKVerification object
   sub_form_data?: Record<string, string | number>; // New field
   allapot: 'Függőben' | 'Elfogadva' | 'Elutasítva';
@@ -384,4 +385,17 @@ export interface MulasztasUploadResponse {
 export interface MulasztasDeleteResponse {
   message: string;
   deleted_count: number;
+}
+
+// Igazolás Image Upload/Delete response types
+
+export interface IgazolasImageUploadResponse {
+  id: number;
+  image_url: string;
+  message: string;
+}
+
+export interface IgazolasImageDeleteResponse {
+  id: number;
+  message: string;
 }

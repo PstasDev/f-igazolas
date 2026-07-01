@@ -84,7 +84,7 @@ export default function OsztalyfonokiUtmutato() {
               Szent László Gimnázium F Tagozat - Igazoláskezelő Rendszer
             </p>
             <p className="text-sm text-muted-foreground">
-              Utoljára frissítve: 2025. november 2.
+              Utoljára frissítve: 2026. július 1.
             </p>
           </div>
 
@@ -265,7 +265,8 @@ export default function OsztalyfonokiUtmutato() {
                   <div className="p-3 bg-muted/30 rounded-lg">
                     <h5 className="font-medium text-sm mb-2">Támogató dokumentumok</h5>
                     <ul className="space-y-1 text-sm text-muted-foreground">
-                      <li>• Google Drive dokumentum link (ha van)</li>
+                      <li>• Feltöltött kép (JPEG/PNG/WebP, ha van)</li>
+                      <li>• Google Drive dokumentum link (régi igazolásoknál)</li>
                       <li>• BKK/MÁV hivatalos igazolás (ha van csatolva)</li>
                       <li>• FTV (Forgatásszervezési Platform) automatikus szinkronizálás</li>
                     </ul>
@@ -815,8 +816,8 @@ export default function OsztalyfonokiUtmutato() {
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertTitle>Dokumentumok ellenőrzése</AlertTitle>
                 <AlertDescription>
-                  Ha Google Drive link van csatolva, érdemes megnyitni és ellenőrizni a 
-                  dokumentumot az elbírálás előtt.
+                  Ha a diák képet töltött fel, a &quot;Melléklet megtekintése&quot; gombra kattintva megtekintheted.
+                  Régi igazolásoknál Google Drive link is szerepelhet — azt szintén ugyanitt érheted el.
                 </AlertDescription>
               </Alert>
 
@@ -910,9 +911,9 @@ export default function OsztalyfonokiUtmutato() {
               </div>
 
               <div className="p-4 border rounded-lg">
-                <h4 className="font-medium mb-2">Google Drive link nem működik</h4>
+                <h4 className="font-medium mb-2">A feltöltött kép nem nyílik meg</h4>
                 <p className="text-sm text-muted-foreground">
-                  Ha a diák által megadott link nem működik, jelezd neki, hogy ellenőrizze a jogosultságokat a Drive mappában.
+                  Ha a diák által feltöltött kép nem jeleníthető meg, kérd meg a diákot, hogy töltse fel újra a képet JPEG, PNG vagy WebP formátumban, legfeljebb 10 MB méretben.
                 </p>
               </div>
 

@@ -254,13 +254,30 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
                   </div>
                 </div>
 
-                {selectedIgazolas.imgDriveURL && (
+                {(selectedIgazolas.image_url || selectedIgazolas.imgDriveURL) && (
                   <div className="pt-4">
-                    <Button variant="outline" className="w-full" asChild>
-                      <a href={selectedIgazolas.imgDriveURL} target="_blank" rel="noopener noreferrer">
-                        <Eye className="h-4 w-4 mr-2" />
-                        Melléklet megtekintése
-                      </a>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={async () => {
+                        if (selectedIgazolas.image_url) {
+                          try {
+                            const blob = await apiClient.getIgazolasImageBlob(selectedIgazolas.id);
+                            const blobUrl = URL.createObjectURL(blob);
+                            const win = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+                            if (win) {
+                              win.addEventListener('load', () => URL.revokeObjectURL(blobUrl), { once: true });
+                            }
+                          } catch {
+                            toast.error('A kép betöltése sikertelen.');
+                          }
+                        } else if (selectedIgazolas.imgDriveURL) {
+                          window.open(selectedIgazolas.imgDriveURL, '_blank', 'noopener,noreferrer');
+                        }
+                      }}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Melléklet megtekintése
                     </Button>
                   </div>
                 )}
