@@ -116,7 +116,8 @@ export function StudentsManagementView() {
   }, []);
 
   const handleClassChange = async (value: string) => {
-    const classId = value === 'all' ? 'all' : parseInt(value);
+    const classId = value === 'all' ? 'all' : parseInt(value, 10);
+    if (classId !== 'all' && isNaN(classId)) return;
     setSelectedClassId(classId);
     setSearchTerm('');
     setStatusFilter('all');
@@ -364,6 +365,8 @@ export function StudentsManagementView() {
       </Card>
     );
   }
+
+  const showClassColumn = teacherClasses.length > 1 && selectedClassId === 'all';
 
   return (
     <div className="space-y-6">
@@ -615,7 +618,7 @@ export function StudentsManagementView() {
                       <TableHead className="sticky left-0 z-10 bg-background min-w-[200px]">Név</TableHead>
                       <TableHead className="hidden lg:table-cell min-w-[180px]">Felhasználónév</TableHead>
                       <TableHead className="hidden xl:table-cell min-w-[250px]">Email</TableHead>
-                      {teacherClasses.length > 1 && selectedClassId === 'all' && (
+                      {showClassColumn && (
                         <TableHead className="hidden md:table-cell min-w-[120px]">Osztály</TableHead>
                       )}
                       <TableHead className="text-center min-w-[100px]">Függő</TableHead>
@@ -628,7 +631,7 @@ export function StudentsManagementView() {
                   <TableBody>
                     {filteredStudents.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={teacherClasses.length > 1 && selectedClassId === 'all' ? 7 : 6} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={showClassColumn ? 7 : 6} className="h-24 text-center text-muted-foreground">
                           Nincs megjeleníthető diák
                         </TableCell>
                       </TableRow>
@@ -658,7 +661,7 @@ export function StudentsManagementView() {
                                 {student.email || 'Nincs email'}
                               </span>
                             </TableCell>
-                            {teacherClasses.length > 1 && selectedClassId === 'all' && (
+                            {showClassColumn && (
                               <TableCell className="hidden md:table-cell text-sm text-muted-foreground select-text">
                                 <span className="whitespace-nowrap">
                                   {student.osztaly?.nev ?? '–'}

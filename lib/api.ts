@@ -508,8 +508,11 @@ class APIClient {
   // Diakjaim endpoints (for class teachers only)
 
   async getDiakjaim(classId?: number): Promise<DiakjaSignle[]> {
-    const endpoint = classId != null ? `/diakjaim?class_id=${classId}` : '/diakjaim';
-    return this.fetchWithAuth<DiakjaSignle[]>(endpoint);
+    if (classId != null) {
+      const params = new URLSearchParams({ class_id: String(classId) });
+      return this.fetchWithAuth<DiakjaSignle[]>(`/diakjaim?${params.toString()}`);
+    }
+    return this.fetchWithAuth<DiakjaSignle[]>('/diakjaim');
   }
 
   // Get the list of classes the current teacher is assigned to (Feature #8: Multiple Class Support)
