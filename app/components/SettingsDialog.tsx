@@ -364,37 +364,39 @@ export function SettingsDialog() {
 
               {!isTeacher && (
                 <FieldSet>
-                  <FieldLabel htmlFor="individual-period-selection">
-                    Egyéni tanóra-kiválasztás új igazolás beküldésénél
+                  <FieldLabel htmlFor="swipe-period-selection">
+                    Tanóra-kiválasztás módja új igazolás beküldésénél
                   </FieldLabel>
                   <FieldDescription>
-                    Ha bekapcsolod, az új igazolás űrlapján a szokásos húzással történő
-                    kijelölés mellett koppintással is hozzáadhatsz vagy elvehetsz órákat,
-                    így nem összefüggő szakaszok is kijelölhetők (pl. 1. és 3. óra, a 2.
-                    üresen marad).
+                    Alapértelmezés szerint az új igazolás űrlapján koppintással
+                    választhatod ki egyesével a hiányzással érintett órákat, így
+                    nem összefüggő szakaszok is megadhatók (pl. 1. és 3. óra, a
+                    2. üresen marad). Ha bekapcsolod ezt a beállítást, a
+                    korábbi húzással történő tartomány-kijelölés is elérhető
+                    lesz a koppintás mellett.
                   </FieldDescription>
                   <Field orientation="horizontal">
                     <FieldContent>
                       <FieldTitle>
-                        Koppintással történő (de)kiválasztás engedélyezése
+                        Húzással történő tartomány-kijelölés engedélyezése
                       </FieldTitle>
                       <FieldDescription>
-                        A húzással történő kiválasztás továbbra is elérhető marad.
+                        A koppintással történő (de)kiválasztás továbbra is elérhető marad.
                       </FieldDescription>
                     </FieldContent>
                     <Switch
-                      id="individual-period-selection"
-                      checked={config.igazolasForm?.individualPeriodSelection ?? false}
+                      id="swipe-period-selection"
+                      checked={config.igazolasForm?.swipePeriodSelection ?? false}
                       onCheckedChange={async (checked) => {
                         try {
                           await updateConfig({
                             igazolasForm: {
                               ...config.igazolasForm,
-                              individualPeriodSelection: checked,
+                              swipePeriodSelection: checked,
                             },
                           })
                         } catch (error) {
-                          console.error('Failed to update individualPeriodSelection config:', error)
+                          console.error('Failed to update swipePeriodSelection config:', error)
                           toast.error('Nem sikerült menteni a beállítást')
                         }
                       }}
