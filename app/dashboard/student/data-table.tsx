@@ -54,6 +54,28 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner"
+import { apiClient } from "@/lib/api"
+import { Pencil } from "lucide-react"
+import {
   Alert,
   AlertDescription,
   AlertTitle,
@@ -75,6 +97,16 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   ftvSyncStatus?: React.ReactNode
+  /**
+   * Optional callback invoked after the current student successfully edits or
+   * undoes one of their own igazolás records. Parent should re-fetch data.
+   */
+  onDataChange?: () => void | Promise<void>
+  /**
+   * When true, show student self-service Edit / Undo controls in the details
+   * sheet for rows whose `allapot` is 'Függőben' or 'Elutasítva'.
+   */
+  studentActions?: boolean
 }
 
 // Utility function to get row highlight class based on submission delay
@@ -104,6 +136,8 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   ftvSyncStatus,
+  onDataChange,
+  studentActions = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "date", desc: true } // Default sort by date, newest first
@@ -123,6 +157,72 @@ export function DataTable<TData, TValue>({
   const [isOpen, setIsOpen] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState<string>("")
   const [igazolasTipusok, setIgazolasTipusok] = React.useState<string[]>([])
+
+  // Student self-service edit / undo state (only used when studentActions=true)
+  const [editOpen, setEditOpen] = React.useState(false)
+  const [editReason, setEditReason] = React.useState("")
+  const [editDriveUrl, setEditDriveUrl] = React.useState("")
+  const [editSubmitting, setEditSubmitting] = React.useState(false)
+  const [undoOpen, setUndoOpen] = React.useState(false)
+  const [undoSubmitting, setUndoSubmitting] = React.useState(false)
+
+  const canStudentModify = (row: IgazolasTableRow | null) =>
+    !!row && (row.allapot === 'Függőben' || row.allapot === 'Elutasítva')
+
+  const openEditDialog = () => {
+    if (!selectedRow) return
+    setEditReason(selectedRow.reason && selectedRow.reason !== 'Nincs megjegyzés' ? selectedRow.reason : "")
+    setEditDriveUrl(selectedRow.imgDriveURL || "")
+    setEditOpen(true)
+  }
+
+  const handleEditSubmit = async () => {
+    if (!selectedRow) return
+    const originalReason = selectedRow.reason && selectedRow.reason !== 'Nincs megjegyzés' ? selectedRow.reason : ""
+    const originalDrive = selectedRow.imgDriveURL || ""
+    const payload: { megjegyzes_diak?: string; imgDriveURL?: string } = {}
+    if (editReason.trim() !== originalReason.trim()) {
+      payload.megjegyzes_diak = editReason.trim()
+    }
+    if (editDriveUrl.trim() !== originalDrive.trim()) {
+      payload.imgDriveURL = editDriveUrl.trim()
+    }
+    if (Object.keys(payload).length === 0) {
+      toast.info("Nincs változtatás")
+      setEditOpen(false)
+      return
+    }
+    try {
+      setEditSubmitting(true)
+      await apiClient.editIgazolas(parseInt(selectedRow.id, 10), payload)
+      toast.success("Igazolás sikeresen módosítva – újra elbírálásra vár")
+      setEditOpen(false)
+      setIsOpen(false)
+      if (onDataChange) await onDataChange()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Ismeretlen hiba"
+      toast.error(`Módosítás sikertelen: ${message}`)
+    } finally {
+      setEditSubmitting(false)
+    }
+  }
+
+  const handleUndoConfirm = async () => {
+    if (!selectedRow) return
+    try {
+      setUndoSubmitting(true)
+      await apiClient.undoIgazolas(parseInt(selectedRow.id, 10))
+      toast.success("Igazolás visszavonva")
+      setUndoOpen(false)
+      setIsOpen(false)
+      if (onDataChange) await onDataChange()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Ismeretlen hiba"
+      toast.error(`Visszavonás sikertelen: ${message}`)
+    } finally {
+      setUndoSubmitting(false)
+    }
+  }
 
   // Check for calendar date filters on mount
   React.useEffect(() => {
@@ -753,6 +853,23 @@ export function DataTable<TData, TValue>({
                 </div>
               </SheetHeader>
 
+              {studentActions && canStudentModify(selectedRow) && (
+                <div className="px-6 -mt-2 mb-4">
+                  <Button
+                    onClick={openEditDialog}
+                    className="w-full"
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Igazolás szerkesztése
+                  </Button>
+                  {selectedRow.allapot === 'Elutasítva' && (
+                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                      Szerkesztés után az igazolás újra elbírálásra vár.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="flex-1 overflow-y-auto">
                 <ScrollArea className="h-full">
                   <div className="p-6 space-y-6">
@@ -1086,6 +1203,18 @@ export function DataTable<TData, TValue>({
                         </CardContent>
                       </Card>
                     )}
+
+                    {studentActions && canStudentModify(selectedRow) && (
+                      <div className="pt-2 pb-4 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => setUndoOpen(true)}
+                          className="text-xs text-muted-foreground hover:text-destructive underline underline-offset-4 transition-colors"
+                        >
+                          Igazolás visszavonása
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </ScrollArea>
               </div>
@@ -1093,6 +1222,85 @@ export function DataTable<TData, TValue>({
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Student Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={(open) => !editSubmitting && setEditOpen(open)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Igazolás szerkesztése</DialogTitle>
+            <DialogDescription>
+              A módosítások mentése után az igazolás újra függőben lesz, és az osztályfőnök ismét elbírálja.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-reason">Indoklás</Label>
+              <Textarea
+                id="edit-reason"
+                value={editReason}
+                onChange={(e) => setEditReason(e.target.value)}
+                placeholder="Részletes indoklás az igazoláshoz..."
+                rows={5}
+                maxLength={500}
+                disabled={editSubmitting}
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {editReason.length}/500 karakter
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-drive">Dokumentum link (opcionális)</Label>
+              <Input
+                id="edit-drive"
+                type="url"
+                value={editDriveUrl}
+                onChange={(e) => setEditDriveUrl(e.target.value)}
+                placeholder="https://drive.google.com/..."
+                disabled={editSubmitting}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditOpen(false)}
+              disabled={editSubmitting}
+            >
+              Mégse
+            </Button>
+            <Button onClick={handleEditSubmit} disabled={editSubmitting}>
+              {editSubmitting ? "Mentés..." : "Mentés"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Student Undo Confirmation */}
+      <AlertDialog open={undoOpen} onOpenChange={(open) => !undoSubmitting && setUndoOpen(open)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Igazolás visszavonása</AlertDialogTitle>
+            <AlertDialogDescription>
+              Biztosan visszavonod ezt az igazolást? A művelet után az igazolás
+              nem lesz látható, és az osztályfőnök sem tudja elbírálni. Szükség
+              esetén később új igazolást tudsz beküldeni.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={undoSubmitting}>Mégse</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleUndoConfirm()
+              }}
+              disabled={undoSubmitting}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {undoSubmitting ? "Visszavonás..." : "Visszavonás"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
