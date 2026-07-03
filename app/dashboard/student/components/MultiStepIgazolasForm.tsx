@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,8 +59,6 @@ const IMAGE_ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 export function MultiStepIgazolasForm() {
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
   const { config } = useFrontendConfig();
-  const individualPeriodSelectionEnabled =
-    config.igazolasForm?.individualPeriodSelection ?? false;
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [igazolasTipusok, setIgazolasTipusok] = useState<IgazolasTipus[]>([]);
   const [filteredIgazolasTipusok, setFilteredIgazolasTipusok] = useState<IgazolasTipus[]>([]);
@@ -383,18 +381,16 @@ export function MultiStepIgazolasForm() {
     }
   };
 
-  // Period selection (swipe + optional tap-to-toggle).
+  // Period selection: tap to toggle individual periods, swipe/drag to select
+  // a contiguous range. Both work simultaneously and support gaps.
   //
-  // - When `individualPeriodSelectionEnabled` is false, dragging replaces the
-  //   selection with a contiguous range (classic behaviour).
-  // - When enabled, dragging still replaces the selection with a contiguous
-  //   range, and a "tap" (mouse/touch down + up without moving to another
-  //   period) toggles that period in the current selection so students can
-  //   pick non-consecutive periods with gaps in between.
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState<number | null>(null);
-  const [dragMoved, setDragMoved] = useState(false);
-  const selectionBeforeDrag = useRef<number[]>([]);
+  // All drag state is stored in refs (not useState) so that the global
+  // mouseup/touchend listener always reads the latest values, avoiding the
+  // stale-closure bug where a quickly released tap was not registered.
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef<number | null>(null);
+  const dragMovedRef = useRef(false);
+  const selectionBeforeDragRef = useRef<number[]>([]);
 
   const rangeBetween = (a: number, b: number): number[] => {
     const [lo, hi] = a <= b ? [a, b] : [b, a];
@@ -403,75 +399,68 @@ export function MultiStepIgazolasForm() {
     return out;
   };
 
-  const beginPeriodSelection = (period: number) => {
-    setIsDragging(true);
-    setDragStart(period);
-    setDragMoved(false);
-    selectionBeforeDrag.current = getSelectedPeriods();
-    if (!individualPeriodSelectionEnabled) {
-      // Classic behaviour: start a fresh contiguous selection at this period.
-      updateFormData({ selectedPeriods: [period] });
-    }
-    // When individual selection is enabled, we defer touching the selection
-    // until we know whether this is a drag or a tap.
-  };
-
-  const extendPeriodSelection = (period: number) => {
-    if (!isDragging || dragStart === null) return;
-    if (period !== dragStart) setDragMoved(true);
-    updateFormData({ selectedPeriods: rangeBetween(dragStart, period) });
-  };
-
-  const finalizePeriodSelection = () => {
-    if (!isDragging) return;
-    if (individualPeriodSelectionEnabled && !dragMoved && dragStart !== null) {
-      // Treat as a tap → toggle this single period in the previous selection.
-      const p = dragStart;
-      const prev = selectionBeforeDrag.current;
+  // Wrapped in useCallback with empty deps so the global listener registered
+  // in useEffect always holds a stable reference and only needs to be
+  // registered once. All mutable state is accessed via refs.
+  const finalizePeriodSelection = useCallback(() => {
+    if (!isDraggingRef.current) return;
+    if (!dragMovedRef.current && dragStartRef.current !== null) {
+      // Short tap: toggle this single period in the saved selection.
+      const p = dragStartRef.current;
+      const prev = selectionBeforeDragRef.current;
       const next = prev.includes(p)
         ? prev.filter((x) => x !== p)
         : [...prev, p].sort((a, b) => a - b);
-      updateFormData({ selectedPeriods: next });
+      setFormData((fd) => ({ ...fd, selectedPeriods: next }));
     }
-    setIsDragging(false);
-    setDragStart(null);
-    setDragMoved(false);
+    // If the user dragged, the contiguous range is already committed via
+    // extendPeriodSelection — nothing more to do.
+    isDraggingRef.current = false;
+    dragStartRef.current = null;
+    dragMovedRef.current = false;
+  }, []);
+
+  const beginPeriodSelection = (period: number, currentSelection: number[]) => {
+    isDraggingRef.current = true;
+    dragStartRef.current = period;
+    dragMovedRef.current = false;
+    selectionBeforeDragRef.current = [...currentSelection];
+    // Do NOT mutate selectedPeriods here — wait to see if this becomes a drag
+    // or a tap.
   };
 
-  const handlePeriodMouseDown = (period: number) => beginPeriodSelection(period);
+  const extendPeriodSelection = (period: number) => {
+    if (!isDraggingRef.current || dragStartRef.current === null) return;
+    if (period !== dragStartRef.current) {
+      dragMovedRef.current = true;
+      setFormData((fd) => ({ ...fd, selectedPeriods: rangeBetween(dragStartRef.current!, period) }));
+    }
+  };
+
+  const handlePeriodMouseDown = (period: number) => beginPeriodSelection(period, formData.selectedPeriods);
   const handlePeriodMouseEnter = (period: number) => extendPeriodSelection(period);
 
-  const handlePeriodTouchStart = (period: number) => beginPeriodSelection(period);
+  const handlePeriodTouchStart = (period: number) => beginPeriodSelection(period, formData.selectedPeriods);
 
   const handlePeriodTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging || dragStart === null) return;
-
+    if (!isDraggingRef.current || dragStartRef.current === null) return;
     const touch = e.touches[0];
     const element = document.elementFromPoint(touch.clientX, touch.clientY);
     const periodAttr = element?.getAttribute('data-period');
-
     if (periodAttr) {
-      const period = parseInt(periodAttr);
-      extendPeriodSelection(period);
+      extendPeriodSelection(parseInt(periodAttr));
     }
   };
 
-  const handlePeriodTouchEnd = () => finalizePeriodSelection();
-
   useEffect(() => {
-    // Add global mouse/touch up listener so drag/tap always finalizes
-    // even if the pointer is released outside a period cell.
-    const handleGlobalUp = () => finalizePeriodSelection();
-
-    document.addEventListener('mouseup', handleGlobalUp);
-    document.addEventListener('touchend', handleGlobalUp);
-
+    // Register once; finalizePeriodSelection is stable (useCallback, []).
+    document.addEventListener('mouseup', finalizePeriodSelection);
+    document.addEventListener('touchend', finalizePeriodSelection);
     return () => {
-      document.removeEventListener('mouseup', handleGlobalUp);
-      document.removeEventListener('touchend', handleGlobalUp);
+      document.removeEventListener('mouseup', finalizePeriodSelection);
+      document.removeEventListener('touchend', finalizePeriodSelection);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDragging, dragStart, dragMoved, individualPeriodSelectionEnabled]);
+  }, [finalizePeriodSelection]);
 
   const resetForm = () => {
     setFormData(INITIAL_FORM_DATA);
@@ -698,7 +687,7 @@ export function MultiStepIgazolasForm() {
                 <div 
                   className="flex flex-wrap gap-2 justify-center select-none"
                   onTouchMove={handlePeriodTouchMove}
-                  onTouchEnd={handlePeriodTouchEnd}
+                  onTouchEnd={finalizePeriodSelection}
                 >
                   {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((h) => {
                     const isSelected = formData.selectedPeriods.includes(h);
@@ -736,9 +725,7 @@ export function MultiStepIgazolasForm() {
               </TooltipProvider>
 
               <p className="text-xs text-muted-foreground text-center">
-                {individualPeriodSelectionEnabled
-                  ? 'Húzással összefüggő sávot jelölhetsz ki, koppintással pedig egyesével adhatsz hozzá vagy vehetsz el órákat (a köztes órák üresen maradhatnak).'
-                  : 'Húzd az ujjadat / kurzort az órák felett a kiválasztásukhoz.'}
+                Koppints egy órára a kijelölés/törléshez, vagy húzz az ujjaddal/kurzorral összefüggő sáv kiválasztásához. Hézagos kijelölés is lehetséges.
               </p>
 
               <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">

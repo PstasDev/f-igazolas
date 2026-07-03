@@ -362,46 +362,7 @@ export function SettingsDialog() {
                 </div>
               </FieldSet>
 
-              {!isTeacher && (
-                <FieldSet>
-                  <FieldLabel htmlFor="individual-period-selection">
-                    Egyéni tanóra-kiválasztás új igazolás beküldésénél
-                  </FieldLabel>
-                  <FieldDescription>
-                    Ha bekapcsolod, az új igazolás űrlapján a szokásos húzással történő
-                    kijelölés mellett koppintással is hozzáadhatsz vagy elvehetsz órákat,
-                    így nem összefüggő szakaszok is kijelölhetők (pl. 1. és 3. óra, a 2.
-                    üresen marad).
-                  </FieldDescription>
-                  <Field orientation="horizontal">
-                    <FieldContent>
-                      <FieldTitle>
-                        Koppintással történő (de)kiválasztás engedélyezése
-                      </FieldTitle>
-                      <FieldDescription>
-                        A húzással történő kiválasztás továbbra is elérhető marad.
-                      </FieldDescription>
-                    </FieldContent>
-                    <Switch
-                      id="individual-period-selection"
-                      checked={config.igazolasForm?.individualPeriodSelection ?? false}
-                      onCheckedChange={async (checked) => {
-                        try {
-                          await updateConfig({
-                            igazolasForm: {
-                              ...config.igazolasForm,
-                              individualPeriodSelection: checked,
-                            },
-                          })
-                        } catch (error) {
-                          console.error('Failed to update individualPeriodSelection config:', error)
-                          toast.error('Nem sikerült menteni a beállítást')
-                        }
-                      }}
-                    />
-                  </Field>
-                </FieldSet>
-              )}
+
             </FieldGroup>
           </div>
         )
