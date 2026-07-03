@@ -7,12 +7,16 @@ import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CheckCircle2, XCircle, Clock, Calendar, Eye, Inbox, User, Check, X } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Calendar, Eye, Inbox, User, Check, X, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { Igazolas } from '@/lib/types';
 import { getIgazolasType } from '@/app/dashboard/types';
 import { toast } from 'sonner';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog';
 
 interface TeacherIgazolasokListProps {
   variant: 'all' | 'recent';
@@ -24,6 +28,25 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
   const [igazolasok, setIgazolasok] = useState<Igazolas[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Server-stored image display
+  const [attachmentBlobUrl, setAttachmentBlobUrl] = useState<string | null>(null);
+  const [isImageFullscreen, setIsImageFullscreen] = useState(false);
+
+  // Fetch blob whenever the selected igazolás with a server image changes
+  useEffect(() => {
+    setIsImageFullscreen(false);
+    setAttachmentBlobUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
+    if (!selectedIgazolas?.image_url) return;
+    let cancelled = false;
+    apiClient.getIgazolasImageBlob(selectedIgazolas.id)
+      .then(blob => {
+        if (cancelled) return;
+        setAttachmentBlobUrl(URL.createObjectURL(blob));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedIgazolas?.id, selectedIgazolas?.image_url]);
 
   const fetchIgazolasok = useCallback(async () => {
     try {
@@ -122,7 +145,8 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
 
   if (variant === 'all') {
     return (
-      <div className="grid gap-4 lg:grid-cols-2">
+      <>
+        <div className="grid gap-4 lg:grid-cols-2">
         {/* List View */}
         <Card>
           <CardHeader>
@@ -255,30 +279,43 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
                 </div>
 
                 {(selectedIgazolas.image_url || selectedIgazolas.imgDriveURL) && (
-                  <div className="pt-4">
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={async () => {
-                        if (selectedIgazolas.image_url) {
-                          try {
-                            const blob = await apiClient.getIgazolasImageBlob(selectedIgazolas.id);
-                            const blobUrl = URL.createObjectURL(blob);
-                            const win = window.open(blobUrl, '_blank', 'noopener,noreferrer');
-                            if (win) {
-                              win.addEventListener('load', () => URL.revokeObjectURL(blobUrl), { once: true });
-                            }
-                          } catch {
-                            toast.error('A kép betöltése sikertelen.');
+                  <div className="pt-4 space-y-2">
+                    <h4 className="text-sm font-medium">Mellékelt kép</h4>
+                    {selectedIgazolas.image_url ? (
+                      attachmentBlobUrl ? (
+                        <div
+                          className="relative cursor-pointer rounded-lg overflow-hidden border border-emerald-200 dark:border-emerald-700 hover:opacity-95 transition-opacity"
+                          onClick={() => setIsImageFullscreen(true)}
+                          title="Kattints a teljes képernyős nézethez"
+                        >
+                          <img
+                            src={attachmentBlobUrl}
+                            alt="Mellékelt kép"
+                            className="w-full max-h-48 object-contain bg-muted/30"
+                          />
+                          <div className="absolute bottom-0 inset-x-0 bg-black/50 py-1 text-center pointer-events-none">
+                            <span className="text-white text-xs">Kattints a teljes képernyős nézethez</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center h-24 rounded-lg bg-muted/30 border">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                      )
+                    ) : (
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          if (selectedIgazolas.imgDriveURL) {
+                            window.open(selectedIgazolas.imgDriveURL, '_blank', 'noopener,noreferrer');
                           }
-                        } else if (selectedIgazolas.imgDriveURL) {
-                          window.open(selectedIgazolas.imgDriveURL, '_blank', 'noopener,noreferrer');
-                        }
-                      }}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Melléklet megtekintése
-                    </Button>
+                        }}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Megtékintés Google Drive-on
+                      </Button>
+                    )}
                   </div>
                 )}
 
@@ -317,6 +354,20 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
           </CardContent>
         </Card>
       </div>
+
+        {/* Fullscreen Image Dialog */}
+        <Dialog open={isImageFullscreen} onOpenChange={setIsImageFullscreen}>
+          <DialogContent className="max-w-[95vw] max-h-[95vh] p-2 flex items-center justify-center">
+            {attachmentBlobUrl && (
+              <img
+                src={attachmentBlobUrl}
+                alt="Mellékelt kép"
+                className="max-w-full max-h-[90vh] object-contain rounded"
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
