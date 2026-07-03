@@ -119,14 +119,14 @@ export function AcademicYearArchival() {
       await apiClient['fetchWithAuth'](`/admin/classes/${selectedClassId}/archive?${params}`, {
         method: 'POST',
       })
-      toast.success(`${className} osztály sikeresen archiválva`)
+      toast.success(`A tanév sikeresen lezárva — ${className} kimenő osztállyal`)
       setArchiveDialogOpen(false)
       setSelectedClassId('')
       setArchiveTeacher(false)
       loadArchivedYears()
     } catch (err) {
       console.error('Failed to archive class:', err)
-      toast.error('Nem sikerült archiválni az osztályt')
+      toast.error('Nem sikerült lezárni a tanévet')
     } finally {
       setArchiving(false)
     }
@@ -270,9 +270,10 @@ export function AcademicYearArchival() {
           <DialogHeader>
             <DialogTitle>Tanév lezárása — archiválás</DialogTitle>
             <DialogDescription>
-              Válaszd ki a kimenő osztályt. Az osztályhoz tartozó diákok összes igazolása
-              és mulasztása archiválásra kerül — a következő tanévben már nem látszanak.
-              A felhasználói fiókok megmaradnak, a belépés továbbra is működik.
+              Válaszd ki a kimenő osztályt. A tanév lezárásakor az összes diák összes
+              igazolása és mulasztása archiválásra kerül — a következő tanévben már
+              semmilyen statisztikában nem látszanak. A kimenő osztály tanülőinak
+              profilāt is archivialjuk. A felhasználói fiókok megmaradnak, a belépés továbbra is működik.
             </DialogDescription>
           </DialogHeader>
 
