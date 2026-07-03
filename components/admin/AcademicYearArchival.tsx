@@ -198,7 +198,7 @@ export function AcademicYearArchival() {
             </span>
             <Button onClick={() => { setArchiveDialogOpen(true); loadArchivableClasses() }}>
               <IconArchive className="h-4 w-4 mr-2" />
-              Új archiválás
+              Tanév lezárása
             </Button>
           </CardTitle>
           <CardDescription>
@@ -268,10 +268,11 @@ export function AcademicYearArchival() {
       }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Osztály archiválása</DialogTitle>
+            <DialogTitle>Tanév lezárása — archiválás</DialogTitle>
             <DialogDescription>
-              Válaszd ki a kimenő osztályt. A tanulók fiókjai megmaradnak és be tudnak lépni,
-              de mulasztásaik és igazolásaik nem jelennek meg semmilyen statisztikában.
+              Válaszd ki a kimenő osztályt. Az osztályhoz tartozó diákok összes igazolása
+              és mulasztása archiválásra kerül — a következő tanévben már nem látszanak.
+              A felhasználói fiókok megmaradnak, a belépés továbbra is működik.
             </DialogDescription>
           </DialogHeader>
 
@@ -336,7 +337,7 @@ export function AcademicYearArchival() {
               ) : (
                 <>
                   <IconArchive className="h-4 w-4 mr-2" />
-                  Archiválás
+                  Tanév lezárása
                 </>
               )}
             </Button>
