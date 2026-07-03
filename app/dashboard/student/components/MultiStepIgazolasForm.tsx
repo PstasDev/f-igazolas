@@ -241,8 +241,13 @@ export function MultiStepIgazolasForm() {
           const match = types.find(t => t.nev === pendingEditTypeName);
           if (match) {
             setFormData(prev => ({ ...prev, tipus: match.id }));
-            if (match.bkk_igazolas) {
-              setShowBKKSelector(true);
+            
+            const isKozlekedesType = match.nev.toLowerCase() === 'közlekedés' || 
+                                     match.nev.toLowerCase() === 'közlekedési probléma';
+            if (isKozlekedesType) {
+              // We won't automatically show the BKK selector in edit mode
+              // because the verification might be already stored (but you can't edit bkk data atm)
+              // This condition is just in case you want to trigger any BKK-related behavior
             }
           }
         }
