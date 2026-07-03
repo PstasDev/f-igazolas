@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Spinner } from "@/components/ui/spinner"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Dialog,
@@ -24,6 +23,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { apiClient } from "@/lib/api"
 import { IconArchive, IconAlertCircle, IconEye, IconDownload, IconCalendar } from "@tabler/icons-react"
 import { toast } from "sonner"
@@ -34,6 +41,14 @@ interface ArchivedYear {
   total_users: number
   total_classes: number
   total_igazolasok: number
+}
+
+interface ArchivableClass {
+  id: number
+  nev: string
+  tagozat: string
+  kezdes_eve: number
+  osztalyfonokok: { id: number; username: string; first_name: string; last_name: string }[]
 }
 
 interface ArchivedYearData {
@@ -54,7 +69,9 @@ export function AcademicYearArchival() {
   const [archivedYears, setArchivedYears] = useState<ArchivedYear[]>([])
   const [loading, setLoading] = useState(true)
   const [archiving, setArchiving] = useState(false)
-  const [academicYear, setAcademicYear] = useState('')
+  const [archivableClasses, setArchivableClasses] = useState<ArchivableClass[]>([])
+  const [selectedClassId, setSelectedClassId] = useState<string>('')
+  const [archiveTeacher, setArchiveTeacher] = useState(false)
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false)
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [selectedYearData, setSelectedYearData] = useState<ArchivedYearData | null>(null)
@@ -62,13 +79,17 @@ export function AcademicYearArchival() {
 
   useEffect(() => {
     loadArchivedYears()
-    
-    // Set default academic year (current or previous)
-    const now = new Date()
-    const currentYear = now.getFullYear()
-    const startYear = now.getMonth() >= 8 ? currentYear : currentYear - 1
-    setAcademicYear(`${startYear}/${startYear + 1}`)
   }, [])
+
+  const loadArchivableClasses = async () => {
+    try {
+      const data = await apiClient['fetchWithAuth']<ArchivableClass[]>('/api/admin/classes/archivable')
+      setArchivableClasses(data)
+    } catch (err) {
+      console.error('Failed to load archivable classes:', err)
+      toast.error('Nem sikerült betölteni az osztályokat')
+    }
+  }
 
   const loadArchivedYears = async () => {
     try {
@@ -84,34 +105,28 @@ export function AcademicYearArchival() {
   }
 
   const handleArchive = async () => {
-    if (!academicYear) {
-      toast.error('Kérlek add meg a tanévet')
+    if (!selectedClassId) {
+      toast.error('Kérlek válassz egy osztályt')
       return
     }
 
-    if (!confirm(
-      `Biztosan archiválni szeretnéd a(z) ${academicYear} tanévet?\n\n` +
-      'Ez a művelet az alábbi adatokat archiválja:\n' +
-      '- Összes felhasználó\n' +
-      '- Összes osztály\n' +
-      '- Összes igazolás\n\n' +
-      'Az archivált adatok később megtekinthetők, de nem módosíthatók.'
-    )) {
-      return
-    }
+    const selectedClass = archivableClasses.find(c => c.id === parseInt(selectedClassId))
+    const className = selectedClass?.nev ?? selectedClassId
 
     try {
       setArchiving(true)
-      await apiClient['fetchWithAuth']('/api/admin/academic-year/archive', {
+      const params = new URLSearchParams({ archive_teacher: String(archiveTeacher) })
+      await apiClient['fetchWithAuth'](`/api/admin/classes/${selectedClassId}/archive?${params}`, {
         method: 'POST',
-        body: JSON.stringify({ academic_year: academicYear })
       })
-      toast.success(`${academicYear} tanév sikeresen archiválva`)
+      toast.success(`${className} osztály sikeresen archiválva`)
       setArchiveDialogOpen(false)
+      setSelectedClassId('')
+      setArchiveTeacher(false)
       loadArchivedYears()
     } catch (err) {
-      console.error('Failed to archive academic year:', err)
-      toast.error('Nem sikerült archiválni a tanévet')
+      console.error('Failed to archive class:', err)
+      toast.error('Nem sikerült archiválni az osztályt')
     } finally {
       setArchiving(false)
     }
@@ -181,7 +196,7 @@ export function AcademicYearArchival() {
               <IconArchive className="h-5 w-5" />
               Tanév archiválása
             </span>
-            <Button onClick={() => setArchiveDialogOpen(true)}>
+            <Button onClick={() => { setArchiveDialogOpen(true); loadArchivableClasses() }}>
               <IconArchive className="h-4 w-4 mr-2" />
               Új archiválás
             </Button>
@@ -247,25 +262,57 @@ export function AcademicYearArchival() {
       </Card>
 
       {/* Archive Dialog */}
-      <Dialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
+      <Dialog open={archiveDialogOpen} onOpenChange={(open) => {
+        setArchiveDialogOpen(open)
+        if (!open) { setSelectedClassId(''); setArchiveTeacher(false) }
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tanév archiválása</DialogTitle>
+            <DialogTitle>Osztály archiválása</DialogTitle>
             <DialogDescription>
-              Add meg a tanévet, amelyet archiválni szeretnél (pl. 2023/2024)
+              Válaszd ki a kimenő osztályt. A tanulók fiókjai megmaradnak és be tudnak lépni,
+              de mulasztásaik és igazolásaik nem jelennek meg semmilyen statisztikában.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="academic-year">Tanév</Label>
-              <Input
-                id="academic-year"
-                placeholder="2023/2024"
-                value={academicYear}
-                onChange={(e) => setAcademicYear(e.target.value)}
-              />
+              <Label>Osztály</Label>
+              <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Válassz osztályt..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {archivableClasses.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.nev}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            {selectedClassId && (() => {
+              const cls = archivableClasses.find(c => c.id === parseInt(selectedClassId))
+              if (!cls || cls.osztalyfonokok.length === 0) return null
+              const teacherNames = cls.osztalyfonokok
+                .map(t => `${t.last_name} ${t.first_name}`.trim() || t.username)
+                .join(', ')
+              return (
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="archive-teacher"
+                    checked={archiveTeacher}
+                    onCheckedChange={(v) => setArchiveTeacher(!!v)}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="archive-teacher" className="font-normal leading-snug">
+                    Az osztályfőnököt is archiváljam
+                    <span className="block text-xs text-muted-foreground mt-0.5">{teacherNames}</span>
+                  </Label>
+                </div>
+              )
+            })()}
 
             <Alert variant="default" className="bg-yellow-50 dark:bg-yellow-950/20">
               <IconAlertCircle className="h-4 w-4" />
@@ -280,7 +327,7 @@ export function AcademicYearArchival() {
             <Button variant="outline" onClick={() => setArchiveDialogOpen(false)}>
               Mégse
             </Button>
-            <Button onClick={handleArchive} disabled={archiving || !academicYear}>
+            <Button onClick={handleArchive} disabled={archiving || !selectedClassId}>
               {archiving ? (
                 <>
                   <Spinner className="h-4 w-4 mr-2" />
