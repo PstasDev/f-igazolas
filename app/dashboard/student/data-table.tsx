@@ -44,7 +44,8 @@ import {
   Clapperboard,
   Filter,
   Info,
-  Search
+  Search,
+  Loader2
 } from "lucide-react"
 import {
   Sheet,
@@ -159,52 +160,28 @@ export function DataTable<TData, TValue>({
   const [igazolasTipusok, setIgazolasTipusok] = React.useState<string[]>([])
 
   // Student self-service edit / undo state (only used when studentActions=true)
-  const [editOpen, setEditOpen] = React.useState(false)
-  const [editReason, setEditReason] = React.useState("")
-  const [editDriveUrl, setEditDriveUrl] = React.useState("")
-  const [editSubmitting, setEditSubmitting] = React.useState(false)
   const [undoOpen, setUndoOpen] = React.useState(false)
   const [undoSubmitting, setUndoSubmitting] = React.useState(false)
+
+  // Attachment image state for server-stored images
+  const [attachmentBlobUrl, setAttachmentBlobUrl] = React.useState<string | null>(null)
+  const [isImageFullscreen, setIsImageFullscreen] = React.useState(false)
 
   const canStudentModify = (row: IgazolasTableRow | null) =>
     !!row && (row.allapot === 'Függőben' || row.allapot === 'Elutasítva')
 
   const openEditDialog = () => {
     if (!selectedRow) return
-    setEditReason(selectedRow.reason && selectedRow.reason !== 'Nincs megjegyzés' ? selectedRow.reason : "")
-    setEditDriveUrl(selectedRow.imgDriveURL || "")
-    setEditOpen(true)
-  }
-
-  const handleEditSubmit = async () => {
-    if (!selectedRow) return
-    const originalReason = selectedRow.reason && selectedRow.reason !== 'Nincs megjegyzés' ? selectedRow.reason : ""
-    const originalDrive = selectedRow.imgDriveURL || ""
-    const payload: { megjegyzes_diak?: string; imgDriveURL?: string } = {}
-    if (editReason.trim() !== originalReason.trim()) {
-      payload.megjegyzes_diak = editReason.trim()
-    }
-    if (editDriveUrl.trim() !== originalDrive.trim()) {
-      payload.imgDriveURL = editDriveUrl.trim()
-    }
-    if (Object.keys(payload).length === 0) {
-      toast.info("Nincs változtatás")
-      setEditOpen(false)
-      return
-    }
-    try {
-      setEditSubmitting(true)
-      await apiClient.editIgazolas(parseInt(selectedRow.id, 10), payload)
-      toast.success("Igazolás sikeresen módosítva – újra elbírálásra vár")
-      setEditOpen(false)
-      setIsOpen(false)
-      if (onDataChange) await onDataChange()
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Ismeretlen hiba"
-      toast.error(`Módosítás sikertelen: ${message}`)
-    } finally {
-      setEditSubmitting(false)
-    }
+    sessionStorage.setItem('edit_igazolas', JSON.stringify(selectedRow));
+    setIsOpen(false);
+    window.location.hash = 'new';
+    
+    // Check if we need to dispatch an event to force the view change
+    const event = new HashChangeEvent('hashchange', {
+      newURL: window.location.href,
+      oldURL: window.location.href
+    });
+    window.dispatchEvent(event);
   }
 
   const handleUndoConfirm = async () => {
@@ -257,6 +234,21 @@ export function DataTable<TData, TValue>({
     }
     fetchTypes()
   }, [])
+
+  // Fetch attachment blob for server-stored images when selected row changes
+  React.useEffect(() => {
+    setIsImageFullscreen(false)
+    setAttachmentBlobUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
+    if (!selectedRow?.image_url) return
+    let cancelled = false
+    apiClient.getIgazolasImageBlob(parseInt(selectedRow.id, 10))
+      .then(blob => {
+        if (cancelled) return
+        setAttachmentBlobUrl(URL.createObjectURL(blob))
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [selectedRow?.id, selectedRow?.image_url])
 
   // Get filtered data based on all filters
   const getFilteredData = React.useMemo(() => {
@@ -1117,48 +1109,62 @@ export function DataTable<TData, TValue>({
                           </div>
                         )}
 
-                        {(selectedRow.imageUrl || selectedRow.imgDriveURL) && (
+                        {(selectedRow.image_url || selectedRow.imgDriveURL) && (
                           <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                              <svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" className="h-3 w-3">
-                                <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
-                                <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
-                                <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
-                                <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
-                                <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
-                                <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
-                              </svg>
-                              Mellékelt kép (Google Drive)
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                              Mellékelt kép
                             </Label>
-                            <Button 
-                              variant="outline" 
-                              size="lg" 
-                              className="w-full h-auto py-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border-emerald-300"
-                              onClick={() => {
-                                const imageUrl = selectedRow.imageUrl || selectedRow.imgDriveURL
-                                if (imageUrl) {
-                                  window.open(imageUrl, '_blank', 'noopener,noreferrer')
-                                }
-                              }}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
-                                  <svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
-                                    <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
-                                    <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
-                                    <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
-                                    <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
-                                    <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
-                                    <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
-                                  </svg>
+                            {selectedRow.image_url ? (
+                              attachmentBlobUrl ? (
+                                <div
+                                  className="relative cursor-pointer rounded-lg overflow-hidden border border-emerald-200 dark:border-emerald-700 hover:opacity-95 transition-opacity"
+                                  onClick={() => setIsImageFullscreen(true)}
+                                  title="Kattints a teljes képernyős nézethez"
+                                >
+                                  <img
+                                    src={attachmentBlobUrl}
+                                    alt="Mellékelt kép"
+                                    className="w-full max-h-48 object-contain bg-muted/30"
+                                  />
+                                  <div className="absolute bottom-0 inset-x-0 bg-black/50 py-1 text-center pointer-events-none">
+                                    <span className="text-white text-xs">Kattints a teljes képernyős nézethez</span>
+                                  </div>
                                 </div>
-                                <div className="text-left">
-                                  <p className="font-medium">Kép megtekintése Google Drive-on</p>
-                                  <p className="text-xs text-muted-foreground">Kattints a megnyitáshoz</p>
+                              ) : (
+                                <div className="flex items-center justify-center h-24 rounded-lg bg-muted/30 border">
+                                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                                 </div>
-                                <ExternalLink className="h-4 w-4 ml-auto text-muted-foreground" />
-                              </div>
-                            </Button>
+                              )
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="lg"
+                                className="w-full h-auto py-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border-emerald-300"
+                                onClick={() => {
+                                  if (selectedRow.imgDriveURL) {
+                                    window.open(selectedRow.imgDriveURL, '_blank', 'noopener,noreferrer')
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                                    <svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
+                                      <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+                                      <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+                                      <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+                                      <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+                                      <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+                                      <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+                                    </svg>
+                                  </div>
+                                  <div className="text-left">
+                                    <p className="font-medium">Kép megtekintése Google Drive-on</p>
+                                    <p className="text-xs text-muted-foreground">Kattints a megnyitáshoz</p>
+                                  </div>
+                                  <ExternalLink className="h-4 w-4 ml-auto text-muted-foreground" />
+                                </div>
+                              </Button>
+                            )}
                           </div>
                         )}
 
@@ -1223,58 +1229,6 @@ export function DataTable<TData, TValue>({
         </SheetContent>
       </Sheet>
 
-      {/* Student Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={(open) => !editSubmitting && setEditOpen(open)}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Igazolás szerkesztése</DialogTitle>
-            <DialogDescription>
-              A módosítások mentése után az igazolás újra függőben lesz, és az osztályfőnök ismét elbírálja.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="edit-reason">Indoklás</Label>
-              <Textarea
-                id="edit-reason"
-                value={editReason}
-                onChange={(e) => setEditReason(e.target.value)}
-                placeholder="Részletes indoklás az igazoláshoz..."
-                rows={5}
-                maxLength={500}
-                disabled={editSubmitting}
-              />
-              <p className="text-xs text-muted-foreground text-right">
-                {editReason.length}/500 karakter
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-drive">Dokumentum link (opcionális)</Label>
-              <Input
-                id="edit-drive"
-                type="url"
-                value={editDriveUrl}
-                onChange={(e) => setEditDriveUrl(e.target.value)}
-                placeholder="https://drive.google.com/..."
-                disabled={editSubmitting}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setEditOpen(false)}
-              disabled={editSubmitting}
-            >
-              Mégse
-            </Button>
-            <Button onClick={handleEditSubmit} disabled={editSubmitting}>
-              {editSubmitting ? "Mentés..." : "Mentés"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Student Undo Confirmation */}
       <AlertDialog open={undoOpen} onOpenChange={(open) => !undoSubmitting && setUndoOpen(open)}>
         <AlertDialogContent>
@@ -1301,6 +1255,19 @@ export function DataTable<TData, TValue>({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Fullscreen Image Dialog */}
+      <Dialog open={isImageFullscreen} onOpenChange={setIsImageFullscreen}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-2 flex items-center justify-center">
+          {attachmentBlobUrl && (
+            <img
+              src={attachmentBlobUrl}
+              alt="Mellékelt kép"
+              className="max-w-full max-h-[90vh] object-contain rounded"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

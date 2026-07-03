@@ -69,10 +69,46 @@ export function MultiStepIgazolasForm() {
   const [showBKKSelector, setShowBKKSelector] = useState(false);
   const [prefilledFromMulasztasok, setPrefilledFromMulasztasok] = useState(false);
   const [coveredMulasztasok, setCoveredMulasztasok] = useState<Array<{id: number, datum: string, ora: number, tantargy: string}>>([]);
+  const [editMode, setEditMode] = useState(false);
+  const [editIgazolasId, setEditIgazolasId] = useState<string | null>(null);
+  const [pendingEditTypeName, setPendingEditTypeName] = useState<string | null>(null);
   const router = useRouter();
 
   // Load prefill data from sessionStorage
   useEffect(() => {
+    // Process edit mode first priority
+    const editDataJson = sessionStorage.getItem('edit_igazolas');
+    if (editDataJson) {
+      try {
+        const parsed = JSON.parse(editDataJson);
+        setEditMode(true);
+        setEditIgazolasId(parsed.id);
+        
+        const dateStr = parsed.startDate.split('T')[0];
+        const endDateStr = parsed.endDate.split('T')[0];
+        const isMultiDay = dateStr !== endDateStr;
+        
+        setFormData(prev => ({
+          ...prev,
+          date: dateStr,
+          endDate: endDateStr,
+          isMultiDay,
+          selectedPeriods: parsed.hours || [],
+          megjegyzes_diak: parsed.reason && parsed.reason !== 'Nincs megjegyzés' ? parsed.reason : '',
+        }));
+        
+        if (parsed.type) {
+          setPendingEditTypeName(parsed.type);
+        }
+        
+        toast.info('Szerkesztő mód bekapcsolva', { duration: 3000 });
+        sessionStorage.removeItem('edit_igazolas');
+        return; // Skip normal prefill logic
+      } catch (err) {
+        console.error('Failed to parse edit_igazolas data:', err);
+      }
+    }
+
     const prefillData = sessionStorage.getItem('prefill_igazolas');
     if (prefillData) {
       try {
@@ -198,6 +234,17 @@ export function MultiStepIgazolasForm() {
         } else {
           // If no class, show all types
           setFilteredIgazolasTipusok(types);
+        }
+        
+        // If we are in edit mode and waiting for the type ID to be resolved
+        if (pendingEditTypeName) {
+          const match = types.find(t => t.nev === pendingEditTypeName);
+          if (match) {
+            setFormData(prev => ({ ...prev, tipus: match.id }));
+            if (match.bkk_igazolas) {
+              setShowBKKSelector(true);
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to load igazolás types:', error);
@@ -332,15 +379,21 @@ export function MultiStepIgazolasForm() {
 
       console.log('Sending request data:', JSON.stringify(requestData, null, 2));
 
-      const createdIgazolas = await apiClient.createIgazolas(requestData);
+      let createdIgazolas;
+      if (editMode && editIgazolasId) {
+        createdIgazolas = await apiClient.editIgazolas(parseInt(editIgazolasId, 10), requestData);
+        toast.success('Igazolás sikeresen módosítva!');
+      } else {
+        createdIgazolas = await apiClient.createIgazolas(requestData);
+      }
 
       // Upload image if one was selected
       if (imageFile) {
         try {
           await apiClient.uploadIgazolasImage(createdIgazolas.id, imageFile);
-          toast.success('Igazolás sikeresen beküldve!');
+          if (!editMode) toast.success('Igazolás sikeresen beküldve!');
         } catch (uploadError) {
-          // Igazolás was created but image upload failed — inform the user
+          // Igazolás was created/edited but image upload failed — inform the user
           console.error('Image upload failed:', uploadError);
           const uploadMsg = uploadError instanceof Error ? uploadError.message : 'Ismeretlen hiba';
           toast.warning(`Igazolás beküldve, de a kép feltöltése sikertelen: ${uploadMsg}`);
@@ -527,9 +580,11 @@ export function MultiStepIgazolasForm() {
     <div className="w-full max-w-4xl mx-auto min-w-0 overflow-hidden">
       <div className="flex flex-col gap-3 mb-4 pb-4 border-b">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight">Új igazolás beküldése</h1>
+          <h1 className="text-xl font-semibold tracking-tight">
+            {editMode ? 'Igazolás szerkesztése' : 'Új igazolás beküldése'}
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Töltsd ki a mezőket az igazolás beküldéséhez
+            {editMode ? 'Módosítsd a korábban beküldött igazolás adatait' : 'Töltsd ki a mezőket az igazolás beküldéséhez'}
           </p>
         </div>
         {prefilledFromMulasztasok && (
@@ -1112,7 +1167,9 @@ export function MultiStepIgazolasForm() {
               
               <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  Az igazolás beküldése után az osztályfőnököd elbírálja azt. Értesítést nem kapsz az eredményről.
+                  {editMode 
+                    ? 'A módosítás elküldése után az igazolás ismét függőben lesz, amíg az osztályfőnököd újra el nem bírálja.' 
+                    : 'Az igazolás beküldése után az osztályfőnököd elbírálja azt. Értesítést nem kapsz az eredményről.'}
                 </p>
               </div>
 
@@ -1129,12 +1186,12 @@ export function MultiStepIgazolasForm() {
                   {isSubmitting ? (
                     <>
                       <Spinner className="w-4 h-4 mr-2" />
-                      Beküldés...
+                      {editMode ? 'Mentés...' : 'Beküldés...'}
                     </>
                   ) : (
                     <>
                       <Check className="w-4 h-4 mr-2" />
-                      Igazolás beküldése
+                      {editMode ? 'Módosítás mentése' : 'Igazolás beküldése'}
                     </>
                   )}
                 </Button>

@@ -51,7 +51,8 @@ import {
   Clapperboard,
   Download,
   ChevronDown,
-  Sparkles
+  Sparkles,
+  Loader2
 } from "lucide-react"
 import {
   Sheet,
@@ -60,6 +61,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -151,6 +156,10 @@ export function DataTable<TData, TValue>({
   const [isDataReady, setIsDataReady] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState<string>("")
 
+  // Attachment image state for server-stored images
+  const [attachmentBlobUrl, setAttachmentBlobUrl] = React.useState<string | null>(null)
+  const [isImageFullscreen, setIsImageFullscreen] = React.useState(false)
+
   // Track when data is ready (has loaded at least once)
   React.useEffect(() => {
     if (data && data.length >= 0 && !isDataReady) {
@@ -191,6 +200,21 @@ export function DataTable<TData, TValue>({
     }
     fetchTypes()
   }, [])
+
+  // Fetch attachment blob for server-stored images when selected row changes
+  React.useEffect(() => {
+    setIsImageFullscreen(false)
+    setAttachmentBlobUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
+    if (!selectedRow?.image_url) return
+    let cancelled = false
+    apiClient.getIgazolasImageBlob(parseInt(selectedRow.id, 10))
+      .then(blob => {
+        if (cancelled) return
+        setAttachmentBlobUrl(URL.createObjectURL(blob))
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [selectedRow?.id, selectedRow?.image_url])
 
   // Debug: Log config changes
   React.useEffect(() => {
@@ -1549,34 +1573,55 @@ export function DataTable<TData, TValue>({
                           </div>
                         )}
 
-                        {(selectedRow.imageUrl || selectedRow.imgDriveURL) && (
+                        {(selectedRow.image_url || selectedRow.imgDriveURL) && (
                           <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                              <GoogleDriveIcon className="h-3 w-3" />
-                              Mellékelt kép (Google Drive)
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                              Mellékelt kép
                             </Label>
-                            <Button 
-                              variant="outline" 
-                              size="lg" 
-                              className="w-full h-auto py-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border-emerald-300"
-                              onClick={() => {
-                                const imageUrl = selectedRow.imageUrl || selectedRow.imgDriveURL
-                                if (imageUrl) {
-                                  window.open(imageUrl, '_blank', 'noopener,noreferrer')
-                                }
-                              }}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
-                                  <GoogleDriveIcon className="h-5 w-5" />
+                            {selectedRow.image_url ? (
+                              attachmentBlobUrl ? (
+                                <div
+                                  className="relative cursor-pointer rounded-lg overflow-hidden border border-emerald-200 dark:border-emerald-700 hover:opacity-95 transition-opacity"
+                                  onClick={() => setIsImageFullscreen(true)}
+                                  title="Kattints a teljes képernyős nézethez"
+                                >
+                                  <img
+                                    src={attachmentBlobUrl}
+                                    alt="Mellékelt kép"
+                                    className="w-full max-h-48 object-contain bg-muted/30"
+                                  />
+                                  <div className="absolute bottom-0 inset-x-0 bg-black/50 py-1 text-center pointer-events-none">
+                                    <span className="text-white text-xs">Kattints a teljes képernyős nézethez</span>
+                                  </div>
                                 </div>
-                                <div className="text-left">
-                                  <p className="font-medium">Kép megtekintése Google Drive-on</p>
-                                  <p className="text-xs text-muted-foreground">Kattints a megnyitáshoz</p>
+                              ) : (
+                                <div className="flex items-center justify-center h-24 rounded-lg bg-muted/30 border">
+                                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                                 </div>
-                                <ExternalLink className="h-4 w-4 ml-auto text-muted-foreground" />
-                              </div>
-                            </Button>
+                              )
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="lg"
+                                className="w-full h-auto py-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border-emerald-300"
+                                onClick={() => {
+                                  if (selectedRow.imgDriveURL) {
+                                    window.open(selectedRow.imgDriveURL, '_blank', 'noopener,noreferrer')
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                                    <GoogleDriveIcon className="h-5 w-5" />
+                                  </div>
+                                  <div className="text-left">
+                                    <p className="font-medium">Kép megtekintése Google Drive-on</p>
+                                    <p className="text-xs text-muted-foreground">Kattints a megnyitáshoz</p>
+                                  </div>
+                                  <ExternalLink className="h-4 w-4 ml-auto text-muted-foreground" />
+                                </div>
+                              </Button>
+                            )}
                           </div>
                         )}
 
@@ -1732,6 +1777,19 @@ export function DataTable<TData, TValue>({
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Fullscreen Image Dialog */}
+      <Dialog open={isImageFullscreen} onOpenChange={setIsImageFullscreen}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-2 flex items-center justify-center">
+          {attachmentBlobUrl && (
+            <img
+              src={attachmentBlobUrl}
+              alt="Mellékelt kép"
+              className="max-w-full max-h-[90vh] object-contain rounded"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
