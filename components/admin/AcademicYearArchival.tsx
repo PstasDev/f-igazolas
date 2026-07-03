@@ -83,7 +83,7 @@ export function AcademicYearArchival() {
 
   const loadArchivableClasses = async () => {
     try {
-      const data = await apiClient['fetchWithAuth']<ArchivableClass[]>('/api/admin/classes/archivable')
+      const data = await apiClient['fetchWithAuth']<ArchivableClass[]>('/admin/classes/archivable')
       setArchivableClasses(data)
     } catch (err) {
       console.error('Failed to load archivable classes:', err)
@@ -94,7 +94,7 @@ export function AcademicYearArchival() {
   const loadArchivedYears = async () => {
     try {
       setLoading(true)
-      const data = await apiClient['fetchWithAuth']<ArchivedYear[]>('/api/admin/academic-year/archived')
+      const data = await apiClient['fetchWithAuth']<ArchivedYear[]>('/admin/academic-year/archived')
       setArchivedYears(data)
     } catch (err) {
       console.error('Failed to load archived years:', err)
@@ -116,7 +116,7 @@ export function AcademicYearArchival() {
     try {
       setArchiving(true)
       const params = new URLSearchParams({ archive_teacher: String(archiveTeacher) })
-      await apiClient['fetchWithAuth'](`/api/admin/classes/${selectedClassId}/archive?${params}`, {
+      await apiClient['fetchWithAuth'](`/admin/classes/${selectedClassId}/archive?${params}`, {
         method: 'POST',
       })
       toast.success(`${className} osztály sikeresen archiválva`)
@@ -137,7 +137,7 @@ export function AcademicYearArchival() {
       setLoadingYearData(true)
       setViewDialogOpen(true)
       const data = await apiClient['fetchWithAuth']<ArchivedYearData>(
-        `/api/admin/academic-year/${encodeURIComponent(year)}/data`
+        `/admin/academic-year/${encodeURIComponent(year)}/data`
       )
       setSelectedYearData(data)
     } catch (err) {
@@ -152,7 +152,7 @@ export function AcademicYearArchival() {
   const handleExportYear = async (year: string) => {
     try {
       const data = await apiClient['fetchWithAuth']<ArchivedYearData>(
-        `/api/admin/academic-year/${encodeURIComponent(year)}/data`
+        `/admin/academic-year/${encodeURIComponent(year)}/data`
       )
       
       // Create JSON file and download
