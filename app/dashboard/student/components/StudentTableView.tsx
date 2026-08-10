@@ -54,6 +54,7 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
     fromFTV: igazolas.ftv || false,
     minutesBefore: igazolas.diak_extra_ido_elotte || 0,
     minutesAfter: igazolas.diak_extra_ido_utana || 0,
+    undoed: igazolas.undoed || false,
   };
 }
 

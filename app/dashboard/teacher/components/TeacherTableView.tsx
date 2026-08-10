@@ -64,6 +64,7 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
     fromFTV: igazolas.ftv || false,
     minutesBefore: igazolas.diak_extra_ido_elotte || 0,
     minutesAfter: igazolas.diak_extra_ido_utana || 0,
+    undoed: igazolas.undoed || false,
   };
 }
 
@@ -105,7 +106,8 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
 
   // Filter based on status and attendance requirements
   const igazolasok = useMemo(() => {
-    let filtered = allIgazolasok;
+    // Teachers must never see withdrawn (undoed) records, in any list or table.
+    let filtered = allIgazolasok.filter(i => !i.undoed);
     
     // Filter out igazolások that fall entirely on non-attendance days
     if (schedule) {

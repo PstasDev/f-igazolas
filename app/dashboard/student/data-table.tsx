@@ -182,7 +182,7 @@ export function DataTable<TData, TValue>({
   const [isImageFullscreen, setIsImageFullscreen] = React.useState(false)
 
   const canStudentModify = (row: IgazolasTableRow | null) =>
-    !!row && (row.allapot === 'Függőben' || row.allapot === 'Elutasítva')
+    !!row && !row.undoed && (row.allapot === 'Függőben' || row.allapot === 'Elutasítva')
 
   const startEdit = () => {
     if (!selectedRow) return
@@ -854,7 +854,7 @@ export function DataTable<TData, TValue>({
                         <TableRow
                           key={row.id}
                           data-state={row.getIsSelected() && "selected"}
-                          className={`transition-colors border-b cursor-pointer ${delayClass || "hover:bg-muted/50"}`}
+                          className={`transition-colors border-b cursor-pointer ${igazolas.undoed ? "opacity-50 grayscale line-through hover:bg-muted/30" : (delayClass || "hover:bg-muted/50")}`}
                           onClick={() => handleRowClick(row.original)}
                         >
                           {row.getVisibleCells().map((cell) => (
@@ -947,6 +947,18 @@ export function DataTable<TData, TValue>({
                   })()}
                 </div>
               </SheetHeader>
+
+              {selectedRow.undoed && (
+                <div className="px-6 -mt-2 mb-4">
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Visszavont igazolás</AlertTitle>
+                    <AlertDescription>
+                      Ezt az igazolást visszavontad. Az osztályfőnököd ezt a rekordot nem látja, és nem tudja elbírálni.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              )}
 
               {studentActions && canStudentModify(selectedRow) && (
                 <div className="px-6 -mt-2 mb-4">

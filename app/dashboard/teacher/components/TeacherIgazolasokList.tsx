@@ -53,13 +53,14 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
       setIsLoading(true);
       const data = await apiClient.listIgazolas();
       
-      let filtered = data;
+      // Teachers must never see withdrawn (undoed) records, in any list or table.
+      let filtered = data.filter(i => !i.undoed);
       if (filter === 'pending') {
-        filtered = data.filter(i => i.allapot === 'Függőben');
+        filtered = filtered.filter(i => i.allapot === 'Függőben');
       } else if (filter === 'approved') {
-        filtered = data.filter(i => i.allapot === 'Elfogadva');
+        filtered = filtered.filter(i => i.allapot === 'Elfogadva');
       } else if (filter === 'rejected') {
-        filtered = data.filter(i => i.allapot === 'Elutasítva');
+        filtered = filtered.filter(i => i.allapot === 'Elutasítva');
       }
       
       setIgazolasok(filtered);

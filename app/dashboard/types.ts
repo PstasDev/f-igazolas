@@ -25,6 +25,7 @@ export interface IgazolasTableRow {
   fromFTV?: boolean;
   minutesBefore?: number;
   minutesAfter?: number;
+  undoed?: boolean; // Student withdrew this record; teachers must never see it
 }
 
 export interface IgazolasType {
