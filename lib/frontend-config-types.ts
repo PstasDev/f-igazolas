@@ -104,6 +104,20 @@ export interface FrontendConfig {
      */
     individualPeriodSelection?: boolean;
   };
+
+  /**
+   * Onboarding tour / guided-walkthrough progress.
+   * Tracks which per-menu onboarding tours the user has already finished or
+   * dismissed, keyed by a stable tour id (e.g. "igazolasok-student").
+   * Once a tour id is present (true), it is never shown again automatically.
+   */
+  onboarding?: {
+    /**
+     * Map of tour id -> completed (finished or skipped).
+     * @default {}
+     */
+    completedTours?: Record<string, boolean>;
+  };
 }
 
 /**
@@ -127,6 +141,9 @@ export const DEFAULT_FRONTEND_CONFIG: FrontendConfig = {
   },
   igazolasForm: {
     individualPeriodSelection: false,
+  },
+  onboarding: {
+    completedTours: {},
   },
 };
 
@@ -162,6 +179,14 @@ export function mergeFrontendConfig(
     igazolasForm: {
       ...base.igazolasForm,
       ...updates.igazolasForm,
+    },
+    onboarding: {
+      ...base.onboarding,
+      ...updates.onboarding,
+      completedTours: {
+        ...base.onboarding?.completedTours,
+        ...updates.onboarding?.completedTours,
+      },
     },
   };
 }

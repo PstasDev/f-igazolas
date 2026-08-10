@@ -23,6 +23,8 @@ import { useFrontendConfig } from '@/app/context/FrontendConfigContext';
 import { BKKDisruptionSelector } from './BKKDisruptionSelector';
 import { ProcessedBKKAlert, ProcessedVehiclePosition, getVehicleTypeEmoji, getVehicleTypeName, getBKKColors } from '@/lib/bkk-types';
 import { createDisruptionVerification, createVehicleVerification, BKKVerification } from '@/lib/bkk-verification-schema';
+import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
+import { TOUR_IDS, newIgazolasTourSteps } from '@/lib/onboarding-tours';
 
 interface FormData {
   date: string;
@@ -583,7 +585,7 @@ export function MultiStepIgazolasForm() {
 
   return (
     <div className="w-full max-w-4xl mx-auto min-w-0 overflow-hidden">
-      <div className="flex flex-col gap-3 mb-4 pb-4 border-b">
+      <div className="flex flex-col gap-3 mb-4 pb-4 border-b" data-tour="new-igazolas-header">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight">
             {editMode ? 'Igazolás szerkesztése' : 'Új igazolás beküldése'}
@@ -628,7 +630,7 @@ export function MultiStepIgazolasForm() {
 
       <div className="space-y-6">
         {/* Step 1: Date Selection */}
-        <div className="space-y-4">
+        <div className="space-y-4" data-tour="new-igazolas-date">
           <div className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-blue-500" />
             <Label htmlFor="date" className="text-lg font-medium">Dátum</Label>
@@ -737,7 +739,7 @@ export function MultiStepIgazolasForm() {
         {!formData.isMultiDay && (
           <>
             <Separator />
-            <div className="space-y-6">
+            <div className="space-y-6" data-tour="new-igazolas-periods">
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-blue-500" />
                 <Label className="text-lg font-medium">Tanórák kiválasztása</Label>
@@ -807,7 +809,7 @@ export function MultiStepIgazolasForm() {
 
         {/* Step 3: Type Selection */}
         <Separator />
-        <div className="space-y-4">
+        <div className="space-y-4" data-tour="new-igazolas-type">
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-blue-500" />
                 <Label className="text-lg font-medium">Igazolás típusa</Label>
@@ -1002,7 +1004,7 @@ export function MultiStepIgazolasForm() {
               <Label className="text-lg font-medium">Opcionális mezők</Label>
               
               <div className="space-y-4">
-                <div className="space-y-2">
+                <div className="space-y-2" data-tour="new-igazolas-description">
                   <Label htmlFor="megjegyzes">Indoklás</Label>
                   <Textarea
                     id="megjegyzes"
@@ -1018,7 +1020,7 @@ export function MultiStepIgazolasForm() {
                     Kép feltöltése
                     <span className="text-muted-foreground text-sm ml-2">(opcionális)</span>
                   </Label>
-                  <div className="space-y-2">
+                  <div className="space-y-2" data-tour="new-igazolas-image">
                     {imageFile ? (
                       <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 rounded-md">
                         <Image className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -1187,6 +1189,7 @@ export function MultiStepIgazolasForm() {
                   onClick={handleSubmit}
                   disabled={isSubmitting}
                   className="min-w-[160px]"
+                  data-tour="new-igazolas-submit"
                 >
                   {isSubmitting ? (
                     <>
@@ -1209,6 +1212,13 @@ export function MultiStepIgazolasForm() {
         <BKKDisruptionSelector
           onSelectDisruption={handleBKKDisruptionSelect}
           onClose={() => setShowBKKSelector(false)}
+        />
+      )}
+      {!editMode && (
+        <OnboardingTour
+          tourId={TOUR_IDS.NEW_IGAZOLAS}
+          steps={newIgazolasTourSteps}
+          ready={!isLoading}
         />
       )}
     </div>

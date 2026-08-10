@@ -75,6 +75,8 @@ import {
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown } from 'lucide-react';
+import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
+import { TOUR_IDS, mulasztasokTourSteps } from '@/lib/onboarding-tours';
 
 type FilterMode = 'all' | 'uncovered' | 'resolved';
 
@@ -610,7 +612,7 @@ export function MulasztasokView() {
   return (
     <div className="space-y-4 md:space-y-6 px-2 md:px-0">
       {/* Header with "new feature" badge */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between" data-tour="mulasztasok-header">
         <div>
           <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -629,7 +631,7 @@ export function MulasztasokView() {
             Új
           </Badge>
         </div>
-        <Button asChild variant="outline" size="sm" className="shrink-0">
+        <Button asChild variant="outline" size="sm" className="shrink-0" data-tour="mulasztasok-goto">
           <a href="https://klik035236001.e-kreta.hu/Hianyzas/Hianyzasok" target="_blank" rel="noopener noreferrer">
             <ExternalLink className="w-4 h-4 mr-2" />
             Irány a Kréta
@@ -639,7 +641,7 @@ export function MulasztasokView() {
 
       {/* Instructions - Collapsible */}
       <Collapsible open={isGuideOpen} onOpenChange={setIsGuideOpen}>
-        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20" data-tour="mulasztasok-quick-create">
           <CardHeader className="pb-3">
             <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
               <div className="flex items-center gap-2">
@@ -707,7 +709,7 @@ export function MulasztasokView() {
       </Collapsible>
 
       {/* Upload section */}
-      <Card>
+      <Card data-tour="mulasztasok-upload">
         <CardHeader className="pb-3 md:pb-6">
           <CardTitle className="flex items-center gap-2 text-base md:text-lg">
             <Upload className="w-4 h-4 md:w-5 md:h-5" />
@@ -839,7 +841,7 @@ export function MulasztasokView() {
             )}
 
             {/* Stat overview ribbon — mobile-first, scrolls horizontally on small screens */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3" data-tour="mulasztasok-filters">
               <button
                 type="button"
                 onClick={() => setFilterMode('all')}
@@ -1940,6 +1942,11 @@ export function MulasztasokView() {
           )}
         </SheetContent>
       </Sheet>
+      <OnboardingTour
+        tourId={TOUR_IDS.MULASZTASOK}
+        steps={mulasztasokTourSteps}
+        ready={!loading}
+      />
     </div>
   );
 }

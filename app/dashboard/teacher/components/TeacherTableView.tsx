@@ -23,6 +23,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
+import { TOUR_IDS, igazolasokTeacherTourSteps } from '@/lib/onboarding-tours';
 
 interface TeacherTableViewProps {
   filter: 'all' | 'pending' | 'approved' | 'rejected';
@@ -313,7 +315,7 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
       </AlertDialog>
 
       <div className="min-w-0 overflow-hidden">
-      <div className="flex items-center justify-between mb-4 pb-4 border-b">
+      <div className="flex items-center justify-between mb-4 pb-4 border-b" data-tour="igazolasok-teacher-header">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight">{getTitle()}</h1>
           <div className="flex flex-wrap items-center gap-2 mt-1.5">
@@ -326,7 +328,7 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
           </div>
         </div>
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0" data-tour="igazolasok-teacher-table">
         {isLoading ? (
           <div className="py-4">
             <FTVLoadingState 
@@ -355,6 +357,13 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
         )}
       </div>
     </div>
+    {filter === 'all' && (
+      <OnboardingTour
+        tourId={TOUR_IDS.IGAZOLASOK_TEACHER}
+        steps={igazolasokTeacherTourSteps}
+        ready={!isLoading}
+      />
+    )}
     </>
   );
 }

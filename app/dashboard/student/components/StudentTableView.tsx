@@ -14,6 +14,8 @@ import { isAttendanceRequired } from '@/lib/attendance-utils';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Plus } from 'lucide-react';
+import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
+import { TOUR_IDS, igazolasokStudentTourSteps } from '@/lib/onboarding-tours';
 
 interface StudentTableViewProps {
   studentId?: string;
@@ -162,7 +164,7 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
 
   return (
     <div className="min-w-0 overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-4 border-b">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-4 border-b" data-tour="igazolasok-student-header">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight">{getFilterTitle()}</h1>
           <div className="flex flex-wrap items-center gap-2 mt-1.5">
@@ -179,12 +181,13 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
         <Button 
           onClick={() => window.location.hash = 'new'}
           className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white dark:text-white transition-all duration-200 ease-in-out hover:transform hover:scale-[1.02] active:scale-[0.98] shrink-0"
+          data-tour="igazolasok-student-new-button"
         >
           <Plus className="w-4 h-4 mr-2" />
           Új igazolás
         </Button>
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0" data-tour="igazolasok-student-table">
         {isLoading ? (
           <div className="py-4">
             {isFtvRegistered ? (
@@ -220,6 +223,13 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
           />
         )}
       </div>
+      {filter === 'all' && (
+        <OnboardingTour
+          tourId={TOUR_IDS.IGAZOLASOK_STUDENT}
+          steps={igazolasokStudentTourSteps}
+          ready={!isLoading}
+        />
+      )}
     </div>
   );
 }
