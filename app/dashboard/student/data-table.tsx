@@ -92,7 +92,9 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { IgazolasTableRow } from "@/app/dashboard/types"
-import { getPeriodSchedule } from "@/lib/periods"
+import { getPeriodSchedule, BELL_SCHEDULE, buildReszletesIdopontok } from "@/lib/periods"
+import { IgazolasTipus, IgazolasEditRequest } from "@/lib/types"
+import { Save } from "lucide-react"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -158,10 +160,22 @@ export function DataTable<TData, TValue>({
   const [isOpen, setIsOpen] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState<string>("")
   const [igazolasTipusok, setIgazolasTipusok] = React.useState<string[]>([])
+  const [igazolasTipusokFull, setIgazolasTipusokFull] = React.useState<IgazolasTipus[]>([])
 
   // Student self-service edit / undo state (only used when studentActions=true)
   const [undoOpen, setUndoOpen] = React.useState(false)
   const [undoSubmitting, setUndoSubmitting] = React.useState(false)
+
+  // Inline edit state - lets the student edit the selected igazolás directly
+  // in the details drawer instead of navigating to the "new" form.
+  const [isEditingRow, setIsEditingRow] = React.useState(false)
+  const [editSubmitting, setEditSubmitting] = React.useState(false)
+  const [editDate, setEditDate] = React.useState("")
+  const [editEndDate, setEditEndDate] = React.useState("")
+  const [editIsMultiDay, setEditIsMultiDay] = React.useState(false)
+  const [editSelectedPeriods, setEditSelectedPeriods] = React.useState<number[]>([])
+  const [editTipus, setEditTipus] = React.useState<number | null>(null)
+  const [editMegjegyzes, setEditMegjegyzes] = React.useState("")
 
   // Attachment image state for server-stored images
   const [attachmentBlobUrl, setAttachmentBlobUrl] = React.useState<string | null>(null)
@@ -170,18 +184,85 @@ export function DataTable<TData, TValue>({
   const canStudentModify = (row: IgazolasTableRow | null) =>
     !!row && (row.allapot === 'Függőben' || row.allapot === 'Elutasítva')
 
-  const openEditDialog = () => {
+  const startEdit = () => {
     if (!selectedRow) return
-    sessionStorage.setItem('edit_igazolas', JSON.stringify(selectedRow));
-    setIsOpen(false);
-    window.location.hash = 'new';
-    
-    // Check if we need to dispatch an event to force the view change
-    const event = new HashChangeEvent('hashchange', {
-      newURL: window.location.href,
-      oldURL: window.location.href
-    });
-    window.dispatchEvent(event);
+    const dateStr = selectedRow.startDate.split('T')[0]
+    const endDateStr = selectedRow.endDate.split('T')[0]
+    const isMultiDay = dateStr !== endDateStr
+
+    setEditDate(dateStr)
+    setEditEndDate(endDateStr)
+    setEditIsMultiDay(isMultiDay)
+    setEditSelectedPeriods(
+      isMultiDay
+        ? Array.from({ length: BELL_SCHEDULE.length }, (_, i) => i)
+        : [...(selectedRow.hours || [])].sort((a, b) => a - b)
+    )
+    const currentType = igazolasTipusokFull.find(t => t.nev === selectedRow.type)
+    setEditTipus(currentType?.id ?? null)
+    setEditMegjegyzes(
+      selectedRow.reason && selectedRow.reason !== 'Nincs megjegyzés' ? selectedRow.reason : ""
+    )
+    setIsEditingRow(true)
+  }
+
+  const cancelEdit = () => {
+    setIsEditingRow(false)
+  }
+
+  const togglePeriod = (period: number) => {
+    setEditSelectedPeriods(prev =>
+      prev.includes(period)
+        ? prev.filter(p => p !== period)
+        : [...prev, period].sort((a, b) => a - b)
+    )
+  }
+
+  const saveEdit = async () => {
+    if (!selectedRow) return
+    if (!editTipus) {
+      toast.error("Kérlek válassz igazolás típust")
+      return
+    }
+    if (!editIsMultiDay && editSelectedPeriods.length === 0) {
+      toast.error("Kérlek válassz ki legalább egy tanórát")
+      return
+    }
+
+    const sortedPeriods = [...new Set(editSelectedPeriods)].sort((a, b) => a - b)
+    let startDateTime: string
+    let endDateTime: string
+
+    if (editIsMultiDay) {
+      const endD = editEndDate || editDate
+      startDateTime = `${editDate}T${BELL_SCHEDULE[0]?.start || '08:00'}`
+      endDateTime = `${endD}T${BELL_SCHEDULE[BELL_SCHEDULE.length - 1]?.end || '16:00'}`
+    } else {
+      startDateTime = `${editDate}T${BELL_SCHEDULE[sortedPeriods[0]]?.start || '08:00'}`
+      endDateTime = `${editDate}T${BELL_SCHEDULE[sortedPeriods[sortedPeriods.length - 1]]?.end || '16:00'}`
+    }
+
+    const requestData: IgazolasEditRequest = {
+      eleje: startDateTime,
+      vege: endDateTime,
+      tipus: editTipus,
+      megjegyzes_diak: editMegjegyzes.trim(),
+      reszletes_idopontok: editIsMultiDay ? null : buildReszletesIdopontok(editDate, sortedPeriods),
+    }
+
+    try {
+      setEditSubmitting(true)
+      await apiClient.editIgazolas(parseInt(selectedRow.id, 10), requestData)
+      toast.success("Igazolás sikeresen módosítva!")
+      setIsEditingRow(false)
+      setIsOpen(false)
+      if (onDataChange) await onDataChange()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Ismeretlen hiba"
+      toast.error(`Módosítás sikertelen: ${message}`)
+    } finally {
+      setEditSubmitting(false)
+    }
   }
 
   const handleUndoConfirm = async () => {
@@ -228,12 +309,18 @@ export function DataTable<TData, TValue>({
         const { apiClient } = await import('@/lib/api')
         const types = await apiClient.listIgazolasTipus()
         setIgazolasTipusok(types.map(t => t.nev))
+        setIgazolasTipusokFull(types)
       } catch (error) {
         console.error('Failed to fetch igazolas types:', error)
       }
     }
     fetchTypes()
   }, [])
+
+  // Exit inline edit mode whenever the drawer closes or a different row is selected
+  React.useEffect(() => {
+    setIsEditingRow(false)
+  }, [isOpen, selectedRow?.id])
 
   // Fetch attachment blob for server-stored images when selected row changes
   React.useEffect(() => {
@@ -318,6 +405,13 @@ export function DataTable<TData, TValue>({
 
     return filtered
   }, [data, filterStatus, filterType, searchValue, dateFrom, dateTo])
+
+  // Reset to the first page whenever the active search/filters change, so the
+  // table can't get stuck on a page number that no longer exists once the
+  // filtered result set shrinks (e.g. searching a student with fewer pages).
+  React.useEffect(() => {
+    setPagination((prev) => (prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 }))
+  }, [searchValue, filterStatus, filterType, dateFrom, dateTo])
 
   // Helper function to display hours (visual period display like in table columns)
   const getHoursDisplay = (igazolas: IgazolasTableRow) => {
@@ -432,6 +526,15 @@ export function DataTable<TData, TValue>({
       pagination,
     },
   })
+
+  // Safety net: clamp the page index if the data itself shrinks (e.g. after a
+  // refetch) and leaves the table pointing at a page that no longer exists.
+  React.useEffect(() => {
+    const pageCount = table.getPageCount()
+    if (pageCount > 0 && pagination.pageIndex > pageCount - 1) {
+      setPagination((prev) => ({ ...prev, pageIndex: pageCount - 1 }))
+    }
+  }, [table, pagination.pageIndex])
 
   // Count how many advanced filters are currently active (search excluded, it has its own bar)
   const activeFilterCount =
@@ -847,17 +950,44 @@ export function DataTable<TData, TValue>({
 
               {studentActions && canStudentModify(selectedRow) && (
                 <div className="px-6 -mt-2 mb-4">
-                  <Button
-                    onClick={openEditDialog}
-                    className="w-full"
-                  >
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Igazolás szerkesztése
-                  </Button>
-                  {selectedRow.allapot === 'Elutasítva' && (
-                    <p className="text-xs text-muted-foreground mt-2 text-center">
-                      Szerkesztés után az igazolás újra elbírálásra vár.
-                    </p>
+                  {isEditingRow ? (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={cancelEdit}
+                        disabled={editSubmitting}
+                        className="flex-1"
+                      >
+                        Mégse
+                      </Button>
+                      <Button
+                        onClick={saveEdit}
+                        disabled={editSubmitting}
+                        className="flex-1"
+                      >
+                        {editSubmitting ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        Mentés
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Button
+                        onClick={startEdit}
+                        className="w-full"
+                      >
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Igazolás szerkesztése
+                      </Button>
+                      {selectedRow.allapot === 'Elutasítva' && (
+                        <p className="text-xs text-muted-foreground mt-2 text-center">
+                          Szerkesztés után az igazolás újra elbírálásra vár.
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -894,7 +1024,27 @@ export function DataTable<TData, TValue>({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2 p-3 rounded-lg bg-muted/30">
                             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Hiányzás típusa</Label>
-                            {(() => {
+                            {isEditingRow ? (
+                              <Select
+                                value={editTipus?.toString() || ''}
+                                onValueChange={(value) => setEditTipus(parseInt(value))}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Válassz igazolás típust..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {igazolasTipusokFull.map((tipus) => {
+                                    const typeInfo = getIgazolasType(tipus.nev)
+                                    return (
+                                      <SelectItem key={tipus.id} value={tipus.id.toString()}>
+                                        <span className="mr-1.5">{typeInfo.emoji}</span>
+                                        {tipus.nev}
+                                      </SelectItem>
+                                    )
+                                  })}
+                                </SelectContent>
+                              </Select>
+                            ) : (() => {
                               const typeInfo = getIgazolasType(selectedRow.type)
                               return (
                                 <Badge 
@@ -912,7 +1062,43 @@ export function DataTable<TData, TValue>({
                               <Calendar className="h-3 w-3" />
                               Dátum
                             </Label>
-                            {isMultiDayAbsence(selectedRow.startDate, selectedRow.endDate) ? (
+                            {isEditingRow ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    id="edit-isMultiDay"
+                                    type="checkbox"
+                                    checked={editIsMultiDay}
+                                    onChange={(e) => {
+                                      const multi = e.target.checked
+                                      setEditIsMultiDay(multi)
+                                      setEditEndDate(multi ? (editEndDate || editDate) : "")
+                                      if (multi) {
+                                        setEditSelectedPeriods(Array.from({ length: BELL_SCHEDULE.length }, (_, i) => i))
+                                      }
+                                    }}
+                                  />
+                                  <Label htmlFor="edit-isMultiDay" className="text-xs font-normal cursor-pointer">
+                                    Több napos hiányzás
+                                  </Label>
+                                </div>
+                                <Input
+                                  type="date"
+                                  value={editDate}
+                                  onChange={(e) => setEditDate(e.target.value)}
+                                  className="w-full"
+                                />
+                                {editIsMultiDay && (
+                                  <Input
+                                    type="date"
+                                    value={editEndDate}
+                                    onChange={(e) => setEditEndDate(e.target.value)}
+                                    min={editDate}
+                                    className="w-full"
+                                  />
+                                )}
+                              </div>
+                            ) : isMultiDayAbsence(selectedRow.startDate, selectedRow.endDate) ? (
                               <div className="space-y-1">
                                 <p className="text-sm font-semibold">{new Date(selectedRow.startDate).toLocaleDateString('hu-HU')}</p>
                                 <p className="text-xs text-muted-foreground">→</p>
@@ -929,9 +1115,38 @@ export function DataTable<TData, TValue>({
 
                         <div className="space-y-3 p-4 rounded-lg bg-muted/30">
                           <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                            {isMultiDayAbsence(selectedRow.startDate, selectedRow.endDate) ? 'Érintett napok' : 'Érintett órák'}
+                            {isEditingRow
+                              ? (editIsMultiDay ? 'Érintett napok' : 'Tanórák kiválasztása')
+                              : (isMultiDayAbsence(selectedRow.startDate, selectedRow.endDate) ? 'Érintett napok' : 'Érintett órák')}
                           </Label>
-                          {isMultiDayAbsence(selectedRow.startDate, selectedRow.endDate) ? (
+                          {isEditingRow ? (
+                            editIsMultiDay ? (
+                              <p className="text-sm text-muted-foreground">A hiányzás minden tanórát érint a kiválasztott napokon.</p>
+                            ) : (
+                              <TooltipProvider>
+                                <div className="flex flex-wrap gap-2">
+                                  {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((h) => {
+                                    const isSelected = editSelectedPeriods.includes(h)
+                                    return (
+                                      <Tooltip key={h}>
+                                        <TooltipTrigger asChild>
+                                          <span
+                                            onClick={() => togglePeriod(h)}
+                                            className={`inline-flex items-center justify-center w-10 h-10 text-sm font-bold rounded-lg cursor-pointer transition-all duration-200 ease-in-out transform ${isSelected ? 'period-pending period-glow-blue' : 'period-inactive'} hover:scale-110 active:scale-95`}
+                                          >
+                                            {h}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 border-slate-600 dark:border-slate-400 font-medium text-xs whitespace-pre-line max-w-xs shadow-lg">
+                                          {getPeriodSchedule(h)}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )
+                                  })}
+                                </div>
+                              </TooltipProvider>
+                            )
+                          ) : isMultiDayAbsence(selectedRow.startDate, selectedRow.endDate) ? (
                             <div className="flex flex-col gap-1 w-fit">
                               {/* Day headers */}
                               <div className="grid grid-cols-7 gap-1">
@@ -1092,8 +1307,19 @@ export function DataTable<TData, TValue>({
                           </Card>
                         )}
 
-                        {/* Indoklás / Korrekció section - only show if there's content */}
-                        {((selectedRow.correctedHours && selectedRow.correctedHours.length > 0) || (!selectedRow.fromFTV && selectedRow.status)) && (
+                        {/* Indoklás / Korrekció section - shown when editing, or when there's content */}
+                        {isEditingRow ? (
+                          <div className="space-y-2 p-4 rounded-lg bg-muted/30">
+                            <Label htmlFor="edit-megjegyzes" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Indoklás</Label>
+                            <Textarea
+                              id="edit-megjegyzes"
+                              placeholder="Add meg a részleteket, körülményeket..."
+                              value={editMegjegyzes}
+                              onChange={(e) => setEditMegjegyzes(e.target.value)}
+                              rows={4}
+                            />
+                          </div>
+                        ) : ((selectedRow.correctedHours && selectedRow.correctedHours.length > 0) || (!selectedRow.fromFTV && selectedRow.status)) && (
                           <div className="space-y-2 p-4 rounded-lg bg-muted/30">
                             {selectedRow.correctedHours && selectedRow.correctedHours.length > 0 ? (
                               <>
@@ -1210,7 +1436,7 @@ export function DataTable<TData, TValue>({
                       </Card>
                     )}
 
-                    {studentActions && canStudentModify(selectedRow) && (
+                    {studentActions && !isEditingRow && canStudentModify(selectedRow) && (
                       <div className="pt-2 pb-4 flex justify-center">
                         <button
                           type="button"

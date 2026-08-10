@@ -366,6 +366,13 @@ export function DataTable<TData, TValue>({
     return filtered
   }, [data, filterStatus, filterType, filterFTV, searchValue, dateFrom, dateTo])
 
+  // Reset to the first page whenever the active search/filters change, so the
+  // table can't get stuck on a page number that no longer exists once the
+  // filtered result set shrinks (e.g. searching a student with fewer pages).
+  React.useEffect(() => {
+    setPagination((prev) => (prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 }))
+  }, [searchValue, filterStatus, filterType, filterFTV, dateFrom, dateTo])
+
   const table = useReactTable({
     data: getFilteredData as TData[],
     columns,
@@ -387,6 +394,15 @@ export function DataTable<TData, TValue>({
       pagination,
     },
   })
+
+  // Safety net: clamp the page index if the data itself shrinks (e.g. after a
+  // refetch) and leaves the table pointing at a page that no longer exists.
+  React.useEffect(() => {
+    const pageCount = table.getPageCount()
+    if (pageCount > 0 && pagination.pageIndex > pageCount - 1) {
+      setPagination((prev) => ({ ...prev, pageIndex: pageCount - 1 }))
+    }
+  }, [table, pagination.pageIndex])
 
   const handleRowClick = (row: TData) => {
     const igazolas = row as unknown as IgazolasTableRow
