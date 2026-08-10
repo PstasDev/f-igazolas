@@ -954,7 +954,7 @@ export function DataTable<TData, TValue>({
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Visszavont igazolás</AlertTitle>
                     <AlertDescription>
-                      Ezt az igazolást visszavontad. Az osztályfőnököd ezt a rekordot nem látja, és nem tudja elbírálni.
+                      Ezt az igazolást visszavontad. Az osztályfőnököd ezt az igazolást nem látja, és nem tudja elbírálni.
                     </AlertDescription>
                   </Alert>
                 </div>
