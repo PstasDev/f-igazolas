@@ -48,6 +48,12 @@ import type {
   IgazolasImageDeleteResponse,
 } from './types';
 import { SystemMessage } from './system-message-types';
+import type {
+  ChangeNote,
+  ChangeNoteCreateRequest,
+  ChangeNoteUpdateRequest,
+  ChangeNoteImageUploadResponse,
+} from './change-note-types';
 
 // Use the config for API base URL
 const API_BASE_URL = config.api.baseUrl;
@@ -874,6 +880,42 @@ class APIClient {
       console.error('Error fetching system messages:', error);
       return [];
     }
+  }
+
+  // Change Notes endpoints
+
+  async listChangeNotes(): Promise<ChangeNote[]> {
+    return this.fetchWithAuth<ChangeNote[]>('/change-notes');
+  }
+
+  async getActiveChangeNotes(): Promise<ChangeNote[]> {
+    return this.fetchWithAuth<ChangeNote[]>('/change-notes/active');
+  }
+
+  async createChangeNote(data: ChangeNoteCreateRequest): Promise<ChangeNote> {
+    return this.fetchWithAuth<ChangeNote>('/change-notes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateChangeNote(noteId: number, data: ChangeNoteUpdateRequest): Promise<ChangeNote> {
+    return this.fetchWithAuth<ChangeNote>(`/change-notes/${noteId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteChangeNote(noteId: number): Promise<void> {
+    return this.fetchWithAuth<void>(`/change-notes/${noteId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async uploadChangeNoteImage(file: File): Promise<ChangeNoteImageUploadResponse> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return this.uploadWithAuth<ChangeNoteImageUploadResponse>('/change-notes/upload-image', formData);
   }
 
   // Mulasztások (eKréta Absences) endpoints - EXPERIMENTAL

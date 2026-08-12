@@ -225,14 +225,6 @@ export function MultiStepIgazolasForm() {
           
           setFilteredIgazolasTipusok(acceptedTypes);
           
-          // Show info message if some types are filtered out
-          if (acceptedTypes.length < types.length) {
-            const filteredCount = types.length - acceptedTypes.length;
-            toast.info(
-              `${filteredCount} igazolástípus nem érhető el az osztályod számára`,
-              { duration: 5000 }
-            );
-          }
         } else {
           // If no class, show all types
           setFilteredIgazolasTipusok(types);

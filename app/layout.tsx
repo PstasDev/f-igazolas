@@ -7,6 +7,8 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { HeadingFontProvider } from "./context/HeadingFontContext";
 import { RoleProvider } from "./context/RoleContext";
 import { SystemMessageProvider } from "./context/SystemMessageContext";
+import { ChangeNoteProvider } from "./context/ChangeNoteContext";
+import { ChangeNotePopup } from "./components/ChangeNotePopup";
 import { ExperimentalFeaturesProvider } from "./context/ExperimentalFeaturesContext";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -73,8 +75,11 @@ export default function RootLayout({
               <ExperimentalFeaturesProvider>
                 <RoleProvider>
                   <SystemMessageProvider>
-                    <PageTransition>{children}</PageTransition>
-                    <Toaster position="top-right" />
+                    <ChangeNoteProvider>
+                      <PageTransition>{children}</PageTransition>
+                      <ChangeNotePopup />
+                      <Toaster position="top-right" />
+                    </ChangeNoteProvider>
                   </SystemMessageProvider>
                 </RoleProvider>
               </ExperimentalFeaturesProvider>

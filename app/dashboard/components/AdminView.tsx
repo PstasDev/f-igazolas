@@ -18,7 +18,7 @@ import { apiClient } from "@/lib/api"
 import { useRole } from "@/app/context/RoleContext"
 import type { TanevRendje, Override, TanitasiSzunet, Osztaly } from "@/lib/types"
 import { IconAlertCircle, IconPlus, IconEdit, IconTrash, IconSchool, IconKey, IconShield, IconChartBar, IconUsers, IconArchive } from "@tabler/icons-react"
-import { Clapperboard } from "lucide-react"
+import { Clapperboard, Megaphone } from "lucide-react"
 import { format } from "date-fns"
 import { PasswordManagement } from "@/components/admin/PasswordManagement"
 import { PermissionsManagement } from "@/components/admin/PermissionsManagement"
@@ -29,6 +29,7 @@ import { ApprovalRatesAnalytics } from "@/components/admin/ApprovalRatesAnalytic
 
 import { PermissionMatrix } from "@/components/admin/PermissionMatrix"
 import { AcademicYearArchival } from "@/components/admin/AcademicYearArchival"
+import { ChangeNoteManagement } from "@/components/admin/ChangeNoteManagement"
 
 type BreakType = 'oszi' | 'teli' | 'tavaszi' | 'nyari' | 'erettsegi' | 'digitalis' | 'egyeb';
 
@@ -345,6 +346,13 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
               <span className="hidden sm:inline">Kivételek</span>
               <span className="sm:hidden">Kivét.</span>
             </TabsTrigger>
+
+            {/* Communications */}
+            <TabsTrigger value="changenotes" className="gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap">
+              <Megaphone className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Változás bejegyzések</span>
+              <span className="sm:hidden">Közlem.</span>
+            </TabsTrigger>
             
             {/* Analytics */}
             <TabsTrigger value="analytics" className="gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap">
@@ -620,6 +628,11 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
         {/* Academic Year Archival Tab */}
         <TabsContent value="archive" className="space-y-4">
           <AcademicYearArchival />
+        </TabsContent>
+
+        {/* Change Notes Tab */}
+        <TabsContent value="changenotes" className="space-y-4">
+          <ChangeNoteManagement />
         </TabsContent>
       </Tabs>
 

@@ -118,6 +118,18 @@ export interface FrontendConfig {
      */
     completedTours?: Record<string, boolean>;
   };
+
+  /**
+   * Change note (changelog / announcement popup) dismissal tracking.
+   */
+  changeNotes?: {
+    /**
+     * IDs of change notes the user has already dismissed.
+     * Once an id is present here, that note is never shown again.
+     * @default []
+     */
+    dismissedIds?: number[];
+  };
 }
 
 /**
@@ -144,6 +156,9 @@ export const DEFAULT_FRONTEND_CONFIG: FrontendConfig = {
   },
   onboarding: {
     completedTours: {},
+  },
+  changeNotes: {
+    dismissedIds: [],
   },
 };
 
@@ -187,6 +202,11 @@ export function mergeFrontendConfig(
         ...base.onboarding?.completedTours,
         ...updates.onboarding?.completedTours,
       },
+    },
+    changeNotes: {
+      ...base.changeNotes,
+      ...updates.changeNotes,
+      dismissedIds: updates.changeNotes?.dismissedIds ?? base.changeNotes?.dismissedIds ?? [],
     },
   };
 }
