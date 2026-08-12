@@ -497,15 +497,15 @@ export function MultiStepIgazolasForm() {
     }
   };
 
-  const handlePeriodMouseDown = (period: number) => beginPeriodSelection(period, formData.selectedPeriods);
-  const handlePeriodMouseEnter = (period: number) => extendPeriodSelection(period);
+  // Pointer Events unify mouse/touch/pen. Using onMouseDown+onTouchStart
+  // together previously caused a bug on mobile: browsers dispatch
+  // compatibility mouse events after a touch interaction, which re-armed
+  // and immediately re-finalized the drag, instantly undoing the tap.
+  const handlePeriodPointerDown = (period: number) => beginPeriodSelection(period, formData.selectedPeriods);
 
-  const handlePeriodTouchStart = (period: number) => beginPeriodSelection(period, formData.selectedPeriods);
-
-  const handlePeriodTouchMove = (e: React.TouchEvent) => {
+  const handlePeriodPointerMove = (e: React.PointerEvent) => {
     if (!isDraggingRef.current || dragStartRef.current === null) return;
-    const touch = e.touches[0];
-    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    const element = document.elementFromPoint(e.clientX, e.clientY);
     const periodAttr = element?.getAttribute('data-period');
     if (periodAttr) {
       extendPeriodSelection(parseInt(periodAttr));
@@ -514,11 +514,11 @@ export function MultiStepIgazolasForm() {
 
   useEffect(() => {
     // Register once; finalizePeriodSelection is stable (useCallback, []).
-    document.addEventListener('mouseup', finalizePeriodSelection);
-    document.addEventListener('touchend', finalizePeriodSelection);
+    document.addEventListener('pointerup', finalizePeriodSelection);
+    document.addEventListener('pointercancel', finalizePeriodSelection);
     return () => {
-      document.removeEventListener('mouseup', finalizePeriodSelection);
-      document.removeEventListener('touchend', finalizePeriodSelection);
+      document.removeEventListener('pointerup', finalizePeriodSelection);
+      document.removeEventListener('pointercancel', finalizePeriodSelection);
     };
   }, [finalizePeriodSelection]);
 
@@ -747,9 +747,10 @@ export function MultiStepIgazolasForm() {
               
               <TooltipProvider>
                 <div 
-                  className="flex flex-wrap gap-2 justify-center select-none"
-                  onTouchMove={handlePeriodTouchMove}
-                  onTouchEnd={finalizePeriodSelection}
+                  className="flex flex-wrap gap-2 justify-center select-none touch-none"
+                  onPointerMove={handlePeriodPointerMove}
+                  onPointerUp={finalizePeriodSelection}
+                  onPointerCancel={finalizePeriodSelection}
                 >
                   {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((h) => {
                     const isSelected = formData.selectedPeriods.includes(h);
@@ -769,9 +770,7 @@ export function MultiStepIgazolasForm() {
                         <TooltipTrigger asChild>
                           <span
                             data-period={h}
-                            onMouseDown={() => handlePeriodMouseDown(h)}
-                            onMouseEnter={() => handlePeriodMouseEnter(h)}
-                            onTouchStart={() => handlePeriodTouchStart(h)}
+                            onPointerDown={() => handlePeriodPointerDown(h)}
                             className={`inline-flex items-center justify-center w-10 h-10 text-sm font-bold rounded-lg cursor-pointer transition-all duration-200 ease-in-out transform ${bgColor} ${isSelected ? glowColor : ''} hover:scale-110 active:scale-95 touch-none`}
                           >
                             {h}
