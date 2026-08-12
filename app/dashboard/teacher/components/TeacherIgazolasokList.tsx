@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CheckCircle2, XCircle, Clock, Calendar, Eye, Inbox, User, Check, X, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Calendar, Eye, Inbox, User, Check, X, Loader2, AlertTriangle } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { Igazolas } from '@/lib/types';
 import { getIgazolasType } from '@/app/dashboard/types';
@@ -83,6 +83,8 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
       return <Badge variant="approved">Jóváhagyva</Badge>;
     } else if (allapot === 'Elutasítva') {
       return <Badge variant="rejected">Elutasítva</Badge>;
+    } else if (allapot === 'Hiánypótlásra visszaküldve') {
+      return <Badge variant="revision">Hiánypótlásra visszaküldve</Badge>;
     }
     return <Badge variant="pending">Függőben</Badge>;
   };
@@ -92,6 +94,8 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
       return <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />;
     } else if (allapot === 'Elutasítva') {
       return <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />;
+    } else if (allapot === 'Hiánypótlásra visszaküldve') {
+      return <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />;
     }
     return <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />;
   };

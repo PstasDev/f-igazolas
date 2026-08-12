@@ -1,5 +1,7 @@
 // Types for table display (mapped from API types)
 
+import type { IgazolasAllapot } from '@/lib/types';
+
 export interface IgazolasTableRow {
   id: string;
   studentId: string;
@@ -21,7 +23,7 @@ export interface IgazolasTableRow {
   submittedAt: string;
   reviewedAt?: string;
   reviewedBy?: string;
-  allapot: 'Függőben' | 'Elfogadva' | 'Elutasítva'; // Updated to match Django model
+  allapot: IgazolasAllapot; // Updated to match Django model
   fromFTV?: boolean;
   minutesBefore?: number;
   minutesAfter?: number;

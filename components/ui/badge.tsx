@@ -26,6 +26,8 @@ const badgeVariants = cva(
           "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300 [a&]:hover:bg-red-100 dark:[a&]:hover:bg-red-900/40",
         warning:
           "border-yellow-300 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 [a&]:hover:bg-yellow-100 dark:[a&]:hover:bg-yellow-900/40",
+        revision:
+          "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-900/30 dark:text-orange-300 [a&]:hover:bg-orange-100 dark:[a&]:hover:bg-orange-900/40",
         info:
           "border-cyan-300 bg-cyan-50 text-cyan-700 dark:border-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300 [a&]:hover:bg-cyan-100 dark:[a&]:hover:bg-cyan-900/40",
         purple:

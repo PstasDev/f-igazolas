@@ -78,7 +78,9 @@ export function LoginForm({
     try {
       await loginWithPasskey(username || undefined);
       toast.success('Sikeres bejelentkezés!');
-      router.replace('/dashboard');
+      const params = new URLSearchParams(window.location.search);
+      const editId = params.get('editIgazolas');
+      router.replace(editId ? `/dashboard?editIgazolas=${editId}` : '/dashboard');
     } catch (error) {
       toast.error(describePasskeyError(error));
     } finally {

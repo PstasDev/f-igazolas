@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
 import { TOUR_IDS, igazolasokTeacherTourSteps } from '@/lib/onboarding-tours';
+import { HianyPotlasDialog } from './HianyPotlasDialog';
 
 interface TeacherTableViewProps {
   filter: 'all' | 'pending' | 'approved' | 'rejected';
@@ -149,12 +150,32 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
   const [pendingRejectId, setPendingRejectId] = useState<string | null>(null);
 
+  // State for confirming approve/reject on an igazolás currently awaiting the
+  // student's hiánypótlás response - the teacher might be acting too early.
+  const [confirmHianyPotlasActionOpen, setConfirmHianyPotlasActionOpen] = useState(false);
+  const [pendingHianyPotlasAction, setPendingHianyPotlasAction] = useState<{ id: string; action: 'Elfogadva' | 'Elutasítva' } | null>(null);
+
+  // State for the hiánypótlás request dialog (orange button)
+  const [hianyPotlasOpen, setHianyPotlasOpen] = useState(false);
+  const [hianyPotlasId, setHianyPotlasId] = useState<string | null>(null);
+  const [hianyPotlasSubmitting, setHianyPotlasSubmitting] = useState(false);
+
   // Sync local state with filtered data
   useEffect(() => {
     setLocalIgazolasok(igazolasok);
   }, [igazolasok]);
 
   const handleApprove = async (id: string) => {
+    const igazolas = localIgazolasok.find(i => i.id.toString() === id);
+    if (igazolas && igazolas.allapot === 'Hiánypótlásra visszaküldve') {
+      setPendingHianyPotlasAction({ id, action: 'Elfogadva' });
+      setConfirmHianyPotlasActionOpen(true);
+      return;
+    }
+    await performApprove(id);
+  };
+
+  const performApprove = async (id: string) => {
     try {
       // Optimistic update - update state immediately
       setLocalIgazolasok(prevIgazolasok => 
@@ -177,8 +198,15 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
   };
 
   const handleReject = async (id: string) => {
-    // Find the igazolás to check if it's iskolaérdekű
+    // Find the igazolás to check its current state
     const igazolas = localIgazolasok.find(i => i.id.toString() === id);
+
+    if (igazolas && igazolas.allapot === 'Hiánypótlásra visszaküldve') {
+      // Teacher might be acting before the student has replied to the hiánypótlás
+      setPendingHianyPotlasAction({ id, action: 'Elutasítva' });
+      setConfirmHianyPotlasActionOpen(true);
+      return;
+    }
     
     if (igazolas && igazolas.tipus.iskolaerdeku) {
       // Show confirmation dialog for iskolaérdekű igazolás
@@ -226,6 +254,57 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
     setConfirmRejectOpen(false);
   };
 
+  const handleConfirmHianyPotlasAction = async () => {
+    if (pendingHianyPotlasAction) {
+      if (pendingHianyPotlasAction.action === 'Elfogadva') {
+        await performApprove(pendingHianyPotlasAction.id);
+      } else {
+        await performReject(pendingHianyPotlasAction.id);
+      }
+      setPendingHianyPotlasAction(null);
+      setConfirmHianyPotlasActionOpen(false);
+    }
+  };
+
+  const handleCancelHianyPotlasAction = () => {
+    setPendingHianyPotlasAction(null);
+    setConfirmHianyPotlasActionOpen(false);
+  };
+
+  const handleRequestRevision = (id: string) => {
+    setHianyPotlasId(id);
+    setHianyPotlasOpen(true);
+  };
+
+  const handleConfirmHianyPotlas = async (comment: string) => {
+    if (!hianyPotlasId) return;
+    const id = hianyPotlasId;
+    try {
+      setHianyPotlasSubmitting(true);
+      setLocalIgazolasok(prevIgazolasok =>
+        prevIgazolasok.map(igazolas =>
+          igazolas.id.toString() === id
+            ? { ...igazolas, allapot: 'Hiánypótlásra visszaküldve' as const, megjegyzes_tanar: comment }
+            : igazolas
+        )
+      );
+
+      await apiClient.quickActionIgazolas(parseInt(id), {
+        action: 'Hiánypótlásra visszaküldve',
+        megjegyzes_tanar: comment || undefined,
+      });
+      toast.success('Igazolás hiánypótlásra visszaküldve, a diák email értesítést kapott');
+      setHianyPotlasOpen(false);
+      setHianyPotlasId(null);
+    } catch (error) {
+      console.error('Failed to request hiánypótlás:', error);
+      toast.error('Hiba történt a hiánypótlás küldésekor');
+      setLocalIgazolasok(igazolasok);
+    } finally {
+      setHianyPotlasSubmitting(false);
+    }
+  };
+
   const handleSetPending = async (id: string) => {
     try {
       // Optimistic update - update state immediately
@@ -253,7 +332,7 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
     setLocalIgazolasok(prevIgazolasok => 
       prevIgazolasok.map(igazolas => 
         igazolas.id.toString() === id 
-          ? { ...igazolas, allapot: newAllapot as 'Függőben' | 'Elfogadva' | 'Elutasítva' } 
+          ? { ...igazolas, allapot: newAllapot as Igazolas['allapot'] } 
           : igazolas
       )
     );
@@ -264,6 +343,7 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
     onApprove: handleApprove,
     onReject: handleReject,
     onSetPending: handleSetPending,
+    onRequestRevision: handleRequestRevision,
   });
 
   const getTitle = () => {
@@ -313,6 +393,39 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={confirmHianyPotlasActionOpen} onOpenChange={setConfirmHianyPotlasActionOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ez az igazolás hiánypótlásra vár</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ez az igazolás jelenleg <strong>Hiánypótlásra visszaküldve</strong> státuszban van - lehet, hogy még
+              a diák válaszára kell várni. Kérjük, ellenőrizd, hogy az adatok időközben helyessé váltak-e, mielőtt
+              folytatod. Biztosan {pendingHianyPotlasAction?.action === 'Elfogadva' ? 'jóváhagyod' : 'elutasítod'} ezt az igazolást?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelHianyPotlasAction}>
+              Mégse
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmHianyPotlasAction}
+              className={pendingHianyPotlasAction?.action === 'Elfogadva'
+                ? 'bg-green-600 hover:bg-green-700 focus:ring-green-600'
+                : 'bg-red-600 hover:bg-red-700 focus:ring-red-600'}
+            >
+              {pendingHianyPotlasAction?.action === 'Elfogadva' ? 'Jóváhagyás' : 'Elutasítás'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <HianyPotlasDialog
+        open={hianyPotlasOpen}
+        onOpenChange={setHianyPotlasOpen}
+        onConfirm={handleConfirmHianyPotlas}
+        submitting={hianyPotlasSubmitting}
+      />
 
       <div className="min-w-0 overflow-hidden">
       <div className="flex items-center justify-between mb-4 pb-4 border-b" data-tour="igazolasok-teacher-header">

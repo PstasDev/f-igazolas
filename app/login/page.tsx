@@ -23,7 +23,9 @@ export default function LoginPage() {
     // Only check authentication after loading is complete
     if (!isLoading) {
       if (isAuthenticated) {
-        router.replace('/dashboard')
+        const params = new URLSearchParams(window.location.search)
+        const editId = params.get('editIgazolas')
+        router.replace(editId ? `/dashboard?editIgazolas=${editId}` : '/dashboard')
       } else {
         setShouldRender(true)
       }

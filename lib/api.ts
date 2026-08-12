@@ -119,6 +119,18 @@ class APIClient {
       this.cache.clear();
     }
   }
+
+  // Invalidate every cached GET response for an endpoint prefix (e.g. all
+  // `/igazolas...` variants: ?mode=live|cached, /my, /{id}, etc.). Must be
+  // called after any mutation so the next fetch reflects the change instead
+  // of serving a stale response from the 1-minute GET cache.
+  private invalidateCachePrefix(prefix: string): void {
+    for (const key of this.cache.keys()) {
+      if (key.startsWith(`GET:${prefix}`)) {
+        this.cache.delete(key);
+      }
+    }
+  }
   
   // Check if cached data is still valid
   private isCacheValid(entry: CacheEntry): boolean {
@@ -417,10 +429,12 @@ class APIClient {
   }
 
   async createIgazolas(data: IgazolasCreateRequest): Promise<Igazolas> {
-    return this.fetchWithAuth<Igazolas>('/igazolas', {
+    const result = await this.fetchWithAuth<Igazolas>('/igazolas', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    this.invalidateCachePrefix('/igazolas');
+    return result;
   }
 
   // TODO: Add update/delete endpoints when backend implements them
@@ -429,16 +443,20 @@ class APIClient {
     allapot: string,
     megjegyzes_tanar?: string
   ): Promise<Igazolas> {
-    return this.fetchWithAuth<Igazolas>(`/igazolas/${igazolasId}`, {
+    const result = await this.fetchWithAuth<Igazolas>(`/igazolas/${igazolasId}`, {
       method: 'PATCH',
       body: JSON.stringify({ allapot, megjegyzes_tanar }),
     });
+    this.invalidateCachePrefix('/igazolas');
+    return result;
   }
 
   async deleteIgazolas(igazolasId: number): Promise<void> {
-    return this.fetchWithAuth<void>(`/igazolas/${igazolasId}`, {
+    const result = await this.fetchWithAuth<void>(`/igazolas/${igazolasId}`, {
       method: 'DELETE',
     });
+    this.invalidateCachePrefix('/igazolas');
+    return result;
   }
 
   // Student edit endpoint - edit own pending/rejected igazolás
@@ -446,17 +464,30 @@ class APIClient {
     igazolasId: number,
     data: IgazolasEditRequest
   ): Promise<Igazolas> {
-    return this.fetchWithAuth<Igazolas>(`/igazolas/${igazolasId}`, {
+    const result = await this.fetchWithAuth<Igazolas>(`/igazolas/${igazolasId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+    this.invalidateCachePrefix('/igazolas');
+    return result;
   }
 
   // Student undo endpoint - withdraw own pending/rejected igazolás
   async undoIgazolas(igazolasId: number): Promise<IgazolasUndoResponse> {
-    return this.fetchWithAuth<IgazolasUndoResponse>(`/igazolas/${igazolasId}/undo`, {
+    const result = await this.fetchWithAuth<IgazolasUndoResponse>(`/igazolas/${igazolasId}/undo`, {
       method: 'POST',
     });
+    this.invalidateCachePrefix('/igazolas');
+    return result;
+  }
+
+  // Student resubmit endpoint - move a Hiánypótlásra visszaküldve igazolás back to Függőben
+  async resubmitIgazolas(igazolasId: number): Promise<QuickActionResponse> {
+    const result = await this.fetchWithAuth<QuickActionResponse>(`/igazolas/${igazolasId}/resubmit`, {
+      method: 'POST',
+    });
+    this.invalidateCachePrefix('/igazolas');
+    return result;
   }
 
   // Igazolás Image endpoints
@@ -464,7 +495,9 @@ class APIClient {
   async uploadIgazolasImage(igazolasId: number, file: File): Promise<IgazolasImageUploadResponse> {
     const formData = new FormData();
     formData.append('image', file);
-    return this.uploadWithAuth<IgazolasImageUploadResponse>(`/igazolas/${igazolasId}/image`, formData);
+    const result = await this.uploadWithAuth<IgazolasImageUploadResponse>(`/igazolas/${igazolasId}/image`, formData);
+    this.invalidateCachePrefix('/igazolas');
+    return result;
   }
 
   async getIgazolasImageBlob(igazolasId: number): Promise<Blob> {
@@ -472,9 +505,11 @@ class APIClient {
   }
 
   async deleteIgazolasImage(igazolasId: number): Promise<IgazolasImageDeleteResponse> {
-    return this.fetchWithAuth<IgazolasImageDeleteResponse>(`/igazolas/${igazolasId}/image`, {
+    const result = await this.fetchWithAuth<IgazolasImageDeleteResponse>(`/igazolas/${igazolasId}/image`, {
       method: 'DELETE',
     });
+    this.invalidateCachePrefix('/igazolas');
+    return result;
   }
 
   // Quick Action endpoints
@@ -483,19 +518,23 @@ class APIClient {
     igazolasId: number,
     data: QuickActionRequest
   ): Promise<QuickActionResponse> {
-    return this.fetchWithAuth<QuickActionResponse>(`/igazolas/${igazolasId}/quick-action`, {
+    const result = await this.fetchWithAuth<QuickActionResponse>(`/igazolas/${igazolasId}/quick-action`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    this.invalidateCachePrefix('/igazolas');
+    return result;
   }
 
   async bulkQuickActionIgazolas(
     data: BulkQuickActionRequest
   ): Promise<BulkQuickActionResponse> {
-    return this.fetchWithAuth<BulkQuickActionResponse>('/igazolas/quick-action/bulk', {
+    const result = await this.fetchWithAuth<BulkQuickActionResponse>('/igazolas/quick-action/bulk', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    this.invalidateCachePrefix('/igazolas');
+    return result;
   }
 
   // Teacher Comment Update endpoint
@@ -504,10 +543,12 @@ class APIClient {
     igazolasId: number,
     data: TeacherCommentUpdateRequest
   ): Promise<TeacherCommentUpdateResponse> {
-    return this.fetchWithAuth<TeacherCommentUpdateResponse>(`/igazolas/${igazolasId}/teacher-comment`, {
+    const result = await this.fetchWithAuth<TeacherCommentUpdateResponse>(`/igazolas/${igazolasId}/teacher-comment`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+    this.invalidateCachePrefix('/igazolas');
+    return result;
   }
 
   // Diakjaim endpoints (for class teachers only)
@@ -1177,10 +1218,12 @@ class APIClient {
   }
 
   async createGroupIgazolas(data: unknown): Promise<unknown> {
-    return this.fetchWithAuth('/igazolasok/create-group', {
+    const result = await this.fetchWithAuth('/igazolasok/create-group', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    this.invalidateCachePrefix('/igazolas');
+    return result;
   }
 
   async getGroupMembers(igazolasId: number): Promise<unknown> {
@@ -1240,17 +1283,21 @@ class APIClient {
   }
 
   async createIgazolasForStudent(data: unknown): Promise<unknown> {
-    return this.fetchWithAuth('/teachers/igazolasok/create-for-student', {
+    const result = await this.fetchWithAuth('/teachers/igazolasok/create-for-student', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    this.invalidateCachePrefix('/igazolas');
+    return result;
   }
 
   async bulkCreateIgazolasForStudents(data: unknown): Promise<unknown> {
-    return this.fetchWithAuth('/teachers/igazolasok/create-bulk', {
+    const result = await this.fetchWithAuth('/teachers/igazolasok/create-bulk', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    this.invalidateCachePrefix('/igazolas');
+    return result;
   }
 
   // ---------------- Passkey / WebAuthn ----------------

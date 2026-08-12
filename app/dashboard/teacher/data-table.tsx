@@ -27,7 +27,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { BKKAlertVerificationCard } from "@/components/ui/BKKAlertVerificationCard"
-import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -52,7 +51,8 @@ import {
   Download,
   ChevronDown,
   Sparkles,
-  Loader2
+  Loader2,
+  AlertTriangle
 } from "lucide-react"
 import {
   Sheet,
@@ -65,6 +65,16 @@ import {
   Dialog,
   DialogContent,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,6 +102,7 @@ import { toast } from "sonner"
 import { getPeriodSchedule } from "@/lib/periods"
 import * as XLSX from 'xlsx'
 import { useFrontendConfig } from "@/app/context/FrontendConfigContext"
+import { HianyPotlasDialog } from "./components/HianyPotlasDialog"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -142,7 +153,6 @@ export function DataTable<TData, TValue>({
   })
   const [selectedRow, setSelectedRow] = React.useState<IgazolasTableRow | null>(null)
   const [isSheetOpen, setIsSheetOpen] = React.useState(false)
-  const [teacherNote, setTeacherNote] = React.useState("")
   const [filterStatus, setFilterStatus] = React.useState<string>("all")
   const [filterType, setFilterType] = React.useState<string>("all")
   const [filterFTV, setFilterFTV] = React.useState<string>("all")
@@ -155,6 +165,15 @@ export function DataTable<TData, TValue>({
   const hasInitializedSmartFilter = React.useRef(false)
   const [isDataReady, setIsDataReady] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState<string>("")
+
+  // Hiánypótlás request dialog (orange button) state
+  const [hianyPotlasOpen, setHianyPotlasOpen] = React.useState(false)
+  const [hianyPotlasSubmitting, setHianyPotlasSubmitting] = React.useState(false)
+
+  // Confirm dialog shown when approving/rejecting an igazolás that's currently
+  // awaiting the student's hiánypótlás response
+  const [confirmActionOpen, setConfirmActionOpen] = React.useState(false)
+  const [pendingConfirmAction, setPendingConfirmAction] = React.useState<'Elfogadva' | 'Elutasítva' | null>(null)
 
   // Attachment image state for server-stored images
   const [attachmentBlobUrl, setAttachmentBlobUrl] = React.useState<string | null>(null)
@@ -407,11 +426,20 @@ export function DataTable<TData, TValue>({
   const handleRowClick = (row: TData) => {
     const igazolas = row as unknown as IgazolasTableRow
     setSelectedRow(igazolas)
-    setTeacherNote(igazolas.teacherNote || "")
     setIsSheetOpen(true)
   }
 
-  const handleApprove = async () => {
+  const handleApprove = () => {
+    if (!selectedRow) return
+    if (selectedRow.allapot === 'Hiánypótlásra visszaküldve') {
+      setPendingConfirmAction('Elfogadva')
+      setConfirmActionOpen(true)
+      return
+    }
+    performApprove()
+  }
+
+  const performApprove = async () => {
     if (!selectedRow) return
     
     try {
@@ -421,14 +449,6 @@ export function DataTable<TData, TValue>({
       // Apply optimistic update to parent data
       onOptimisticUpdate?.(selectedRow.id, 'Elfogadva');
       
-      // First update teacher comment if provided
-      if (teacherNote.trim()) {
-        await apiClient.updateTeacherComment(parseInt(selectedRow.id), { 
-          megjegyzes_tanar: teacherNote.trim() 
-        })
-      }
-      
-      // Then approve the igazolás
       await apiClient.quickActionIgazolas(parseInt(selectedRow.id), { action: 'Elfogadva' })
       
       toast.success('Igazolás jóváhagyva')
@@ -445,7 +465,17 @@ export function DataTable<TData, TValue>({
     }
   }
 
-  const handleReject = async () => {
+  const handleReject = () => {
+    if (!selectedRow) return
+    if (selectedRow.allapot === 'Hiánypótlásra visszaküldve') {
+      setPendingConfirmAction('Elutasítva')
+      setConfirmActionOpen(true)
+      return
+    }
+    performReject()
+  }
+
+  const performReject = async () => {
     if (!selectedRow) return
     
     try {
@@ -455,14 +485,6 @@ export function DataTable<TData, TValue>({
       // Apply optimistic update to parent data
       onOptimisticUpdate?.(selectedRow.id, 'Elutasítva');
       
-      // First update teacher comment if provided
-      if (teacherNote.trim()) {
-        await apiClient.updateTeacherComment(parseInt(selectedRow.id), { 
-          megjegyzes_tanar: teacherNote.trim() 
-        })
-      }
-      
-      // Then reject the igazolás
       await apiClient.quickActionIgazolas(parseInt(selectedRow.id), { action: 'Elutasítva' })
       
       toast.success('Igazolás elutasítva')
@@ -476,6 +498,41 @@ export function DataTable<TData, TValue>({
       // Revert optimistic update on error
       setIsSheetOpen(false)
       onDataChange?.()
+    }
+  }
+
+  const handleConfirmAction = async () => {
+    setConfirmActionOpen(false)
+    if (pendingConfirmAction === 'Elfogadva') {
+      await performApprove()
+    } else if (pendingConfirmAction === 'Elutasítva') {
+      await performReject()
+    }
+    setPendingConfirmAction(null)
+  }
+
+  const handleSendHianyPotlas = async (comment: string) => {
+    if (!selectedRow) return
+    try {
+      setHianyPotlasSubmitting(true)
+      setSelectedRow(prev => prev ? { ...prev, allapot: 'Hiánypótlásra visszaküldve', teacherNote: comment } : null)
+      onOptimisticUpdate?.(selectedRow.id, 'Hiánypótlásra visszaküldve')
+
+      await apiClient.quickActionIgazolas(parseInt(selectedRow.id), {
+        action: 'Hiánypótlásra visszaküldve',
+        megjegyzes_tanar: comment || undefined,
+      })
+
+      toast.success('Igazolás hiánypótlásra visszaküldve, a diák email értesítést kapott')
+      setHianyPotlasOpen(false)
+      setIsSheetOpen(false)
+    } catch (error) {
+      console.error('Failed to request hiánypótlás:', error)
+      toast.error('Hiba történt a hiánypótlás küldésekor')
+      setIsSheetOpen(false)
+      onDataChange?.()
+    } finally {
+      setHianyPotlasSubmitting(false)
     }
   }
 
@@ -1699,23 +1756,14 @@ export function DataTable<TData, TValue>({
                         </Alert>
 
                         <div className="space-y-2">
-                          <Label htmlFor="teacherNote" className="text-sm font-semibold">
-                            Osztályfőnök megjegyzése
-                          </Label>
-                          <Textarea
-                            id="teacherNote"
-                            placeholder="Írj megjegyzést az igazoláshoz... (pl. szülői igazolás bemutatva, dokumentáció rendben, stb.)"
-                            value={teacherNote}
-                            onChange={(e) => setTeacherNote(e.target.value)}
-                            rows={5}
-                            className="resize-none"
-                            disabled={selectedRow.allapot !== 'Függőben'}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            {selectedRow.allapot !== 'Függőben' 
-                              ? "Ez az igazolás már feldolgozásra került." 
-                              : "A megjegyzésed látható lesz a diák számára."}
-                          </p>
+                          {selectedRow.teacherNote && (
+                            <>
+                              <Label className="text-sm font-semibold">Osztályfőnök megjegyzése</Label>
+                              <p className="text-sm text-muted-foreground rounded-md border bg-muted/30 p-3">
+                                {selectedRow.teacherNote}
+                              </p>
+                            </>
+                          )}
                         </div>
 
                         <Separator />
@@ -1741,11 +1789,17 @@ export function DataTable<TData, TValue>({
                                 Elutasítva
                               </Badge>
                             )}
+                            {selectedRow.allapot === 'Hiánypótlásra visszaküldve' && (
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 dark:bg-orange-900/20 text-base px-4 py-2 dark:border-orange-500 dark:text-orange-400">
+                                <AlertTriangle className="h-4 w-4 mr-2" />
+                                Hiánypótlásra visszaküldve
+                              </Badge>
+                            )}
                           </div>
                         </div>
 
-                        {selectedRow.allapot === 'Függőben' ? (
-                          <div className="grid grid-cols-2 gap-3 pt-4">
+                        {(selectedRow.allapot === 'Függőben' || selectedRow.allapot === 'Hiánypótlásra visszaküldve') ? (
+                          <div className="grid grid-cols-3 gap-3 pt-4">
                             <Button
                               onClick={handleApprove}
                               size="lg"
@@ -1753,6 +1807,14 @@ export function DataTable<TData, TValue>({
                             >
                               <Check className="h-5 w-5 mr-2" />
                               Jóváhagy
+                            </Button>
+                            <Button
+                              onClick={() => setHianyPotlasOpen(true)}
+                              size="lg"
+                              className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                            >
+                              <AlertTriangle className="h-5 w-5 mr-2" />
+                              Hiánypótlás
                             </Button>
                             <Button
                               onClick={handleReject}
@@ -1793,6 +1855,39 @@ export function DataTable<TData, TValue>({
           )}
         </SheetContent>
       </Sheet>
+
+      <HianyPotlasDialog
+        open={hianyPotlasOpen}
+        onOpenChange={setHianyPotlasOpen}
+        onConfirm={handleSendHianyPotlas}
+        submitting={hianyPotlasSubmitting}
+      />
+
+      <AlertDialog open={confirmActionOpen} onOpenChange={setConfirmActionOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ez az igazolás hiánypótlásra vár</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ez az igazolás jelenleg <strong>Hiánypótlásra visszaküldve</strong> státuszban van - lehet, hogy még
+              a diák válaszára kell várni. Kérjük, ellenőrizd, hogy az adatok időközben helyessé váltak-e, mielőtt
+              folytatod. Biztosan {pendingConfirmAction === 'Elfogadva' ? 'jóváhagyod' : 'elutasítod'} ezt az igazolást?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingConfirmAction(null)}>
+              Mégse
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmAction}
+              className={pendingConfirmAction === 'Elfogadva'
+                ? 'bg-green-600 hover:bg-green-700 focus:ring-green-600'
+                : 'bg-red-600 hover:bg-red-700 focus:ring-red-600'}
+            >
+              {pendingConfirmAction === 'Elfogadva' ? 'Jóváhagyás' : 'Elutasítás'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Fullscreen Image Dialog */}
       <Dialog open={isImageFullscreen} onOpenChange={setIsImageFullscreen}>

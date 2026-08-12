@@ -403,6 +403,12 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
             Elutasítva
           </Badge>
         )
+      } else if (allapot === 'Hiánypótlásra visszaküldve') {
+        return (
+          <Badge variant="revision">
+            Hiánypótlásra visszaküldve
+          </Badge>
+        )
       }
       
       return (

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Check, X, Clock } from 'lucide-react';
+import { Check, X, Clock, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface QuickActionButtonsProps {
@@ -9,6 +9,7 @@ interface QuickActionButtonsProps {
   onApprove?: () => void;
   onReject?: () => void;
   onSetPending?: () => void;
+  onRequestRevision?: () => void;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
@@ -17,7 +18,7 @@ const QuickActionButton = React.forwardRef<
   HTMLButtonElement,
   {
     active?: boolean;
-    variant: 'approve' | 'reject' | 'pending';
+    variant: 'approve' | 'reject' | 'pending' | 'revision';
     onClick?: () => void;
     children: React.ReactNode;
     size?: 'sm' | 'md' | 'lg';
@@ -48,7 +49,10 @@ const QuickActionButton = React.forwardRef<
       : "bg-gradient-to-br from-red-50 to-red-100 text-red-700 border-red-200 hover:from-red-100 hover:to-red-200 hover:border-red-300 focus:ring-red-500/50 dark:from-red-900/20 dark:to-red-900/30 dark:text-red-300 dark:border-red-800 dark:hover:from-red-900/30 dark:hover:to-red-900/40",
     pending: active 
       ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-500/20 hover:shadow-blue-500/30 focus:ring-blue-500/50" 
-      : "bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200 hover:from-blue-100 hover:to-blue-200 hover:border-blue-300 focus:ring-blue-500/50 dark:from-blue-900/20 dark:to-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:from-blue-900/30 dark:hover:to-blue-900/40"
+      : "bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200 hover:from-blue-100 hover:to-blue-200 hover:border-blue-300 focus:ring-blue-500/50 dark:from-blue-900/20 dark:to-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:from-blue-900/30 dark:hover:to-blue-900/40",
+    revision: active
+      ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-orange-500/20 hover:shadow-orange-500/30 focus:ring-orange-500/50"
+      : "bg-gradient-to-br from-orange-50 to-orange-100 text-orange-700 border-orange-200 hover:from-orange-100 hover:to-orange-200 hover:border-orange-300 focus:ring-orange-500/50 dark:from-orange-900/20 dark:to-orange-900/30 dark:text-orange-300 dark:border-orange-800 dark:hover:from-orange-900/30 dark:hover:to-orange-900/40"
   };
 
   return (
@@ -76,6 +80,7 @@ export function QuickActionButtons({
   onApprove, 
   onReject, 
   onSetPending, 
+  onRequestRevision,
   size = 'sm',
   className 
 }: QuickActionButtonsProps) {
@@ -89,7 +94,18 @@ export function QuickActionButtons({
       >
         <Check className={cn("h-4 w-4", size === 'md' && "h-5 w-5", size === 'lg' && "h-6 w-6")} />
       </QuickActionButton>
-      
+
+      {onRequestRevision && (
+        <QuickActionButton
+          variant="revision"
+          active={allapot === 'Hiánypótlásra visszaküldve'}
+          onClick={onRequestRevision}
+          size={size}
+        >
+          <AlertTriangle className={cn("h-4 w-4", size === 'md' && "h-5 w-5", size === 'lg' && "h-6 w-6")} />
+        </QuickActionButton>
+      )}
+
       <QuickActionButton
         variant="reject"
         active={allapot === 'Elutasítva'}

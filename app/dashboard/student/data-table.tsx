@@ -45,7 +45,9 @@ import {
   Filter,
   Info,
   Search,
-  Loader2
+  Loader2,
+  Upload,
+  AlertTriangle
 } from "lucide-react"
 import {
   Sheet,
@@ -107,7 +109,9 @@ interface DataTableProps<TData, TValue> {
   onDataChange?: () => void | Promise<void>
   /**
    * When true, show student self-service Edit / Undo controls in the details
-   * sheet for rows whose `allapot` is 'Függőben' or 'Elutasítva'.
+   * sheet. Editing is only available while `allapot` is 'Függőben' or
+   * 'Hiánypótlásra visszaküldve'; withdrawal (undo) remains available for
+   * any non-accepted, non-withdrawn record.
    */
   studentActions?: boolean
 }
@@ -162,6 +166,11 @@ export function DataTable<TData, TValue>({
   const [igazolasTipusok, setIgazolasTipusok] = React.useState<string[]>([])
   const [igazolasTipusokFull, setIgazolasTipusokFull] = React.useState<IgazolasTipus[]>([])
 
+  // When a student arrives from the "hiánypótlás szükséges" email CTA link,
+  // dashboard/page.tsx stores the target igazolás id in sessionStorage - this
+  // flag defers auto-starting edit mode until the row + sheet are ready.
+  const [autoEditPending, setAutoEditPending] = React.useState(false)
+
   // Student self-service edit / undo state (only used when studentActions=true)
   const [undoOpen, setUndoOpen] = React.useState(false)
   const [undoSubmitting, setUndoSubmitting] = React.useState(false)
@@ -176,13 +185,25 @@ export function DataTable<TData, TValue>({
   const [editSelectedPeriods, setEditSelectedPeriods] = React.useState<number[]>([])
   const [editTipus, setEditTipus] = React.useState<number | null>(null)
   const [editMegjegyzes, setEditMegjegyzes] = React.useState("")
+  const [editImageFile, setEditImageFile] = React.useState<File | null>(null)
+
+  // Tracks an edit that was saved on a Hiánypótlásra visszaküldve igazolás but
+  // not yet resubmitted - used to warn the student before they navigate away.
+  const [hasUnresubmittedEdit, setHasUnresubmittedEdit] = React.useState(false)
+  const [closeWarningOpen, setCloseWarningOpen] = React.useState(false)
+  const [resubmitSubmitting, setResubmitSubmitting] = React.useState(false)
 
   // Attachment image state for server-stored images
   const [attachmentBlobUrl, setAttachmentBlobUrl] = React.useState<string | null>(null)
   const [isImageFullscreen, setIsImageFullscreen] = React.useState(false)
 
   const canStudentModify = (row: IgazolasTableRow | null) =>
-    !!row && !row.undoed && (row.allapot === 'Függőben' || row.allapot === 'Elutasítva')
+    !!row && !row.undoed && (row.allapot === 'Függőben' || row.allapot === 'Hiánypótlásra visszaküldve')
+
+  // Withdrawal (undo) remains available for any non-accepted, non-withdrawn
+  // igazolás - this is independent from whether it can be edited.
+  const canStudentUndo = (row: IgazolasTableRow | null) =>
+    !!row && !row.undoed && row.allapot !== 'Elfogadva'
 
   const startEdit = () => {
     if (!selectedRow) return
@@ -203,10 +224,12 @@ export function DataTable<TData, TValue>({
     setEditMegjegyzes(
       selectedRow.reason && selectedRow.reason !== 'Nincs megjegyzés' ? selectedRow.reason : ""
     )
+    setEditImageFile(null)
     setIsEditingRow(true)
   }
 
   const cancelEdit = () => {
+    setEditImageFile(null)
     setIsEditingRow(false)
   }
 
@@ -218,15 +241,15 @@ export function DataTable<TData, TValue>({
     )
   }
 
-  const saveEdit = async () => {
-    if (!selectedRow) return
+  const saveEditInternal = async (): Promise<boolean> => {
+    if (!selectedRow) return false
     if (!editTipus) {
       toast.error("Kérlek válassz igazolás típust")
-      return
+      return false
     }
     if (!editIsMultiDay && editSelectedPeriods.length === 0) {
       toast.error("Kérlek válassz ki legalább egy tanórát")
-      return
+      return false
     }
 
     const sortedPeriods = [...new Set(editSelectedPeriods)].sort((a, b) => a - b)
@@ -253,17 +276,94 @@ export function DataTable<TData, TValue>({
     try {
       setEditSubmitting(true)
       await apiClient.editIgazolas(parseInt(selectedRow.id, 10), requestData)
-      toast.success("Igazolás sikeresen módosítva!")
-      setIsEditingRow(false)
-      setIsOpen(false)
-      if (onDataChange) await onDataChange()
+
+      if (editImageFile) {
+        try {
+          await apiClient.uploadIgazolasImage(parseInt(selectedRow.id, 10), editImageFile)
+        } catch (uploadErr) {
+          const uploadMsg = uploadErr instanceof Error ? uploadErr.message : "Ismeretlen hiba"
+          toast.warning(`Az igazolás módosítva, de a kép feltöltése sikertelen: ${uploadMsg}`)
+        }
+      }
+
+      return true
     } catch (err) {
       const message = err instanceof Error ? err.message : "Ismeretlen hiba"
       toast.error(`Módosítás sikertelen: ${message}`)
+      return false
     } finally {
       setEditSubmitting(false)
     }
   }
+
+  const saveEdit = async () => {
+    if (!selectedRow) return
+    const wasHianyPotlas = selectedRow.allapot === 'Hiánypótlásra visszaküldve'
+    const success = await saveEditInternal()
+    if (!success) return
+
+    toast.success("Igazolás sikeresen módosítva!")
+    setIsEditingRow(false)
+    setEditImageFile(null)
+
+    if (wasHianyPotlas) {
+      // Stay on the details sheet and nudge the student to resubmit -
+      // the record is still "Hiánypótlásra visszaküldve" until they do.
+      setHasUnresubmittedEdit(true)
+      if (onDataChange) await onDataChange()
+    } else {
+      setIsOpen(false)
+      if (onDataChange) await onDataChange()
+    }
+  }
+
+  const saveAndResubmit = async () => {
+    if (!selectedRow) return
+    const success = await saveEditInternal()
+    if (!success) return
+
+    setIsEditingRow(false)
+    setEditImageFile(null)
+    await handleResubmit({ closeAfter: true })
+  }
+
+  const handleResubmit = async (options?: { closeAfter?: boolean }) => {
+    if (!selectedRow) return
+    try {
+      setResubmitSubmitting(true)
+      await apiClient.resubmitIgazolas(parseInt(selectedRow.id, 10))
+      toast.success("Igazolás beküldve, visszaállítva függőben állapotra")
+      setSelectedRow(prev => prev ? { ...prev, allapot: 'Függőben' } : null)
+      setHasUnresubmittedEdit(false)
+      if (options?.closeAfter) setIsOpen(false)
+      if (onDataChange) await onDataChange()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Ismeretlen hiba"
+      toast.error(`Beküldés sikertelen: ${message}`)
+    } finally {
+      setResubmitSubmitting(false)
+    }
+  }
+
+  const handleSheetOpenChange = (open: boolean) => {
+    if (!open && hasUnresubmittedEdit) {
+      setCloseWarningOpen(true)
+      return
+    }
+    setIsOpen(open)
+  }
+
+  // Warn before leaving/refreshing the page while an edited hiánypótlás
+  // igazolás hasn't been resubmitted yet.
+  React.useEffect(() => {
+    if (!hasUnresubmittedEdit) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [hasUnresubmittedEdit])
 
   const handleUndoConfirm = async () => {
     if (!selectedRow) return
@@ -321,6 +421,36 @@ export function DataTable<TData, TValue>({
   React.useEffect(() => {
     setIsEditingRow(false)
   }, [isOpen, selectedRow?.id])
+
+  // Reset the "unresubmitted edit" nudge whenever a different row is selected
+  React.useEffect(() => {
+    setHasUnresubmittedEdit(false)
+  }, [selectedRow?.id])
+
+  // Deep link from the "hiánypótlás szükséges" email: open the matching row
+  // and flag it for auto-edit once the igazolás types have loaded.
+  React.useEffect(() => {
+    if (igazolasTipusokFull.length === 0) return
+    const pendingId = sessionStorage.getItem('auto_open_igazolas_edit')
+    if (!pendingId) return
+    const rows = data as unknown as IgazolasTableRow[]
+    const match = rows.find(row => row.id === pendingId)
+    if (match) {
+      sessionStorage.removeItem('auto_open_igazolas_edit')
+      setSelectedRow(match)
+      setIsOpen(true)
+      setAutoEditPending(true)
+    }
+  }, [data, igazolasTipusokFull])
+
+  // Once the sheet is open for the deep-linked row, actually enter edit mode.
+  React.useEffect(() => {
+    if (autoEditPending && isOpen && selectedRow) {
+      startEdit()
+      setAutoEditPending(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoEditPending, isOpen, selectedRow])
 
   // Fetch attachment blob for server-stored images when selected row changes
   React.useEffect(() => {
@@ -921,7 +1051,7 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* Details Sheet */}
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
         <SheetContent className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-4xl overflow-y-auto">
           {selectedRow && (
             <>
@@ -960,33 +1090,82 @@ export function DataTable<TData, TValue>({
                 </div>
               )}
 
+              {selectedRow.allapot === 'Hiánypótlásra visszaküldve' && !isEditingRow && (
+                <div className="px-6 -mt-2 mb-4">
+                  <Alert className="border-orange-300 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-500">
+                    <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                    <AlertTitle className="text-orange-900 dark:text-orange-300">Hiánypótlás szükséges</AlertTitle>
+                    <AlertDescription className="text-orange-800 dark:text-orange-400 text-sm">
+                      Az osztályfőnököd hiánypótlásra küldte vissza ezt az igazolást
+                      {selectedRow.teacherNote ? <>: <strong>{selectedRow.teacherNote}</strong></> : '.'}
+                      {' '}Javítsd/egészítsd ki, majd ne felejtsd el megnyomni a beküldés gombot.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              )}
+
               {studentActions && canStudentModify(selectedRow) && (
                 <div className="px-6 -mt-2 mb-4">
                   {isEditingRow ? (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={cancelEdit}
-                        disabled={editSubmitting}
-                        className="flex-1"
-                      >
-                        Mégse
-                      </Button>
-                      <Button
-                        onClick={saveEdit}
-                        disabled={editSubmitting}
-                        className="flex-1"
-                      >
-                        {editSubmitting ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Save className="h-4 w-4 mr-2" />
-                        )}
-                        Mentés
-                      </Button>
-                    </div>
+                    selectedRow.allapot === 'Hiánypótlásra visszaküldve' ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={cancelEdit}
+                          disabled={editSubmitting || resubmitSubmitting}
+                        >
+                          Mégse
+                        </Button>
+                        <Button
+                          onClick={saveEdit}
+                          disabled={editSubmitting || resubmitSubmitting}
+                          variant="outline"
+                        >
+                          {editSubmitting ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
+                          Mentés
+                        </Button>
+                        <Button
+                          onClick={saveAndResubmit}
+                          disabled={editSubmitting || resubmitSubmitting}
+                        >
+                          {(editSubmitting || resubmitSubmitting) ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                          )}
+                          Mentés és beküldés
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={cancelEdit}
+                          disabled={editSubmitting}
+                          className="flex-1"
+                        >
+                          Mégse
+                        </Button>
+                        <Button
+                          onClick={saveEdit}
+                          disabled={editSubmitting}
+                          className="flex-1"
+                        >
+                          {editSubmitting ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
+                          Mentés
+                        </Button>
+                      </div>
+                    )
                   ) : (
-                    <>
+                    <div className="space-y-2">
                       <Button
                         onClick={startEdit}
                         className="w-full"
@@ -994,12 +1173,22 @@ export function DataTable<TData, TValue>({
                         <Pencil className="h-4 w-4 mr-2" />
                         Igazolás szerkesztése
                       </Button>
-                      {selectedRow.allapot === 'Elutasítva' && (
-                        <p className="text-xs text-muted-foreground mt-2 text-center">
-                          Szerkesztés után az igazolás újra elbírálásra vár.
-                        </p>
+                      {selectedRow.allapot === 'Hiánypótlásra visszaküldve' && (
+                        <Button
+                          variant="outline"
+                          className="w-full border-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                          onClick={() => handleResubmit()}
+                          disabled={resubmitSubmitting}
+                        >
+                          {resubmitSubmitting ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                          )}
+                          Visszaállítás függőben állapotra / Beküldés újból
+                        </Button>
                       )}
-                    </>
+                    </div>
                   )}
                 </div>
               )}
@@ -1347,7 +1536,54 @@ export function DataTable<TData, TValue>({
                           </div>
                         )}
 
-                        {(selectedRow.image_url || selectedRow.imgDriveURL) && (
+                        {isEditingRow && (
+                          <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                              Csatolmány (fénykép)
+                            </Label>
+                            {editImageFile ? (
+                              <div className="flex items-center justify-between gap-2 p-3 rounded-lg border bg-muted/30">
+                                <span className="text-sm truncate">{editImageFile.name}</span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setEditImageFile(null)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <>
+                                {(selectedRow.image_url || selectedRow.imgDriveURL) && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Már van csatolt kép. Tölts fel újat, ha le szeretnéd cserélni.
+                                  </p>
+                                )}
+                                <label className="flex items-center justify-center gap-2 p-4 rounded-lg border-2 border-dashed cursor-pointer hover:bg-muted/30 transition-colors">
+                                  <Upload className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm text-muted-foreground">Kép feltöltése</span>
+                                  <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0]
+                                      if (!file) return
+                                      if (file.size > 10 * 1024 * 1024) {
+                                        toast.error('A kép mérete nem lehet nagyobb 10 MB-nál')
+                                        return
+                                      }
+                                      setEditImageFile(file)
+                                    }}
+                                  />
+                                </label>
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {!isEditingRow && (selectedRow.image_url || selectedRow.imgDriveURL) && (
                           <div className="space-y-2">
                             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                               Mellékelt kép
@@ -1448,7 +1684,7 @@ export function DataTable<TData, TValue>({
                       </Card>
                     )}
 
-                    {studentActions && !isEditingRow && canStudentModify(selectedRow) && (
+                    {studentActions && !isEditingRow && canStudentUndo(selectedRow) && (
                       <div className="pt-2 pb-4 flex justify-center">
                         <button
                           type="button"
@@ -1493,6 +1729,53 @@ export function DataTable<TData, TValue>({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Warn before closing the sheet with an unresubmitted hiánypótlás edit */}
+      <Dialog open={closeWarningOpen} onOpenChange={setCloseWarningOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              Ne felejtsd el beküldeni!
+            </DialogTitle>
+            <DialogDescription>
+              Módosítottad az igazolást, de még nem küldted be újra. Amíg nem nyomod meg a
+              „Visszaállítás függőben állapotra / Beküldés újból” gombot, az osztályfőnököd nem fogja
+              tudni, hogy elkészültél a javítással.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button
+              className="w-full"
+              disabled={resubmitSubmitting}
+              onClick={async () => {
+                setCloseWarningOpen(false)
+                await handleResubmit({ closeAfter: true })
+              }}
+            >
+              {resubmitSubmitting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RotateCcw className="h-4 w-4 mr-2" />
+              )}
+              Beküldés újból és bezárás
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => setCloseWarningOpen(false)}>
+              Vissza
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full text-muted-foreground"
+              onClick={() => {
+                setCloseWarningOpen(false)
+                setIsOpen(false)
+              }}
+            >
+              Bezárás beküldés nélkül
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Fullscreen Image Dialog */}
       <Dialog open={isImageFullscreen} onOpenChange={setIsImageFullscreen}>

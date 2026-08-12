@@ -49,6 +49,10 @@ export function useFTVSync({
   // Track if initial load has been done to prevent re-runs
   const hasInitialized = useRef(false);
   const fetchFunctionRef = useRef(fetchFunction);
+  // Set when a sync is requested while one is already running; consumed by
+  // syncLiveData's `finally` block to trigger a follow-up run.
+  const pendingSyncRef = useRef(false);
+  const syncLiveDataRef = useRef<(() => Promise<Igazolas[] | undefined>) | null>(null);
   
   // Update ref when fetchFunction changes
   useEffect(() => {
@@ -93,7 +97,11 @@ export function useFTVSync({
   // Sync with live data in the background
   const syncLiveData = useCallback(async () => {
     if (isSyncing) {
-      console.log('Sync already in progress, skipping...');
+      // A sync is already running - queue a follow-up run instead of silently
+      // dropping this request, so a user-triggered refresh right after a
+      // mutation is never lost.
+      console.log('Sync already in progress, queuing a follow-up sync...');
+      pendingSyncRef.current = true;
       return;
     }
 
@@ -133,8 +141,18 @@ export function useFTVSync({
       throw error;
     } finally {
       setIsSyncing(false);
+      if (pendingSyncRef.current) {
+        pendingSyncRef.current = false;
+        syncLiveDataRef.current?.();
+      }
     }
   }, [isSyncing, fetchMetadata, debugPerformance, checkRegistration]);
+
+  // Keep the ref in sync so the `finally` block above can trigger a
+  // follow-up run without adding a circular dependency to the callback.
+  useEffect(() => {
+    syncLiveDataRef.current = syncLiveData;
+  }, [syncLiveData]);
 
   // Manual refresh - reload everything
   const refresh = useCallback(async () => {

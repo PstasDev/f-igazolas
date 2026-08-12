@@ -44,6 +44,19 @@ export default function Page() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [user?.role])
 
+  // Deep link from the "hiánypótlás szükséges" email CTA: ?editIgazolas=<id>
+  // stashes the target igazolás id for the student table to pick up, then
+  // jumps to the igazolások view.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const editId = params.get('editIgazolas')
+    if (editId) {
+      sessionStorage.setItem('auto_open_igazolas_edit', editId)
+      window.location.hash = 'igazolasok'
+      window.history.replaceState(null, '', window.location.pathname + window.location.hash)
+    }
+  }, [])
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">

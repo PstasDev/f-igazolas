@@ -79,6 +79,8 @@ export interface ReszletesIdopont {
   vege: string;  // ISO datetime string
 }
 
+export type IgazolasAllapot = 'Függőben' | 'Elfogadva' | 'Elutasítva' | 'Hiánypótlásra visszaküldve';
+
 export interface Igazolas {
   id: number;
   profile: Profile;
@@ -105,7 +107,7 @@ export interface Igazolas {
   image_url?: string | null; // Server-stored image URL (new); null = no image
   bkk_verification?: object; // BKKVerification object
   sub_form_data?: Record<string, string | number>; // New field
-  allapot: 'Függőben' | 'Elfogadva' | 'Elutasítva';
+  allapot: IgazolasAllapot;
   megjegyzes_tanar?: string;
   kretaban_rogzitettem: boolean;
   undoed?: boolean;
@@ -173,17 +175,19 @@ export interface ErrorResponse {
 
 // Quick Action types
 export interface QuickActionRequest {
-  action: 'Elfogadva' | 'Elutasítva' | 'Függőben'; // Updated to include all valid actions
+  action: IgazolasAllapot;
+  /** Optional teacher comment, e.g. hiánypótlás reason */
+  megjegyzes_tanar?: string;
 }
 
 export interface BulkQuickActionRequest {
-  action: 'Elfogadva' | 'Elutasítva' | 'Függőben'; // Updated to include all valid actions
+  action: IgazolasAllapot;
   ids: number[]; // List of igazolas IDs
 }
 
 export interface QuickActionResponse {
   id: number;
-  allapot: 'Függőben' | 'Elfogadva' | 'Elutasítva';
+  allapot: IgazolasAllapot;
   message: string;
 }
 
@@ -212,7 +216,7 @@ export interface IgazolasSimple {
   /** See {@link Igazolas.reszletes_idopontok}. */
   reszletes_idopontok?: ReszletesIdopont[] | null;
   tipus: IgazolasTipus;
-  allapot: 'Függőben' | 'Elfogadva' | 'Elutasítva';
+  allapot: IgazolasAllapot;
   rogzites_datuma: string; // ISO date string
   megjegyzes_diak?: string;
 }

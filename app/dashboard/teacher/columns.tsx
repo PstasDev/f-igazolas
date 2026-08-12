@@ -17,6 +17,7 @@ interface ActionHandlers {
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
   onSetPending?: (id: string) => void;
+  onRequestRevision?: (id: string) => void;
 }
 
 // Google Drive SVG Icon Component (kept for backwards-compatible legacy links)
@@ -433,6 +434,7 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
           onApprove={() => actionHandlers?.onApprove?.(row.original.id)}
           onReject={() => actionHandlers?.onReject?.(row.original.id)}
           onSetPending={() => actionHandlers?.onSetPending?.(row.original.id)}
+          onRequestRevision={() => actionHandlers?.onRequestRevision?.(row.original.id)}
         />
       )
     },
