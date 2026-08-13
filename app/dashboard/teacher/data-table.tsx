@@ -1244,6 +1244,64 @@ export function DataTable<TData, TValue>({
           </div>
         )}
 
+        {/* Mobile Card List (< md) */}
+        <div className="md:hidden space-y-2">
+          {getFilteredData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
+              <AlertCircle className="h-8 w-8" />
+              <p className="font-medium">Nincs találat</p>
+              <p className="text-sm">Próbálj más keresési feltételeket</p>
+            </div>
+          ) : (
+            getFilteredData.map((item) => {
+              const typeInfo = getIgazolasType(item.type)
+              const allapot = item.allapot
+              const statusBadge =
+                allapot === 'Elfogadva' ? <Badge variant="approved">Elfogadva</Badge> :
+                allapot === 'Elutasítva' ? <Badge variant="rejected">Elutasítva</Badge> :
+                allapot === 'Hiánypótlásra visszaküldve' ? <Badge variant="revision">Hiánypótlás</Badge> :
+                <Badge variant="pending">Függőben</Badge>
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => handleRowClick(item as TData)}
+                  className="bg-neutral-900 border border-neutral-800 rounded-lg p-3.5 cursor-pointer active:opacity-80 transition-opacity"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant="outline" className={`${typeInfo.color} text-xs`}>
+                      <span className="mr-1">{typeInfo.emoji}</span>
+                      {typeInfo.name}
+                    </Badge>
+                    {statusBadge}
+                  </div>
+                  <p className="font-bold text-base leading-tight mb-1 text-white">
+                    {item.studentName}{' '}
+                    <span className="text-neutral-400 font-normal text-sm">{item.studentClass}</span>
+                  </p>
+                  <div className="flex items-center gap-3 text-xs text-neutral-400 mb-1">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {item.date}
+                    </span>
+                    {item.hours && item.hours.length > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {item.hours.length} óra
+                      </span>
+                    )}
+                  </div>
+                  {/* item.status maps to megjegyzes_diak (student reason) in teacher view */}
+                  {item.status && item.status !== 'Nincs megjegyzés' && (
+                    <p className="text-xs text-neutral-400 line-clamp-1">{item.status}</p>
+                  )}
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Table (>= md) */}
+        <div className="hidden md:block">
         {/* Table */}
         <Card>
           <CardContent className="p-0">
@@ -1367,6 +1425,7 @@ export function DataTable<TData, TValue>({
             </Button>
           </div>
         </div>
+        </div>{/* end hidden md:block */}
       </div>
 
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
