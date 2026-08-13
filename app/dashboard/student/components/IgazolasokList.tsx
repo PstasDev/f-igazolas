@@ -173,6 +173,7 @@ export function IgazolasokList({ variant }: IgazolasokListProps) {
   const displayedIgazolasok = variant === 'recent' ? igazolasok.slice(0, 3) : igazolasok;
 
   const handleUndo = (id: string) => {
+    // TODO: call the withdrawal API endpoint once the student API client is available
     setIgazolasok((prev: Igazolas[]) => prev.filter((i: Igazolas) => i.id !== id));
     if (selectedIgazolas?.id === id) setSelectedIgazolas(null);
     toast.success('Igazolás visszavonva');

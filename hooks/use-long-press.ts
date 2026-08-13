@@ -31,6 +31,7 @@ export function useLongPress({ threshold = 500, onLongPress, onClick }: UseLongP
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+    isLongPress.current = false;
   }, []);
 
   const handleClick = useCallback(() => {

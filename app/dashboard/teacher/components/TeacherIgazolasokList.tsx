@@ -464,7 +464,7 @@ export function TeacherIgazolasokList({ variant, filter }: TeacherIgazolasokList
                           }}
                         >
                           <Eye className="h-4 w-4 mr-2" />
-                          Megtékintés Google Drive-on
+                          Megtekintés Google Drive-on
                         </Button>
                       )}
                     </div>
