@@ -19,6 +19,7 @@ interface Igazolas {
   type: 'studio' | 'egyeb' | 'beteg';
   status: 'pending' | 'approved' | 'rejected';
   description: string;
+  hours?: number[];
 }
 
 // Map local mock type keys to the getIgazolasType lookup keys
@@ -36,6 +37,7 @@ const mockIgazolasok: Igazolas[] = [
     type: 'studio',
     status: 'approved',
     description: 'Filmforgatáson való részvétel a Kossuth téren.',
+    hours: [1, 2, 3],
   },
   {
     id: '2',
@@ -44,6 +46,7 @@ const mockIgazolasok: Igazolas[] = [
     type: 'beteg',
     status: 'pending',
     description: 'Influenza miatt otthon maradás.',
+    hours: [1, 2, 3, 4, 5, 6],
   },
   {
     id: '3',
@@ -52,11 +55,41 @@ const mockIgazolasok: Igazolas[] = [
     type: 'egyeb',
     status: 'pending',
     description: 'Nagyszülő 80. születésnapja.',
+    hours: [4, 5],
   },
 ];
 
 interface IgazolasokListProps {
   variant: 'all' | 'recent';
+}
+
+// ------------------------------------------------------------------
+// Small coloured period squares shown on each card
+// ------------------------------------------------------------------
+function getPeriodActiveColor(status: Igazolas['status']): string {
+  if (status === 'approved') return 'bg-green-400 dark:bg-green-500';
+  if (status === 'rejected') return 'bg-red-400 dark:bg-red-500';
+  return 'bg-blue-400 dark:bg-blue-500';
+}
+
+function PeriodSquares({ hours, status }: { hours?: number[]; status: Igazolas['status'] }) {
+  if (!hours || hours.length === 0) return null;
+  const activeColor = getPeriodActiveColor(status);
+  return (
+    <div className="flex gap-0.5 mt-1" aria-label="Érintett órák">
+      {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((h) => (
+        <span
+          key={h}
+          title={`${h}. óra`}
+          className={`inline-flex items-center justify-center w-3.5 h-3.5 rounded-sm text-[8px] font-bold text-white transition-colors ${
+            hours.includes(h) ? activeColor : 'bg-muted'
+          }`}
+        >
+          {hours.includes(h) ? h : ''}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 // ------------------------------------------------------------------
@@ -121,6 +154,7 @@ function StudentCardItem({
               <Calendar className="h-3 w-3 shrink-0" />
               {igazolas.date}
             </span>
+            <PeriodSquares hours={igazolas.hours} status={igazolas.status} />
           </ItemDescription>
         </ItemContent>
 
