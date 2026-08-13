@@ -5,10 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
+import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, Clock, CheckCircle2, XCircle, Calendar, Eye, Inbox } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, XCircle, Calendar, Eye, Inbox, RotateCcw } from 'lucide-react';
 import { getIgazolasType } from '../../types';
+import { useLongPress } from '@/hooks/use-long-press';
+import { toast } from 'sonner';
 
 interface Igazolas {
   id: string;
@@ -18,6 +20,13 @@ interface Igazolas {
   status: 'pending' | 'approved' | 'rejected';
   description: string;
 }
+
+// Map local mock type keys to the getIgazolasType lookup keys
+const TYPE_MAP: Record<Igazolas['type'], string> = {
+  studio: 'stúdiós távollét',
+  beteg: 'orvosi igazolás',
+  egyeb: 'egyéb',
+};
 
 const mockIgazolasok: Igazolas[] = [
   {
@@ -50,10 +59,124 @@ interface IgazolasokListProps {
   variant: 'all' | 'recent';
 }
 
+// ------------------------------------------------------------------
+// Status icon – right side of card (colour only, no background circle)
+// ------------------------------------------------------------------
+function StatusIcon({ status }: { status: Igazolas['status'] }) {
+  if (status === 'approved')
+    return <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400 shrink-0" />;
+  if (status === 'rejected')
+    return <XCircle className="h-5 w-5 text-red-500 dark:text-red-400 shrink-0" />;
+  return <Clock className="h-5 w-5 text-blue-500 dark:text-blue-400 shrink-0" />;
+}
+
+// ------------------------------------------------------------------
+// Single card item with long-press support (student)
+// ------------------------------------------------------------------
+interface StudentCardItemProps {
+  igazolas: Igazolas;
+  isLongPressActive: boolean;
+  onClick: () => void;
+  onLongPress: () => void;
+  onUndo: () => void;
+  onDismissActions: () => void;
+  className?: string;
+}
+
+function StudentCardItem({
+  igazolas,
+  isLongPressActive,
+  onClick,
+  onLongPress,
+  onUndo,
+  onDismissActions,
+  className = '',
+}: StudentCardItemProps) {
+  const typeConfig = getIgazolasType(TYPE_MAP[igazolas.type as Igazolas['type']]);
+  const canUndo = igazolas.status === 'pending';
+
+  const longPressProps = useLongPress({ onLongPress, onClick });
+
+  return (
+    <div className="relative">
+      <Item
+        {...longPressProps}
+        className={`cursor-pointer hover:bg-accent rounded-lg p-3 transition-colors select-none gap-3 ${className}`}
+      >
+        {/* Left: emoji in type-coloured circle */}
+        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-lg shrink-0 ${typeConfig.bgClass}`}>
+          {typeConfig.emoji}
+        </div>
+
+        {/* Center: type name + date */}
+        <ItemContent className="min-w-0 flex-1">
+          <ItemTitle className="w-full">
+            <span className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground leading-none">
+              {typeConfig.name}
+            </span>
+          </ItemTitle>
+          <ItemDescription className="flex flex-col gap-0.5 text-xs mt-0.5">
+            <span className="font-medium text-foreground/80">{igazolas.title}</span>
+            <span className="flex items-center gap-1">
+              <Calendar className="h-3 w-3 shrink-0" />
+              {igazolas.date}
+            </span>
+          </ItemDescription>
+        </ItemContent>
+
+        {/* Right: status icon */}
+        <StatusIcon status={igazolas.status} />
+      </Item>
+
+      {/* Long-press action overlay (only show undo for pending) */}
+      {isLongPressActive && (
+        <div
+          className="absolute inset-0 rounded-lg bg-background/90 backdrop-blur-sm flex items-center justify-center gap-2 z-10 border border-border shadow-lg"
+          // @ts-ignore - e is a MouseEvent; React types unavailable in this project
+          onClick={(e) => { e.stopPropagation(); onDismissActions(); }}
+        >
+          {canUndo ? (
+            <Button
+              size="sm"
+              variant="destructive"
+              className="gap-1.5"
+              // @ts-ignore - e is a MouseEvent; React types unavailable in this project
+              onClick={(e) => { e.stopPropagation(); onUndo(); onDismissActions(); }}
+            >
+              <RotateCcw className="h-4 w-4" />
+              Visszavon
+            </Button>
+          ) : (
+            <span className="text-xs text-muted-foreground">Nem vonható vissza</span>
+          )}
+          <button
+            className="absolute top-1 right-1 text-muted-foreground hover:text-foreground rounded-full p-0.5"
+            // @ts-ignore - e is a MouseEvent; React types unavailable in this project
+            onClick={(e) => { e.stopPropagation(); onDismissActions(); }}
+          >
+            <XCircle className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// Main component
+// ------------------------------------------------------------------
 export function IgazolasokList({ variant }: IgazolasokListProps) {
   const [selectedIgazolas, setSelectedIgazolas] = useState<Igazolas | null>(null);
-  
-  const igazolasok = variant === 'recent' ? mockIgazolasok.slice(0, 3) : mockIgazolasok;
+  const [longPressedId, setLongPressedId] = useState<string | null>(null);
+  const [igazolasok, setIgazolasok] = useState<Igazolas[]>(mockIgazolasok);
+
+  const displayedIgazolasok = variant === 'recent' ? igazolasok.slice(0, 3) : igazolasok;
+
+  const handleUndo = (id: string) => {
+    setIgazolasok((prev: Igazolas[]) => prev.filter((i: Igazolas) => i.id !== id));
+    if (selectedIgazolas?.id === id) setSelectedIgazolas(null);
+    toast.success('Igazolás visszavonva');
+  };
 
   const getStatusBadge = (status: Igazolas['status']) => {
     switch (status) {
@@ -66,17 +189,6 @@ export function IgazolasokList({ variant }: IgazolasokListProps) {
     }
   };
 
-  const getStatusIcon = (status: Igazolas['status']) => {
-    switch (status) {
-      case 'approved':
-        return <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />;
-      case 'pending':
-        return <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />;
-      case 'rejected':
-        return <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />;
-    }
-  };
-
   if (variant === 'all') {
     return (
       <div className="grid gap-4 lg:grid-cols-2">
@@ -84,10 +196,10 @@ export function IgazolasokList({ variant }: IgazolasokListProps) {
         <Card>
           <CardHeader>
             <CardTitle><h1 className='text-xl'>Igazolásaim</h1></CardTitle>
-            <CardDescription>Kattints egy igazolásra a részletek megtekintéséhez</CardDescription>
+            <CardDescription>Kattints egy igazolásra a részletek megtekintéséhez · Hosszan tartva visszavonás (függőben)</CardDescription>
           </CardHeader>
           <CardContent>
-            {igazolasok.length === 0 ? (
+            {displayedIgazolasok.length === 0 ? (
               <Empty>
                 <EmptyMedia variant="icon">
                   <Inbox />
@@ -100,24 +212,16 @@ export function IgazolasokList({ variant }: IgazolasokListProps) {
             ) : (
               <ScrollArea className="h-[600px] pr-4">
                 <div className="space-y-2">
-                  {igazolasok.map((igazolas) => (
-                    <Item
+                  {displayedIgazolasok.map((igazolas: Igazolas) => (
+                    <StudentCardItem
                       key={igazolas.id}
-                      className="cursor-pointer hover:bg-accent rounded-lg p-3 transition-colors"
+                      igazolas={igazolas}
+                      isLongPressActive={longPressedId === igazolas.id}
                       onClick={() => setSelectedIgazolas(igazolas)}
-                    >
-                      <ItemMedia variant="icon">
-                        {getStatusIcon(igazolas.status)}
-                      </ItemMedia>
-                      <ItemContent>
-                        <ItemTitle>{igazolas.title}</ItemTitle>
-                        <ItemDescription className="flex items-center gap-2 text-xs">
-                          <Calendar className="h-3 w-3" />
-                          {igazolas.date}
-                          {getStatusBadge(igazolas.status)}
-                        </ItemDescription>
-                      </ItemContent>
-                    </Item>
+                      onLongPress={() => setLongPressedId(igazolas.id)}
+                      onUndo={() => handleUndo(igazolas.id)}
+                      onDismissActions={() => setLongPressedId(null)}
+                    />
                   ))}
                 </div>
               </ScrollArea>
@@ -134,6 +238,21 @@ export function IgazolasokList({ variant }: IgazolasokListProps) {
             {selectedIgazolas ? (
               <div className="space-y-4">
                 <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    {(() => {
+                      const typeConfig = getIgazolasType(TYPE_MAP[selectedIgazolas.type as Igazolas['type']]);
+                      return (
+                        <>
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${typeConfig.bgClass}`}>
+                            {typeConfig.emoji}
+                          </div>
+                          <span className="text-xs uppercase tracking-widest font-semibold text-muted-foreground">
+                            {typeConfig.name}
+                          </span>
+                        </>
+                      );
+                    })()}
+                  </div>
                   <h3 className="text-lg font-semibold mb-2">{selectedIgazolas.title}</h3>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
                     <Calendar className="h-4 w-4" />
@@ -147,28 +266,25 @@ export function IgazolasokList({ variant }: IgazolasokListProps) {
                   <p className="text-sm text-muted-foreground">{selectedIgazolas.description}</p>
                 </div>
 
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Típus</h4>
-                  {(() => {
-                    const typeInfo = getIgazolasType(selectedIgazolas.type)
-                    return (
-                      <Badge 
-                        variant="outline" 
-                        className={`${typeInfo.color} inline-flex items-center gap-1.5 font-medium`}
-                      >
-                        <span className="text-sm">{typeInfo.emoji}</span>
-                        {typeInfo.name}
-                      </Badge>
-                    )
-                  })()}
-                </div>
-
                 <div className="pt-4">
                   <Button variant="outline" className="w-full">
                     <Eye className="h-4 w-4 mr-2" />
                     Melléklet megtekintése
                   </Button>
                 </div>
+
+                {selectedIgazolas.status === 'pending' && (
+                  <div className="pt-2">
+                    <Button
+                      variant="destructive"
+                      className="w-full gap-1.5"
+                      onClick={() => handleUndo(selectedIgazolas.id)}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Igazolás visszavonása
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <Empty>
@@ -192,10 +308,10 @@ export function IgazolasokList({ variant }: IgazolasokListProps) {
     <Card>
       <CardHeader>
         <CardTitle>Legutóbbi igazolások</CardTitle>
-        <CardDescription>Az utolsó 3 beküldött igazolás</CardDescription>
+        <CardDescription>Az utolsó 3 beküldött igazolás · Hosszan tartva visszavonás (függőben)</CardDescription>
       </CardHeader>
       <CardContent>
-        {igazolasok.length === 0 ? (
+        {displayedIgazolasok.length === 0 ? (
           <Empty>
             <EmptyMedia variant="icon">
               <Inbox />
@@ -207,20 +323,17 @@ export function IgazolasokList({ variant }: IgazolasokListProps) {
           </Empty>
         ) : (
           <div className="space-y-2">
-            {igazolasok.map((igazolas) => (
-              <Item key={igazolas.id} className="p-3 rounded-lg border">
-                <ItemMedia variant="icon">
-                  {getStatusIcon(igazolas.status)}
-                </ItemMedia>
-                <ItemContent>
-                  <ItemTitle>{igazolas.title}</ItemTitle>
-                  <ItemDescription className="flex items-center gap-2 text-xs">
-                    <Calendar className="h-3 w-3" />
-                    {igazolas.date}
-                    {getStatusBadge(igazolas.status)}
-                  </ItemDescription>
-                </ItemContent>
-              </Item>
+            {displayedIgazolasok.map((igazolas: Igazolas) => (
+              <StudentCardItem
+                key={igazolas.id}
+                igazolas={igazolas}
+                isLongPressActive={longPressedId === igazolas.id}
+                onClick={() => {}}
+                onLongPress={() => setLongPressedId(igazolas.id)}
+                onUndo={() => handleUndo(igazolas.id)}
+                onDismissActions={() => setLongPressedId(null)}
+                className="border"
+              />
             ))}
           </div>
         )}
@@ -228,3 +341,4 @@ export function IgazolasokList({ variant }: IgazolasokListProps) {
     </Card>
   );
 }
+

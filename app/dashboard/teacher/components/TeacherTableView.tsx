@@ -8,7 +8,7 @@ import { Igazolas, TanevRendje } from '@/lib/types';
 import { toast } from 'sonner';
 import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
 import { FTVSyncStatus } from '@/components/ui/ftv-sync-status';
-import { mapApiResponseToPeriods } from '@/lib/periods';
+import { mapApiResponseToPeriods, getImpactedPeriods } from '@/lib/periods';
 import { useFTVSync } from '@/hooks/use-ftv-sync';
 import { isAttendanceRequired } from '@/lib/attendance-utils';
 import { format } from 'date-fns';
@@ -130,6 +130,16 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
         return false; // All days are non-attendance days, filter it out
       });
     }
+
+    // Also filter out igazolások that don't overlap with any school period (0–8)
+    filtered = filtered.filter(i => {
+      const periods = i.reszletes_idopontok && i.reszletes_idopontok.length > 0
+        ? i.reszletes_idopontok.flatMap(({ eleje, vege }) =>
+            getImpactedPeriods(new Date(eleje), new Date(vege))
+          )
+        : getImpactedPeriods(new Date(i.eleje), new Date(i.vege));
+      return periods.length > 0;
+    });
     
     // Apply status filter
     if (filter === 'pending') {

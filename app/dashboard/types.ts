@@ -34,6 +34,8 @@ export interface IgazolasType {
   name: string;
   emoji: string;
   color: string;
+  /** Tailwind bg classes only – used for the emoji circle background on cards */
+  bgClass: string;
   category: string;
   beleszamit: boolean;
   iskolaerdeku: boolean;
@@ -45,6 +47,7 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     name: 'Studiós Távollét',
     emoji: '🎬',
     color: 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-500',
+    bgClass: 'bg-teal-100 dark:bg-teal-900/40',
     category: 'Iskolaérdekű Távollét',
     beleszamit: false,
     iskolaerdeku: true,
@@ -54,6 +57,7 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     name: 'Médiás Távollét',
     emoji: '📺',
     color: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-500',
+    bgClass: 'bg-blue-100 dark:bg-blue-900/40',
     category: 'Iskolaérdekű Távollét',
     beleszamit: false,
     iskolaerdeku: true,
@@ -63,6 +67,7 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     name: 'Orvosi Igazolás',
     emoji: '🏥',
     color: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-500',
+    bgClass: 'bg-red-100 dark:bg-red-900/40',
     category: 'Orvosi igazolás',
     beleszamit: true,
     iskolaerdeku: false,
@@ -72,6 +77,7 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     name: 'Rosszullét',
     emoji: '🤢',
     color: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-500',
+    bgClass: 'bg-red-100 dark:bg-red-900/40',
     category: 'Orvosi igazolás',
     beleszamit: true,
     iskolaerdeku: false,
@@ -81,6 +87,7 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     name: 'Családi Okok',
     emoji: '👨‍👩‍👧‍👦',
     color: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-500',
+    bgClass: 'bg-amber-100 dark:bg-amber-900/40',
     category: 'Szülői igazolás',
     beleszamit: true,
     iskolaerdeku: false,
@@ -90,6 +97,7 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     name: 'Közlekedés',
     emoji: '🚇',
     color: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-500',
+    bgClass: 'bg-purple-100 dark:bg-purple-900/40',
     category: 'Közlekedési probléma',
     beleszamit: true,
     iskolaerdeku: false,
@@ -99,6 +107,7 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     name: 'OKTV',
     emoji: '🎓',
     color: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-500',
+    bgClass: 'bg-orange-100 dark:bg-orange-900/40',
     category: 'Verseny',
     beleszamit: false,
     iskolaerdeku: true,
@@ -108,6 +117,7 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     name: 'Verseny',
     emoji: '🎓',
     color: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-500',
+    bgClass: 'bg-orange-100 dark:bg-orange-900/40',
     category: 'Verseny',
     beleszamit: false,
     iskolaerdeku: true,
@@ -117,6 +127,7 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     name: 'Sítábor',
     emoji: '⛷️',
     color: 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-500',
+    bgClass: 'bg-teal-100 dark:bg-teal-900/40',
     category: 'Sítábor',
     beleszamit: true,
     iskolaerdeku: false,
@@ -126,6 +137,7 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     name: 'Utazás',
     emoji: '🏖️',
     color: 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-500',
+    bgClass: 'bg-teal-100 dark:bg-teal-900/40',
     category: 'Utazás',
     beleszamit: true,
     iskolaerdeku: false,
@@ -135,6 +147,7 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     name: 'Egyéb Igazgatói Engedély',
     emoji: '📝',
     color: 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-800/30 dark:text-gray-300 dark:border-gray-500',
+    bgClass: 'bg-gray-100 dark:bg-gray-800/40',
     category: 'Egyéb',
     beleszamit: true,
     iskolaerdeku: false,
@@ -144,6 +157,7 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     name: 'Egyéb',
     emoji: '📝',
     color: 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-800/30 dark:text-gray-300 dark:border-gray-500',
+    bgClass: 'bg-gray-100 dark:bg-gray-800/40',
     category: 'Egyéb',
     beleszamit: true,
     iskolaerdeku: false,
