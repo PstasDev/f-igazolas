@@ -98,6 +98,7 @@ import { IgazolasTableRow } from "@/app/dashboard/types"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { GoogleDriveIcon } from "./columns"
 import { apiClient } from "@/lib/api"
+import { PeriodSquaresMini } from "@/components/PeriodSquaresMini"
 import { toast } from "sonner"
 import { getPeriodSchedule } from "@/lib/periods"
 import * as XLSX from 'xlsx'
@@ -133,6 +134,33 @@ function getSubmissionDelayClass(startDate: string, submittedAt: string): string
   else {
     return "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/40"
   }
+}
+
+// Compact, flat status icon for the mobile card list (no badge chrome/shadows)
+function MobileStatusIcon({ allapot }: { allapot: string }) {
+  if (allapot === 'Elfogadva')
+    return (
+      <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-green-500/15 text-green-400" title="Elfogadva">
+        <Check className="h-3.5 w-3.5" />
+      </div>
+    )
+  if (allapot === 'Elutasítva')
+    return (
+      <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-red-500/15 text-red-400" title="Elutasítva">
+        <X className="h-3.5 w-3.5" />
+      </div>
+    )
+  if (allapot === 'Hiánypótlásra visszaküldve')
+    return (
+      <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-orange-500/15 text-orange-400" title="Hiánypótlás">
+        <AlertTriangle className="h-3.5 w-3.5" />
+      </div>
+    )
+  return (
+    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-blue-500/15 text-blue-400" title="Függőben">
+      <Clock className="h-3.5 w-3.5" />
+    </div>
+  )
 }
 
 export function DataTable<TData, TValue>({
@@ -1244,8 +1272,8 @@ export function DataTable<TData, TValue>({
           </div>
         )}
 
-        {/* Mobile Card List (< md) */}
-        <div className="md:hidden space-y-2">
+        {/* Mobile Card List (< md) - flat, compact, teacher-focused anatomy: student name & class is primary */}
+        <div className="md:hidden space-y-1.5">
           {getFilteredData.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
               <AlertCircle className="h-8 w-8" />
@@ -1256,44 +1284,44 @@ export function DataTable<TData, TValue>({
             getFilteredData.map((item) => {
               const typeInfo = getIgazolasType(item.type)
               const allapot = item.allapot
-              const statusBadge =
-                allapot === 'Elfogadva' ? <Badge variant="approved">Elfogadva</Badge> :
-                allapot === 'Elutasítva' ? <Badge variant="rejected">Elutasítva</Badge> :
-                allapot === 'Hiánypótlásra visszaküldve' ? <Badge variant="revision">Hiánypótlás</Badge> :
-                <Badge variant="pending">Függőben</Badge>
               return (
                 <div
                   key={item.id}
                   onClick={() => handleRowClick(item as TData)}
-                  className="bg-neutral-900 border border-neutral-800 rounded-lg p-3.5 cursor-pointer active:opacity-80 transition-opacity"
+                  className="flex items-center gap-2.5 bg-neutral-900 border border-neutral-800 rounded-lg p-2.5 cursor-pointer active:opacity-70 transition-opacity"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="outline" className={`${typeInfo.color} text-xs`}>
-                      <span className="mr-1">{typeInfo.emoji}</span>
-                      {typeInfo.name}
-                    </Badge>
-                    {statusBadge}
+                  {/* Left: category icon */}
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0 ${typeInfo.bgClass}`}>
+                    {typeInfo.emoji}
                   </div>
-                  <p className="font-bold text-base leading-tight mb-1 text-white">
-                    {item.studentName}{' '}
-                    <span className="text-neutral-400 font-normal text-sm">{item.studentClass}</span>
-                  </p>
-                  <div className="flex items-center gap-3 text-xs text-neutral-400 mb-1">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {item.date}
-                    </span>
-                    {item.hours && item.hours.length > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {item.hours.length} óra
-                      </span>
-                    )}
+
+                  {/* Middle: type/date, student name & reason (equal focus), period squares */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide font-semibold text-neutral-500">
+                      <span className="truncate">{typeInfo.name}</span>
+                      <span className="shrink-0">·</span>
+                      <span className="shrink-0">{item.date}</span>
+                    </div>
+                    <p className="text-white font-bold text-sm leading-tight truncate mt-0.5">
+                      {item.studentName} <span className="text-neutral-400 font-normal">{item.studentClass}</span>
+                    </p>
+                    {/* item.status maps to megjegyzes_diak (student reason) in teacher view */}
+                    <p className="text-neutral-300 text-xs font-medium leading-tight truncate mt-0.5">
+                      {item.status && item.status !== 'Nincs megjegyzés' ? item.status : <span className="text-neutral-500 italic font-normal">Nincs megjegyzés</span>}
+                    </p>
+                    <PeriodSquaresMini
+                      hours={item.hours}
+                      correctedHours={item.correctedHours}
+                      fromFTV={item.fromFTV}
+                      allapot={item.allapot}
+                      startDate={item.startDate}
+                      endDate={item.endDate}
+                      className="mt-1.5"
+                    />
                   </div>
-                  {/* item.status maps to megjegyzes_diak (student reason) in teacher view */}
-                  {item.status && item.status !== 'Nincs megjegyzés' && (
-                    <p className="text-xs text-neutral-400 line-clamp-1">{item.status}</p>
-                  )}
+
+                  {/* Right: compact status icon */}
+                  <MobileStatusIcon allapot={allapot} />
                 </div>
               )
             })
