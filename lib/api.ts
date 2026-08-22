@@ -678,6 +678,15 @@ class APIClient {
     });
   }
 
+  async manualFullFTVSync(debugPerformance: boolean = false): Promise<ManualFTVSyncResponse> {
+    const params = debugPerformance ? '?debug-performance=true' : '';
+    const result = await this.fetchWithAuth<ManualFTVSyncResponse>(`/sync/ftv/full${params}`, {
+      method: 'POST',
+    });
+    this.invalidateCachePrefix('/igazolas');
+    return result;
+  }
+
   async checkFTVRegistration(): Promise<FTVRegistrationCheckResponse> {
     return this.fetchWithAuth<FTVRegistrationCheckResponse>('/sync/ftv/check-registration');
   }

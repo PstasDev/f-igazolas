@@ -148,7 +148,7 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
     
     try {
       setSyncing(true)
-      await apiClient.manualFTVSync()
+      await apiClient.manualFullFTVSync()
       alert('FTV szinkronizáció sikeresen befejeződött!')
     } catch (err) {
       console.error('FTV sync failed:', err)
