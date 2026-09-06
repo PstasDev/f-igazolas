@@ -28,6 +28,8 @@ export interface IgazolasTableRow {
   minutesBefore?: number;
   minutesAfter?: number;
   undoed?: boolean; // Student withdrew this record; teachers must never see it
+  ftvTobbnapos?: boolean; // Part of a multi-day FTV forgatás
+  ftvForgatasVegDatum?: string | null; // ISO date - end date of the (possibly multi-day) forgatás
 }
 
 export interface IgazolasType {

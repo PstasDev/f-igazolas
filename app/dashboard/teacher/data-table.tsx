@@ -1669,6 +1669,20 @@ export function DataTable<TData, TValue>({
                                 </AlertDescription>
                               </Alert>
 
+                              {/* Multi-day forgatás notice */}
+                              {selectedRow.ftvTobbnapos && (
+                                <Alert className="border-indigo-300 dark:border-indigo-600 bg-indigo-50/50 dark:bg-indigo-900/20">
+                                  <Info className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                  <AlertTitle className="text-indigo-900 dark:text-indigo-300 font-semibold">Többnapos forgatás</AlertTitle>
+                                  <AlertDescription className="text-indigo-800 dark:text-indigo-400 text-sm">
+                                    Ez a forgatás több napon átnyúló, ez a hiányzás csak az itt jelzett napra vonatkozik.
+                                    {selectedRow.ftvForgatasVegDatum && (
+                                      <> A teljes forgatás: {new Date(selectedRow.startDate).toLocaleDateString('hu-HU')} – {new Date(selectedRow.ftvForgatasVegDatum).toLocaleDateString('hu-HU')}.</>
+                                    )}
+                                  </AlertDescription>
+                                </Alert>
+                              )}
+
                               {/* Student Correction Section - Only show if there are extra minutes */}
                               {((selectedRow.minutesBefore ?? 0) > 0 || (selectedRow.minutesAfter ?? 0) > 0) && (
                                 <div className="p-4 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-2 border-purple-300 dark:border-purple-600">

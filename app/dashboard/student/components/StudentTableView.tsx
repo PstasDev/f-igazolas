@@ -57,6 +57,8 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
     minutesBefore: igazolas.diak_extra_ido_elotte || 0,
     minutesAfter: igazolas.diak_extra_ido_utana || 0,
     undoed: igazolas.undoed || false,
+    ftvTobbnapos: igazolas.ftv_tobbnapos,
+    ftvForgatasVegDatum: igazolas.ftv_forgatas_veg_datum,
   };
 }
 

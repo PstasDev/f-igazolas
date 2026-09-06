@@ -101,6 +101,13 @@ export interface Igazolas {
   diak: boolean;
   ftv: boolean;
   korrigalt: boolean;
+  ftv_forgatas_id?: number | null;
+  /** True ha a hozzá tartozó FTV forgatás több naptári napon átnyúlik (lásd ftv_forgatas_veg_datum) */
+  ftv_tobbnapos?: boolean;
+  /** False ha a diák nem kérhet korrekciót erre a rekordra (mindig false többnapos forgatásnál) */
+  ftv_korrigalhato?: boolean;
+  /** A forgatás befejezésének dátuma (forgatas_details.end_date), többnapos forgatásnál eltér az eleje/vege napjától */
+  ftv_forgatas_veg_datum?: string | null;
   diak_extra_ido_elotte?: number;
   diak_extra_ido_utana?: number;
   imgDriveURL?: string;

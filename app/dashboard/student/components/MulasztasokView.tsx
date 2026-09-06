@@ -1694,6 +1694,20 @@ export function MulasztasokView() {
                                         </AlertDescription>
                                       </Alert>
 
+                                      {/* Multi-day forgatás notice */}
+                                      {row.ftvTobbnapos && (
+                                        <Alert className="border-indigo-300 dark:border-indigo-600 bg-indigo-50/50 dark:bg-indigo-900/20">
+                                          <Calendar className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                          <AlertTitle className="text-indigo-900 dark:text-indigo-300 font-semibold">Többnapos forgatás</AlertTitle>
+                                          <AlertDescription className="text-indigo-800 dark:text-indigo-400 text-sm">
+                                            Ez a forgatás több napon átnyúló, ez a hiányzás csak az itt jelzett napra vonatkozik.
+                                            {row.ftvForgatasVegDatum && (
+                                              <> A teljes forgatás: {new Date(row.startDate).toLocaleDateString('hu-HU')} – {new Date(row.ftvForgatasVegDatum).toLocaleDateString('hu-HU')}.</>
+                                            )}
+                                          </AlertDescription>
+                                        </Alert>
+                                      )}
+
                                       {/* Student Correction Section - Only show if there are extra minutes */}
                                       {((row.minutesBefore ?? 0) > 0 || (row.minutesAfter ?? 0) > 0) && (
                                         <div className="p-4 rounded-lg bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 border-2 border-yellow-300 dark:border-yellow-600">
@@ -1977,6 +1991,8 @@ function mapIgazolasToTableRow(igazolas: Igazolas): IgazolasTableRow {
     minutesBefore: igazolas.diak_extra_ido_elotte,
     minutesAfter: igazolas.diak_extra_ido_utana,
     bkk_verification: igazolas.bkk_verification,
+    ftvTobbnapos: igazolas.ftv_tobbnapos,
+    ftvForgatasVegDatum: igazolas.ftv_forgatas_veg_datum,
   };
 }
 
