@@ -1617,17 +1617,17 @@ export function DataTable<TData, TValue>({
                               rows={4}
                             />
                           </div>
-                        ) : ((selectedRow.correctedHours && selectedRow.correctedHours.length > 0) || (!selectedRow.fromFTV && selectedRow.status)) && (
+                        ) : ((selectedRow.correctedHours && selectedRow.correctedHours.length > 0) || (!selectedRow.fromFTV && selectedRow.reason)) && (
                           <div className="space-y-2 p-4 rounded-lg bg-muted/30">
                             {selectedRow.correctedHours && selectedRow.correctedHours.length > 0 ? (
                               <>
                                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Korrekció indoklása</Label>
-                                <p className="text-sm leading-relaxed">{selectedRow.status || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
+                                <p className="text-sm leading-relaxed">{selectedRow.reason || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
                               </>
                             ) : (
                               <>
                                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Indoklás</Label>
-                                <p className="text-sm leading-relaxed">{selectedRow.status || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
+                                <p className="text-sm leading-relaxed">{selectedRow.reason || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
                               </>
                             )}
                           </div>

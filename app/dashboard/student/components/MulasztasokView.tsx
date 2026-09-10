@@ -1756,17 +1756,17 @@ export function MulasztasokView() {
                                 )}
 
                                 {/* Indoklás / Korrekció section - only show if there's content */}
-                                {((row.correctedHours && row.correctedHours.length > 0) || (!row.fromFTV && row.status)) && (
+                                {((row.correctedHours && row.correctedHours.length > 0) || (!row.fromFTV && row.reason)) && (
                                   <div className="space-y-2 p-4 rounded-lg bg-muted/30">
                                     {row.correctedHours && row.correctedHours.length > 0 ? (
                                       <>
                                         <UILabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Korrekció indoklása</UILabel>
-                                        <p className="text-sm leading-relaxed">{row.status || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
+                                        <p className="text-sm leading-relaxed">{row.reason || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
                                       </>
                                     ) : (
                                       <>
                                         <UILabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Indoklás</UILabel>
-                                        <p className="text-sm leading-relaxed">{row.status || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
+                                        <p className="text-sm leading-relaxed">{row.reason || <span className="italic text-muted-foreground">Nincs megjegyzés</span>}</p>
                                       </>
                                     )}
                                   </div>
