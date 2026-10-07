@@ -64,7 +64,7 @@ export function StudentSidebar({ onViewChange, currentView, stats }: StudentSide
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Igazoláskezelő</span>
-                  <span className="truncate text-xs">F Tagozat</span>
+                  <span className="truncate text-xs">F Szekció</span>
                 </div>
               </Link>
             </SidebarMenuButton>

@@ -30,8 +30,8 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Igazoláskezelő - Szent László Gimnázium F Tagozat",
-  description: "Igazoláskezelő rendszer a Szent László Gimnázium F tagozata számára.",
+  title: "Igazoláskezelő - Szent László Gimnázium F Szekció",
+  description: "Igazoláskezelő rendszer a Szent László Gimnázium F Szekciójának.",
   icons: {
     icon: "/logo.svg",
   },

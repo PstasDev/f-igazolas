@@ -22,10 +22,10 @@ import {
 } from "lucide-react";
 
 export default function OsztalyfonokiUtmutato() {
-  const pageTitle = "Osztályfőnöki útmutató - Szent László Gimnázium F Tagozat";
-  const pageDescription = "Átfogó útmutató osztályfőnökök számára az igazoláskezelő rendszer használatához. Gyors műveletek, részletes elbírálás, hivatalos igazolások kezelése és diákok adminisztrációja.";
-  const pageUrl = "https://igazolas.f-tagozat.hu/utmutato/osztalyfonoki";
-  const pageImage = "https://igazolas.f-tagozat.hu/og-teacher-guide.png";
+  const pageTitle = "Osztályfőnöki útmutató - Szent László Gimnázium F Szekció";
+  const pageDescription = "Átfogó útmutató osztályfőnökök számára az igazoláskezelő rendszer használatához. Gyors műveletek, részletes elbírálás, hivatalos igazolások kezelése és diákok adminisztrációja az F Szekcióban.";
+  const pageUrl = "https://igazolas.szlg.info/utmutato/osztalyfonoki";
+  const pageImage = "https://igazolas.szlg.info/og-teacher-guide.png";
 
   return (
     <>
@@ -34,8 +34,8 @@ export default function OsztalyfonokiUtmutato() {
         <title>{pageTitle}</title>
         <meta name="title" content={pageTitle} />
         <meta name="description" content={pageDescription} />
-        <meta name="keywords" content="osztályfőnök, útmutató, igazolás, Szent László Gimnázium, F tagozat, tanár, elbírálás, hiányzás kezelés" />
-        <meta name="author" content="Szent László Gimnázium F Tagozat" />
+        <meta name="keywords" content="osztályfőnök, útmutató, igazolás, Szent László Gimnázium, F Szekció, tanár, elbírálás, hiányzás kezelés" />
+        <meta name="author" content="Szent László Gimnázium F Szekció" />
         <meta name="robots" content="index, follow" />
 
         {/* Open Graph / Facebook */}
@@ -47,7 +47,7 @@ export default function OsztalyfonokiUtmutato() {
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content="Osztályfőnöki útmutató - Igazoláskezelő rendszer" />
-        <meta property="og:site_name" content="F Tagozat Igazoláskezelő" />
+        <meta property="og:site_name" content="F Szekció Igazoláskezelő" />
         <meta property="og:locale" content="hu_HU" />
 
         {/* Twitter */}
@@ -81,7 +81,7 @@ export default function OsztalyfonokiUtmutato() {
           <div className="space-y-2">
             <h1 className="text-4xl font-bold tracking-tight">Osztályfőnöki útmutató</h1>
             <p className="text-xl text-muted-foreground">
-              Szent László Gimnázium F Tagozat - Igazoláskezelő Rendszer
+              Szent László Gimnázium F Szekció - Igazoláskezelő Rendszer
             </p>
             <p className="text-sm text-muted-foreground">
               Utoljára frissítve: 2026. július 1.
@@ -961,7 +961,7 @@ export default function OsztalyfonokiUtmutato() {
 
           {/* Footer */}
           <footer className="text-center text-sm text-muted-foreground py-8">
-            <p>Szent László Gimnázium F Tagozat</p>
+            <p>Szent László Gimnázium F Szekció</p>
             <p>Igazoláskezelő Rendszer - Osztályfőnöki útmutató</p>
             <p className="mt-2">© 2025 - Minden jog fenntartva</p>
           </footer>

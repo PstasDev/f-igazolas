@@ -21,10 +21,10 @@ import {
 } from "lucide-react";
 
 export default function TanuloiUtmutato() {
-  const pageTitle = "Tanulói útmutató - Szent László Gimnázium F Tagozat";
+  const pageTitle = "Tanulói útmutató - Szent László Gimnázium F Szekció";
   const pageDescription = "Részletes útmutató diákok számára az igazoláskezelő rendszer használatához. Új igazolás beküldése, dokumentumok csatolása, BKK/MÁV igazolások, FTV szinkronizáció és státusz követés.";
-  const pageUrl = "https://igazolas.f-tagozat.hu/utmutato/tanuloi";
-  const pageImage = "https://igazolas.f-tagozat.hu/og-student-guide.png";
+  const pageUrl = "https://igazolas.szlg.info/utmutato/tanuloi";
+  const pageImage = "https://igazolas.szlg.info/og-student-guide.png";
 
   return (
     <>
@@ -33,8 +33,8 @@ export default function TanuloiUtmutato() {
         <title>{pageTitle}</title>
         <meta name="title" content={pageTitle} />
         <meta name="description" content={pageDescription} />
-        <meta name="keywords" content="diák, tanuló, útmutató, igazolás, Szent László Gimnázium, F tagozat, hiányzás, BKK, FTV, forgatás" />
-        <meta name="author" content="Szent László Gimnázium F Tagozat" />
+        <meta name="keywords" content="diák, tanuló, útmutató, igazolás, Szent László Gimnázium, F Szekció, hiányzás, BKK, FTV, forgatás" />
+        <meta name="author" content="Szent László Gimnázium F Szekció" />
         <meta name="robots" content="index, follow" />
 
         {/* Open Graph / Facebook */}
@@ -46,7 +46,7 @@ export default function TanuloiUtmutato() {
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content="Tanulói útmutató - Igazoláskezelő rendszer" />
-        <meta property="og:site_name" content="F Tagozat Igazoláskezelő" />
+        <meta property="og:site_name" content="F Szekció Igazoláskezelő" />
         <meta property="og:locale" content="hu_HU" />
 
         {/* Twitter */}
@@ -80,7 +80,7 @@ export default function TanuloiUtmutato() {
           <div className="space-y-2">
             <h1 className="text-4xl font-bold tracking-tight">Tanulói útmutató</h1>
             <p className="text-xl text-muted-foreground">
-              Szent László Gimnázium F Tagozat - Igazoláskezelő Rendszer
+              Szent László Gimnázium F Szekció - Igazoláskezelő Rendszer
             </p>
             <p className="text-sm text-muted-foreground">
               Utoljára frissítve: 2026. július 1.
@@ -710,7 +710,7 @@ export default function TanuloiUtmutato() {
 
           {/* Footer */}
           <footer className="text-center text-sm text-muted-foreground py-8">
-            <p>Szent László Gimnázium F Tagozat</p>
+            <p>Szent László Gimnázium F Szekció</p>
             <p>Igazoláskezelő Rendszer - Tanulói útmutató</p>
             <p className="mt-2">© 2025 - Minden jog fenntartva</p>
           </footer>

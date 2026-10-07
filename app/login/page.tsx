@@ -126,9 +126,9 @@ export default function LoginPage() {
           <div className="absolute inset-0 flex h-full items-center justify-center p-10 bg-black/30 z-10">
             <div className="max-w-md text-white">
               <h2 className="text-3xl font-bold mb-4 font-serif">Szent László Gimnázium</h2>
-              <p className="text-lg mb-4">F Tagozat - Igazoláskezelő Rendszer</p>
+              <p className="text-lg mb-4">F Szekció - Igazoláskezelő Rendszer</p>
               <p className="text-white/80">
-                Digitális igazoláskezelő rendszer az F tagozat diákjai és osztályfőnökei számára.
+                Digitális igazoláskezelő rendszer az F Szekció diákjai és osztályfőnökei számára.
               </p>
             </div>
           </div>
