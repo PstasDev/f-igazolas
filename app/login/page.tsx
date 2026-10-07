@@ -8,9 +8,23 @@ import { LoginForm } from "@/components/login-form"
 import { useRole } from "@/app/context/RoleContext"
 import { useTheme } from "@/app/context/ThemeContext"
 import { Spinner } from "@/components/ui/spinner"
+import { toast } from "sonner"
 
 // Lazy load Hyperspeed to reduce initial bundle size
 const Hyperspeed = lazy(() => import("@/components/Hyperspeed"))
+
+const SSO_ERROR_MESSAGES: Record<string, string> = {
+  sso_not_configured: 'Az SSO-bejelentkezés még nincs konfigurálva.',
+  sso_unavailable: 'Az SSO-szolgáltatás jelenleg nem érhető el.',
+  sso_invalid_state: 'A bejelentkezési kérés lejárt vagy érvénytelen. Próbáld újra.',
+  sso_cancelled: 'A központi bejelentkezést megszakítottad.',
+  sso_email_not_verified: 'Az SZLG+ fiók e-mail-címe nincs megerősítve.',
+  sso_account_not_linked: 'Ehhez az SZLG+ fiókhoz nem található egyértelmű helyi felhasználó.',
+  sso_account_disabled: 'A helyi felhasználói fiók le van tiltva.',
+  sso_token_rejected: 'Az SZLG+ elutasította az alkalmazás klienshitelesítését. Ellenőrizd az SSO kliens beállításait.',
+  sso_exchange_failed: 'A bejelentkezés nem fejeződött be. Próbáld újra.',
+  sso_failed: 'Az SSO-bejelentkezés sikertelen. Próbáld újra.',
+}
 
 export default function LoginPage() {
   const { isAuthenticated, isLoading } = useRole()
@@ -20,6 +34,14 @@ export default function LoginPage() {
   const [isSpecialMode, setIsSpecialMode] = useState(false)
 
   useEffect(() => {
+    const url = new URL(window.location.href)
+    const ssoError = url.searchParams.get('sso_error')
+    if (ssoError) {
+      toast.error(SSO_ERROR_MESSAGES[ssoError] || SSO_ERROR_MESSAGES.sso_failed)
+      url.searchParams.delete('sso_error')
+      window.history.replaceState(null, '', url.toString())
+    }
+
     // Only check authentication after loading is complete
     if (!isLoading) {
       if (isAuthenticated) {
@@ -54,7 +76,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-svh lg:grid-cols-2 overflow-hidden h-screen">
+    <div className="grid min-h-svh lg:grid-cols-2">
       <div className="flex flex-col gap-4 p-6 md:p-10">
         <div className="flex justify-center gap-2 md:justify-start">
           <Link href="/" className="flex items-center gap-2 font-medium">
@@ -91,7 +113,7 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-      <div className="bg-black relative hidden lg:block overflow-hidden h-full">
+      <div className="bg-black relative hidden lg:block overflow-hidden lg:sticky lg:top-0 lg:h-svh lg:self-start">
         <div className="absolute inset-0 w-full h-full overflow-hidden">
           <Suspense fallback={<div className="w-full h-full bg-black" />}>
             <Hyperspeed 

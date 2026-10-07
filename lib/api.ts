@@ -339,6 +339,17 @@ class APIClient {
     return response;
   }
 
+  async exchangeSSOTicket(ticket: string): Promise<TokenResponse> {
+    const response = await this.fetchWithAuth<TokenResponse>('/auth/sso/exchange', {
+      method: 'POST',
+      body: JSON.stringify({ ticket }),
+    });
+
+    this.setToken(response.token);
+
+    return response;
+  }
+
   logout(): void {
     this.removeToken();
   }

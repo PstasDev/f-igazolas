@@ -8,7 +8,12 @@ export const config = {
         const envUrl = process.env.NEXT_PUBLIC_API_URL;
         if (envUrl) return envUrl;
         
-        // Fallback: detect if we're on localhost or production
+        // Development builds use the local API even when opened from another host.
+        if (process.env.NODE_ENV === 'development') {
+          return 'http://localhost:8000/api';
+        }
+
+        // Production builds use the local API only when running on localhost.
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
           return 'http://localhost:8000/api';
         }
