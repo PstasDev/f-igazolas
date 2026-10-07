@@ -115,13 +115,41 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  useEffect(() => {
-    // Check for JWT token and fetch profile on mount only
-    const initAuth = async () => {
+  const completeSSOLogin = async (ticket: string) => {
+    setIsLoading(true);
+    try {
+      await apiClient.exchangeSSOTicket(ticket);
       await fetchUserProfile();
+      if (!apiClient.getToken()) {
+        throw new Error('Nem sikerült betölteni a felhasználói profilt.');
+      }
+      await reloadConfig();
+    } catch (error) {
+      console.error('SSO login failed:', error);
+      apiClient.removeToken();
+      const url = new URL(window.location.href);
+      url.searchParams.set('sso_error', 'sso_exchange_failed');
+      window.history.replaceState(null, '', url.toString());
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Complete an SSO login if a one-time ticket is present, otherwise restore the session
+    const initAuth = async () => {
+      const url = new URL(window.location.href);
+      const ticket = url.searchParams.get('sso_ticket');
+      if (ticket) {
+        url.searchParams.delete('sso_ticket');
+        window.history.replaceState(null, '', url.toString());
+        await completeSSOLogin(ticket);
+      } else {
+        await fetchUserProfile();
+      }
     };
-    
-    initAuth();
+
+    void initAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

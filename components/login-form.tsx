@@ -13,7 +13,8 @@ import { useRouter } from "next/navigation"
 import { useRole } from "@/app/context/RoleContext"
 import { toast } from "sonner"
 import { useEffect, useState } from "react"
-import { Fingerprint, KeyRound, LogIn } from "lucide-react"
+import { Fingerprint, KeyRound, Landmark, LogIn } from "lucide-react"
+import { config } from "@/lib/config"
 import { ForgotPasswordForm } from "./forgot-password-form"
 import { FirstPasswordForm } from "./first-password-form"
 import {
@@ -39,6 +40,7 @@ export function LoginForm({
   const [showFirstPassword, setShowFirstPassword] = useState(false);
   const [passkeyAvailable, setPasskeyAvailable] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [ssoRedirecting, setSsoRedirecting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -86,6 +88,11 @@ export function LoginForm({
     } finally {
       setPasskeyLoading(false);
     }
+  };
+
+  const handleSSOLogin = () => {
+    setSsoRedirecting(true);
+    window.location.assign(`${config.api.baseUrl}/auth/sso/start`);
   };
 
   const handleForgotPassword = () => {
@@ -218,6 +225,24 @@ export function LoginForm({
           >
             <KeyRound className="mr-2 h-4 w-4" />
             Még nincs jelszavam
+          </Button>
+        </Field>
+
+        <FieldSeparator className="*:data-[slot=field-separator-content]:bg-background">
+          vagy SZLG+
+        </FieldSeparator>
+
+        <Field>
+          <Button
+            variant="outline"
+            type="button"
+            size="lg"
+            disabled={isLoading || ssoRedirecting}
+            onClick={handleSSOLogin}
+            className="w-full"
+          >
+            <Landmark className="mr-2 h-4 w-4" />
+            {ssoRedirecting ? 'Átirányítás…' : 'Bejelentkezés SZLG+-szal'}
           </Button>
         </Field>
 
