@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Button } from "@/components/ui/button"
 import { IgazolasTableRow, getIgazolasType, isMultiDayAbsence, buildCalendarGrid, getDayOfWeekShort } from "@/app/dashboard/types"
 import { BKKVerificationBadge } from "@/components/ui/BKKVerificationBadge"
-import { Calendar, FileText, ArrowUpDown, ArrowUp, ArrowDown, Clapperboard, Image } from "lucide-react"
+import { Calendar, FileText, ArrowUpDown, ArrowUp, ArrowDown, Clapperboard, Image, User, Info, CalendarClock, MousePointer2, ScrollText, Clock } from "lucide-react"
 import { QuickActionButtons } from "./components/QuickActionButtons"
 import { getPeriodSchedule } from "@/lib/periods"
 import { apiClient } from "@/lib/api"
@@ -81,6 +81,7 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide -ml-2"
         >
+          <User className="inline-block" />
           Diák
           {column.getIsSorted() === "asc" ? (
             <ArrowUp className="ml-2 h-4 w-4" />
@@ -97,7 +98,7 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
       const studentClass = row.original.studentClass
       
       return (
-        <div className="flex flex-col">
+        <div className="flex flex-col pl-2">
           <span className="font-semibold text-sm">{name}</span>
           <span className="text-xs text-muted-foreground">{studentClass}</span>
         </div>
@@ -134,7 +135,7 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
       const typeConfig = getIgazolasType(type)
       
       return (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5 pl-2">
           <Badge variant="outline" className={typeConfig.color}>
             <span className="mr-1.5">{typeConfig.emoji}</span>
             {typeConfig.name}
@@ -167,6 +168,7 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide -ml-2"
         >
+          <CalendarClock className="inline-block -ml-1 mr-1" />
           Dátum
           {column.getIsSorted() === "asc" ? (
             <ArrowUp className="ml-2 h-4 w-4" />
@@ -213,8 +215,19 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
   },
   {
     accessorKey: "hours",
-    header: "Órarend",
     size: 400, // Reduced from 600 to prevent overflow
+    header: ({ column }) => { 
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide -ml-2"
+        >
+          <Clock className="inline-block -ml-2" />
+          Órarend
+        </Button>
+      )
+    },
     cell: ({ row }) => {
       const hours = row.original.hours
       const correctedHours = row.original.correctedHours || []
@@ -375,10 +388,21 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
   },
   {
     accessorKey: "status",
-    header: "Indoklás",
     size: 300,
     minSize: 200,
     maxSize: 400,
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide -ml-2"
+        >
+          <ScrollText className="inline-block -ml-1" />
+          Indoklás
+        </Button>
+      )
+    },
     cell: ({ row }) => {
       const reason = row.getValue("status") as string
       const hasServerImage = !!row.original.image_url
@@ -424,7 +448,19 @@ export const createColumns = (actionHandlers?: ActionHandlers): ColumnDef<Igazol
   },
   {
     id: "actions",
-    header: "Műveletek",
+    header: ({ column }) => { 
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide -ml-2"
+        >
+          <MousePointer2 className="inline-block -ml-1" />
+          Műveletek
+        </Button>
+      )
+    },
+
     cell: ({ row }) => {
       const allapot = row.original.allapot
       

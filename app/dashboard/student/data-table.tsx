@@ -48,7 +48,8 @@ import {
   Search,
   Loader2,
   Upload,
-  AlertTriangle
+  AlertTriangle,
+  Type
 } from "lucide-react"
 import {
   Sheet,
@@ -138,6 +139,22 @@ function getSubmissionDelayClass(startDate: string, submittedAt: string): string
   // Over 1 month (30+ days): red
   else {
     return "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/40"
+  }
+}
+
+export function getSubmissionDelayForegroundClass(startDate: string, submittedAt: string): string {
+  const absenceDate = new Date(startDate)
+  const submitDate = new Date(submittedAt)
+
+  const diffTime = submitDate.getTime() - absenceDate.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+  if (diffDays < 14) {
+    return ""
+  } else if (diffDays < 30) {
+    return "text-yellow-700 dark:text-yellow-300 font-semibold"
+  } else {
+    return "text-red-700 dark:text-red-300 font-extrabold"
   }
 }
 
@@ -851,7 +868,9 @@ export function DataTable<TData, TValue>({
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Hiányzás típusa</Label>
+                      <Label className="text-sm font-medium">
+                        Hiányzás típusa
+                      </Label>
                       <Select value={filterType} onValueChange={setFilterType}>
                         <SelectTrigger>
                           <SelectValue placeholder="Válassz típust" />

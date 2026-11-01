@@ -136,6 +136,22 @@ function getSubmissionDelayClass(startDate: string, submittedAt: string): string
   }
 }
 
+export function getSubmissionDelayForegroundClass(startDate: string, submittedAt: string): string {
+  const absenceDate = new Date(startDate)
+  const submitDate = new Date(submittedAt)
+
+  const diffTime = submitDate.getTime() - absenceDate.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+  if (diffDays < 14) {
+    return ""
+  } else if (diffDays < 30) {
+    return "text-yellow-700 dark:text-yellow-300"
+  } else {
+    return "text-red-700 dark:text-red-300"
+  }
+}
+
 // Compact, flat status icon for the mobile card list (no badge chrome/shadows)
 function MobileStatusIcon({ allapot }: { allapot: string }) {
   if (allapot === 'Elfogadva')

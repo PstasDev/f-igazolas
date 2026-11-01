@@ -3,6 +3,7 @@
 import React from 'react';
 import { Check, X, Clock, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 interface QuickActionButtonsProps {
   allapot: string;
@@ -19,12 +20,13 @@ const QuickActionButton = React.forwardRef<
   {
     active?: boolean;
     variant: 'approve' | 'reject' | 'pending' | 'revision';
+    tooltip: string;
     onClick?: () => void;
     children: React.ReactNode;
     size?: 'sm' | 'md' | 'lg';
     className?: string;
   }
->(({ active, variant, onClick, children, size = 'sm', className, ...props }, ref) => {
+>(({ active, variant, tooltip, onClick, children, size = 'sm', className, ...props }, ref) => {
   const baseClasses = cn(
     "relative inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 ease-out",
     "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background",
@@ -56,20 +58,32 @@ const QuickActionButton = React.forwardRef<
   };
 
   return (
-    <button
-      ref={ref}
-      className={cn(baseClasses, sizeClasses[size], variantClasses[variant])}
-      onClick={onClick}
-      {...props}
-    >
-      {/* Subtle glow effect for active state */}
-      {active && (
-        <div className="absolute inset-0 rounded-lg opacity-20 blur-sm bg-gradient-to-br from-white via-white/50 to-transparent" />
-      )}
-      <div className="relative z-10 flex items-center justify-center">
-        {children}
-      </div>
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          ref={ref}
+          aria-label={tooltip}
+          className={cn(baseClasses, sizeClasses[size], variantClasses[variant])}
+          onClick={onClick}
+          {...props}
+        >
+          {/* Subtle glow effect for active state */}
+          {active && (
+            <div className="absolute inset-0 rounded-lg opacity-20 blur-sm bg-gradient-to-br from-white via-white/50 to-transparent" />
+          )}
+          <div className="relative z-10 flex items-center justify-center">
+            {children}
+          </div>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        sideOffset={6}
+        className="border border-slate-700 bg-slate-900 px-3 py-2 font-medium text-white shadow-lg dark:border-slate-300 dark:bg-slate-100 dark:text-slate-900"
+      >
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
   );
 });
 
@@ -88,6 +102,7 @@ export function QuickActionButtons({
     <div className={cn("flex items-center gap-1.5", className)}>
       <QuickActionButton
         variant="approve"
+        tooltip="Igazolás elfogadása"
         active={allapot === 'Elfogadva'}
         onClick={onApprove}
         size={size}
@@ -98,6 +113,7 @@ export function QuickActionButtons({
       {onRequestRevision && (
         <QuickActionButton
           variant="revision"
+          tooltip="Hiánypótlás kérése"
           active={allapot === 'Hiánypótlásra visszaküldve'}
           onClick={onRequestRevision}
           size={size}
@@ -108,6 +124,7 @@ export function QuickActionButtons({
 
       <QuickActionButton
         variant="reject"
+        tooltip="Igazolás elutasítása"
         active={allapot === 'Elutasítva'}
         onClick={onReject}
         size={size}
@@ -117,6 +134,7 @@ export function QuickActionButtons({
       
       <QuickActionButton
         variant="pending"
+        tooltip="Függőben hagyás"
         active={allapot === 'Függőben'}
         onClick={onSetPending}
         size={size}

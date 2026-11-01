@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { IgazolasTableRow, getIgazolasType, isMultiDayAbsence, buildCalendarGrid, getDayOfWeekShort } from "@/app/dashboard/types"
 import { BKKVerificationBadge } from "@/components/ui/BKKVerificationBadge"
-import { Calendar, ArrowUpDown, ArrowUp, ArrowDown, Clapperboard, FileText, Image } from "lucide-react"
+import { Calendar, ArrowUpDown, ArrowUp, ArrowDown, Clapperboard, FileText, Image, Info, CalendarClock, Clock, ScrollText } from "lucide-react"
 import { getPeriodSchedule } from "@/lib/periods"
 import { apiClient } from "@/lib/api"
 import { toast } from "sonner"
+import { getSubmissionDelayForegroundClass } from "@/app/dashboard/student/data-table"
 
 // Google Drive SVG Icon Component (kept for backwards-compatible legacy links)
 const GoogleDriveIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
@@ -73,7 +74,7 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
       const typeConfig = getIgazolasType(type)
       
       return (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5 pl-2">
           <Badge variant="outline" className={typeConfig.color}>
             <span className="mr-1.5">{typeConfig.emoji}</span>
             {typeConfig.name}
@@ -106,6 +107,7 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide -ml-2"
         >
+          <CalendarClock className="inline-block -ml-1" />
           Dátum
           {column.getIsSorted() === "asc" ? (
             <ArrowUp className="ml-2 h-4 w-4" />
@@ -152,8 +154,17 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
   },
   {
     accessorKey: "hours",
-    header: "Órarend",
     size: 400,
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide -ml-2 flex flex-row items-center"
+      >
+        <Clock className="inline-block -ml-2" />
+        Órarend
+      </Button>
+    ),
     cell: ({ row }) => {
       const hours = row.original.hours
       const correctedHours = row.original.correctedHours || []
@@ -314,10 +325,21 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
   },
   {
     accessorKey: "reason",
-    header: "Indoklás",
     size: 300,
     minSize: 200,
     maxSize: 400,
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 hover:bg-transparent font-bold text-xs uppercase tracking-wide -ml-2"
+        >
+          <ScrollText className="inline-block -ml-2" />
+          Indoklás
+        </Button>
+      )
+    },
     cell: ({ row }) => {
       const reason = row.getValue("reason") as string
       const hasServerImage = !!row.original.image_url
@@ -441,7 +463,11 @@ export const studentColumns: ColumnDef<IgazolasTableRow>[] = [
     },
     cell: ({ row }) => {
       const date = new Date(row.getValue("submittedAt"))
-      return <div className="text-xs text-muted-foreground">{date.toLocaleDateString('hu-HU')}</div>
+      
+      const startDate = row.original.startDate
+      const foregroundClass = getSubmissionDelayForegroundClass(startDate, row.getValue("submittedAt"))
+
+      return <div className={`text-xs text-muted-foreground ${foregroundClass}`}>{date.toLocaleDateString('hu-HU')}</div>
     },
     enableSorting: true,
   },
