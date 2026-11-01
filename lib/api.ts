@@ -47,6 +47,7 @@ import type {
   IgazolasImageUploadResponse,
   IgazolasImageDeleteResponse,
 } from './types';
+import type { BKKDisruptionHistoryEntry } from './bkk-types';
 import { SystemMessage } from './system-message-types';
 import type {
   ChangeNote,
@@ -435,6 +436,14 @@ class APIClient {
     return this.fetchWithAuth<Igazolas[]>(`/igazolas/my?${params.toString()}`);
   }
 
+  async getBKKDisruptionHistory(date: string): Promise<BKKDisruptionHistoryEntry[]> {
+    const params = new URLSearchParams({ date });
+    const response = await this.fetchWithAuth<{ alerts: BKKDisruptionHistoryEntry[] }>(
+      `/bkk/disruptions/history?${params.toString()}`
+    );
+    return response.alerts;
+  }
+
   async getIgazolas(igazolasId: number): Promise<Igazolas> {
     return this.fetchWithAuth<Igazolas>(`/igazolas/${igazolasId}`);
   }
@@ -445,6 +454,7 @@ class APIClient {
       body: JSON.stringify(data),
     });
     this.invalidateCachePrefix('/igazolas');
+    this.invalidateCachePrefix('/bkk/disruptions/history');
     return result;
   }
 
@@ -459,6 +469,7 @@ class APIClient {
       body: JSON.stringify({ allapot, megjegyzes_tanar }),
     });
     this.invalidateCachePrefix('/igazolas');
+    this.invalidateCachePrefix('/bkk/disruptions/history');
     return result;
   }
 
@@ -467,6 +478,7 @@ class APIClient {
       method: 'DELETE',
     });
     this.invalidateCachePrefix('/igazolas');
+    this.invalidateCachePrefix('/bkk/disruptions/history');
     return result;
   }
 
@@ -480,6 +492,7 @@ class APIClient {
       body: JSON.stringify(data),
     });
     this.invalidateCachePrefix('/igazolas');
+    this.invalidateCachePrefix('/bkk/disruptions/history');
     return result;
   }
 
@@ -489,6 +502,7 @@ class APIClient {
       method: 'POST',
     });
     this.invalidateCachePrefix('/igazolas');
+    this.invalidateCachePrefix('/bkk/disruptions/history');
     return result;
   }
 

@@ -8,6 +8,9 @@ import { ProcessedBKKAlert } from '@/lib/bkk-types';
 interface BKKAlertCardProps {
   alert: ProcessedBKKAlert;
   isSelected?: boolean;
+  hasRelatedIgazolas?: boolean;
+  isHistorical?: boolean;
+  otherStudentCount?: number;
   onClick?: () => void;
   onDetailsClick?: () => void;
 }
@@ -15,6 +18,9 @@ interface BKKAlertCardProps {
 export const BKKAlertCard: React.FC<BKKAlertCardProps> = ({ 
   alert, 
   isSelected = false, 
+  hasRelatedIgazolas = false,
+  isHistorical = false,
+  otherStudentCount = 0,
   onClick,
   onDetailsClick
 }) => {
@@ -55,6 +61,9 @@ export const BKKAlertCard: React.FC<BKKAlertCardProps> = ({
           {/* Body with description and details button */}
           <BKKAlertCardBody 
             alert={alert}
+            hasRelatedIgazolas={hasRelatedIgazolas}
+            isHistorical={isHistorical}
+            otherStudentCount={otherStudentCount}
             onDetailsClick={handleDetailsClick}
             className="flex-1"
           />

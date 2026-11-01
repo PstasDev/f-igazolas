@@ -55,6 +55,13 @@ const INITIAL_FORM_DATA: FormData = {
   megjegyzes_diak: '',
 };
 
+const getLocalDateString = (date = new Date()): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const IMAGE_MAX_SIZE_MB = 10;
 const IMAGE_ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -69,6 +76,7 @@ export function MultiStepIgazolasForm() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showBKKSelector, setShowBKKSelector] = useState(false);
+  const [pendingQuickBkkPrefill, setPendingQuickBkkPrefill] = useState(false);
   const [prefilledFromMulasztasok, setPrefilledFromMulasztasok] = useState(false);
   const [coveredMulasztasok, setCoveredMulasztasok] = useState<Array<{id: number, datum: string, ora: number, tantargy: string}>>([]);
   const [editMode, setEditMode] = useState(false);
@@ -115,7 +123,19 @@ export function MultiStepIgazolasForm() {
     if (prefillData) {
       try {
         const parsed = JSON.parse(prefillData);
-        if (parsed.from_mulasztasok) {
+        if (parsed.from_bkk_quick) {
+          const date = typeof parsed.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
+            ? parsed.date
+            : getLocalDateString();
+
+          setFormData({
+            ...INITIAL_FORM_DATA,
+            date,
+            endDate: date,
+            selectedPeriods: [0, 1],
+          });
+          setPendingQuickBkkPrefill(true);
+        } else if (parsed.from_mulasztasok) {
           // Extract date and period range from the prefilled datetime strings
           const startDate = new Date(parsed.eleje);
           const endDate = new Date(parsed.vege);
@@ -255,6 +275,25 @@ export function MultiStepIgazolasForm() {
 
     loadIgazolasTipusok();
   }, []);
+
+  useEffect(() => {
+    if (isLoading || !pendingQuickBkkPrefill) return;
+
+    const koezlekedesType = filteredIgazolasTipusok.find((type) => {
+      const normalizedName = type.nev.trim().toLocaleLowerCase('hu-HU');
+      return normalizedName === 'közlekedés' || normalizedName === 'közlekedési probléma';
+    });
+
+    if (!koezlekedesType) {
+      toast.error('A Közlekedés igazolástípus nem érhető el ehhez az osztályhoz.');
+      setPendingQuickBkkPrefill(false);
+      return;
+    }
+
+    setFormData((previous) => ({ ...previous, tipus: koezlekedesType.id }));
+    setPendingQuickBkkPrefill(false);
+    setShowBKKSelector(true);
+  }, [filteredIgazolasTipusok, isLoading, pendingQuickBkkPrefill]);
 
   const updateFormData = (updates: Partial<FormData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
@@ -1203,6 +1242,7 @@ export function MultiStepIgazolasForm() {
         <BKKDisruptionSelector
           onSelectDisruption={handleBKKDisruptionSelect}
           onClose={() => setShowBKKSelector(false)}
+          selectedDate={formData.date}
         />
       )}
       {!editMode && (

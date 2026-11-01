@@ -113,6 +113,22 @@ export interface ProcessedBKKAlert {
   cause: string;
 }
 
+export type SerializedBKKDisruptionAlert = Omit<ProcessedBKKAlert, 'startTime' | 'endTime'> & {
+  startTime?: string;
+  endTime?: string;
+};
+
+export interface BKKDisruptionHistoryEntry {
+  alert: SerializedBKKDisruptionAlert;
+  otherStudentCount: number;
+}
+
+export type ProcessedBKKAlertWithHistory = ProcessedBKKAlert & {
+  hasRelatedIgazolas?: boolean;
+  isHistorical?: boolean;
+  otherStudentCount?: number;
+};
+
 export interface ProcessedVehiclePosition {
   vehicleId: string;
   routeId: string;

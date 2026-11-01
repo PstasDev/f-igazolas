@@ -13,6 +13,7 @@ import { useFTVSync } from '@/hooks/use-ftv-sync';
 import { isAttendanceRequired } from '@/lib/attendance-utils';
 import { format } from 'date-fns';
 import { Plus } from 'lucide-react';
+import BKKLogo from '@/components/icons/BKKLogo';
 import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
 import { TOUR_IDS, igazolasokStudentTourSteps } from '@/lib/onboarding-tours';
 import { HiddenScheduleDaysNotice } from '@/app/dashboard/components/HiddenScheduleDaysNotice';
@@ -185,14 +186,40 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
             </p>
           </div>
         </div>
-        <Button 
-          onClick={() => window.location.hash = 'new'}
-          className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white dark:text-white transition-all duration-200 ease-in-out hover:transform hover:scale-[1.02] active:scale-[0.98] shrink-0"
-          data-tour="igazolasok-student-new-button"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Új igazolás
-        </Button>
+        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
+          <Button
+            onClick={() => window.location.hash = 'new'}
+            className="w-full bg-green-600 text-white transition-all duration-200 ease-in-out hover:scale-[1.02] hover:bg-green-700 active:scale-[0.98] dark:text-white sm:w-auto"
+            data-tour="igazolasok-student-new-button"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Új igazolás
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-2 border-blue-300 text-blue-800 hover:bg-blue-50 hover:text-blue-900 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-950 sm:w-auto"
+            onClick={() => {
+              const today = new Date();
+              const localDate = [
+                today.getFullYear(),
+                String(today.getMonth() + 1).padStart(2, '0'),
+                String(today.getDate()).padStart(2, '0'),
+              ].join('-');
+
+              sessionStorage.setItem('prefill_igazolas', JSON.stringify({
+                from_bkk_quick: true,
+                date: localDate,
+              }));
+              window.location.hash = 'new';
+            }}
+          >
+            <span className="flex h-5 w-5 items-center justify-center rounded-sm bg-white dark:bg-slate-900">
+              <BKKLogo size={20} />
+            </span>
+            BKK gyorsigazolás
+          </Button>
+        </div>
       </div>
       <div className="min-w-0" data-tour="igazolasok-student-table">
         {isLoading ? (

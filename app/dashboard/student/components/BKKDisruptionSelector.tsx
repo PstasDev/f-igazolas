@@ -30,8 +30,11 @@ import {
 } from 'lucide-react';
 import { BKKDataProcessor } from '@/lib/bkk-processor';
 import { bkkDataManager, type BKKDataLoadingStage } from '@/lib/bkk-data-manager';
-import { 
+import { apiClient } from '@/lib/api';
+import {
   ProcessedBKKAlert, 
+  ProcessedBKKAlertWithHistory,
+  BKKDisruptionHistoryEntry,
   ProcessedVehiclePosition, 
   getVehicleTypeName,
   getBKKColors,
@@ -43,6 +46,7 @@ import {
 interface BKKDisruptionSelectorProps {
   onSelectDisruption: (disruption: ProcessedBKKAlert | ProcessedVehiclePosition, type: 'alert' | 'vehicle') => void;
   onClose?: () => void;
+  selectedDate?: string;
 }
 
 interface UserLocation {
@@ -63,56 +67,149 @@ const BKK_LOADING_STEPS = [
     description: 'Forgalmi riasztások, járműpozíciók és késési információk lekérése a BKK-tól.',
   },
   {
+    stage: 'historical-data',
+    title: 'Korábbi igazolások keresése',
+    description: 'Megnézzük, mely mentett BKK-zavarok érintették a kiválasztott napot.',
+  },
+  {
     stage: 'processing',
     title: 'Adatok feldolgozása',
     description: 'A járművek és a járatazonosítók összerendelése, majd a lista előkészítése.',
   },
 ] as const;
 
-export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisruptionSelectorProps) {
-  const [alerts, setAlerts] = useState<ProcessedBKKAlert[]>([]);
+const getAlertIdentity = (alert: ProcessedBKKAlert): string => {
+  const startDate = alert.startTime instanceof Date ? alert.startTime.toISOString().slice(0, 10) : '';
+  if (alert.id) return `id:${alert.id}`;
+  return `fallback:${alert.title.toLocaleLowerCase('hu-HU')}|${[...alert.affectedRoutes].sort().join(',')}|${startDate}`;
+};
+
+const asDate = (value?: string): Date | undefined => {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+};
+
+const mergeAlertsWithHistory = (
+  liveAlerts: ProcessedBKKAlert[],
+  historyEntries: BKKDisruptionHistoryEntry[]
+): ProcessedBKKAlertWithHistory[] => {
+  const merged = new Map<string, ProcessedBKKAlertWithHistory>();
+
+  historyEntries.forEach(({ alert, otherStudentCount }) => {
+    const savedAlert: ProcessedBKKAlert = {
+      ...alert,
+      title: cleanBKKText(alert.title),
+      description: cleanBKKText(alert.description),
+      startTime: asDate(alert.startTime),
+      endTime: asDate(alert.endTime),
+    };
+    const key = getAlertIdentity(savedAlert);
+    const existing = merged.get(key);
+
+    merged.set(key, {
+      ...(existing ?? savedAlert),
+      hasRelatedIgazolas: true,
+      isHistorical: true,
+      otherStudentCount: Math.max(existing?.otherStudentCount ?? 0, otherStudentCount),
+    });
+  });
+
+  liveAlerts.forEach((alert) => {
+    const key = getAlertIdentity(alert);
+    const savedAlert = merged.get(key);
+    merged.set(key, {
+      ...alert,
+      hasRelatedIgazolas: savedAlert?.hasRelatedIgazolas ?? false,
+      isHistorical: false,
+      otherStudentCount: savedAlert?.otherStudentCount ?? 0,
+    });
+  });
+
+  return [...merged.values()];
+};
+
+const isAlertRelevantOnDate = (alert: ProcessedBKKAlert, selectedDate: string): boolean => {
+  const [year, month, day] = selectedDate.split('-').map(Number);
+  if (!year || !month || !day) return false;
+
+  const dayStart = new Date(year, month - 1, day, 0, 0, 0, 0);
+  const dayEnd = new Date(year, month - 1, day, 23, 59, 59, 999);
+  const start = alert.startTime;
+  const end = alert.endTime;
+
+  if (!start) return true;
+  return start <= dayEnd && (!end || end >= dayStart);
+};
+
+export function BKKDisruptionSelector({ onSelectDisruption, onClose, selectedDate }: BKKDisruptionSelectorProps) {
+  const [alerts, setAlerts] = useState<ProcessedBKKAlertWithHistory[]>([]);
   const [vehicles, setVehicles] = useState<ProcessedVehiclePosition[]>([]);
   const [nearbyVehicles, setNearbyVehicles] = useState<ProcessedVehiclePosition[]>([]);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
-  const [loadingStage, setLoadingStage] = useState<BKKDataLoadingStage | 'fallback'>('static-data');
+  const [loadingStage, setLoadingStage] = useState<BKKDataLoadingStage | 'historical-data' | 'fallback'>('static-data');
   const [locationError, setLocationError] = useState<string | null>(null);
   const [selectedAlert, setSelectedAlert] = useState<ProcessedBKKAlert | null>(null);
   const [selectedVehicle, setSelectedVehicleState] = useState<ProcessedVehiclePosition | null>(null);
   const [vehicleTypeFilter, setVehicleTypeFilter] = useState<'all' | 'busz' | 'villamos' | 'metro' | 'hev' | 'ejszakai' | 'troli' | 'hajo' | 'vonat' | 'kesik'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Load BKK data using the singleton data manager to prevent multiple network requests
+  // Load live data and date-matching saved disruptions in parallel.
   useEffect(() => {
+    let cancelled = false;
+
     const loadBKKData = async () => {
+      setIsLoadingData(true);
+
+      let historyLoaded = !selectedDate;
+      const historyPromise: Promise<BKKDisruptionHistoryEntry[]> = selectedDate
+        ? apiClient.getBKKDisruptionHistory(selectedDate)
+            .then((entries) => {
+              historyLoaded = true;
+              return entries;
+            })
+            .catch((error) => {
+              historyLoaded = true;
+              console.warn('BKKDisruptionSelector: Failed to load saved disruption history:', error);
+              return [];
+            })
+        : Promise.resolve([]);
+
+      const reportProgress = (stage: BKKDataLoadingStage) => {
+        if (cancelled) return;
+        if ((stage === 'processing' || stage === 'cached') && !historyLoaded) {
+          setLoadingStage('historical-data');
+          return;
+        }
+        setLoadingStage(stage === 'cached' ? 'processing' : stage);
+      };
+
       try {
-        setIsLoadingData(true);
-        
-        // Use the singleton data manager which handles caching and prevents duplicate requests
-        const { alerts: processedAlerts, vehicles: processedVehicles } = await bkkDataManager.initializeData(
-          false,
-          (stage) => setLoadingStage(stage)
-        );
-        
-        // Process alerts
-        const activeAlerts = BKKDataProcessor.getActiveAlerts(processedAlerts);
-        
-        // Clean up text encoding issues in all alerts
-        const cleanedAlerts = activeAlerts.map(alert => ({
+        const [{ alerts: processedAlerts, vehicles: processedVehicles }, savedDisruptions] = await Promise.all([
+          bkkDataManager.initializeData(false, reportProgress),
+          historyPromise,
+        ]);
+
+        const dateRelevantAlerts = selectedDate
+          ? processedAlerts.filter(alert => isAlertRelevantOnDate(alert, selectedDate))
+          : BKKDataProcessor.getActiveAlerts(processedAlerts);
+        const cleanedAlerts = dateRelevantAlerts.map(alert => ({
           ...alert,
           title: cleanBKKText(alert.title),
           description: cleanBKKText(alert.description)
         }));
-        
-        setAlerts(cleanedAlerts);
+
+        if (cancelled) return;
+        setAlerts(mergeAlertsWithHistory(cleanedAlerts, savedDisruptions));
         setVehicles(processedVehicles);
-        
+        setLoadingStage('processing');
         console.log(`BKKDisruptionSelector: Loaded ${cleanedAlerts.length} alerts and ${processedVehicles.length} vehicles`);
-        
       } catch (error) {
         console.error('BKKDisruptionSelector: Failed to load BKK data:', error);
-        setLoadingStage('fallback');
+        if (!cancelled) setLoadingStage('fallback');
+        const savedDisruptions = await historyPromise;
         
         // Final fallback: try to load example data directly
         try {
@@ -120,32 +217,39 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
           const alertsResponse = await fetch('/BKK Examples/Alerts.txt');
           const alertsText = await alertsResponse.text();
           const processedAlerts = await BKKDataProcessor.parseAlertsFromText(alertsText);
-          const activeAlerts = BKKDataProcessor.getActiveAlerts(processedAlerts);
+          const dateRelevantAlerts = selectedDate
+            ? processedAlerts.filter(alert => isAlertRelevantOnDate(alert, selectedDate))
+            : BKKDataProcessor.getActiveAlerts(processedAlerts);
           
-          const cleanedAlerts = activeAlerts.map(alert => ({
+          const cleanedAlerts = dateRelevantAlerts.map(alert => ({
             ...alert,
             title: cleanBKKText(alert.title),
             description: cleanBKKText(alert.description)
           }));
           
-          setAlerts(cleanedAlerts);
-          
           const vehiclesResponse = await fetch('/BKK Examples/VehiclePositions.txt');
           const vehiclesText = await vehiclesResponse.text();
           const processedVehicles = await BKKDataProcessor.parseVehiclePositionsFromText(vehiclesText);
+
+          if (cancelled) return;
+          setAlerts(mergeAlertsWithHistory(cleanedAlerts, savedDisruptions));
           setVehicles(processedVehicles);
           
           console.log('BKKDisruptionSelector: Successfully loaded fallback example data');
         } catch (fallbackError) {
           console.error('BKKDisruptionSelector: Failed to load fallback data:', fallbackError);
+          if (!cancelled) setAlerts(mergeAlertsWithHistory([], savedDisruptions));
         }
       } finally {
-        setIsLoadingData(false);
+        if (!cancelled) setIsLoadingData(false);
       }
     };
     
     loadBKKData();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate]);
 
   // Request user location
   const requestLocation = async () => {
@@ -391,7 +495,11 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
         : 0
     }))
     .sort((a, b) => {
-      // If searching, sort by relevance first, then by priority
+      // Alerts already linked to submitted justifications are shown first.
+      const existingJustificationSort = Number(Boolean(b.alert.hasRelatedIgazolas)) - Number(Boolean(a.alert.hasRelatedIgazolas));
+      if (existingJustificationSort !== 0) return existingJustificationSort;
+
+      // Preserve the existing relevance and BKK priority ordering afterwards.
       if (searchTerm) {
         if (b.relevance !== a.relevance) return b.relevance - a.relevance;
       }
@@ -455,7 +563,10 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
   };
 
   const isMobile = useIsMobile();
-  const currentLoadingStepIndex = BKK_LOADING_STEPS.findIndex(step => step.stage === loadingStage);
+  const visibleLoadingSteps = selectedDate
+    ? BKK_LOADING_STEPS
+    : BKK_LOADING_STEPS.filter(step => step.stage !== 'historical-data');
+  const currentLoadingStepIndex = visibleLoadingSteps.findIndex(step => step.stage === loadingStage);
 
   if (isLoadingData) {
     return (
@@ -490,7 +601,7 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
               </div>
             ) : (
               <div className="space-y-3">
-                {BKK_LOADING_STEPS.map((step, index) => {
+                {visibleLoadingSteps.map((step, index) => {
                   const isComplete = loadingStage === 'cached' || index < currentLoadingStepIndex;
                   const isCurrent = index === currentLoadingStepIndex;
 
@@ -526,7 +637,7 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
                   ? 'Kérjük, várj egy pillanatot.'
                   : loadingStage === 'cached'
                     ? 'Friss, gyorsítótárazott adatok használata.'
-                    : `Betöltési lépés: ${currentLoadingStepIndex + 1} / ${BKK_LOADING_STEPS.length}`}
+                    : `Betöltési lépés: ${currentLoadingStepIndex + 1} / ${visibleLoadingSteps.length}`}
             </p>
           </div>
         </DialogContent>
@@ -681,22 +792,29 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
                       <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium text-gray-900 dark:text-gray-100 mb-2`}>
                         {searchTerm || vehicleTypeFilter !== 'all' 
                           ? 'Nincs találat' 
-                          : 'Nincsenek aktív forgalmi zavarok'
+                          : selectedDate
+                            ? 'Nincsenek rögzített zavarok erre a napra'
+                            : 'Nincsenek aktív forgalmi zavarok'
                         }
                       </h3>
                       <p className={`text-gray-500 dark:text-gray-400 ${isMobile ? 'text-sm px-4' : ''}`}>
                         {searchTerm || vehicleTypeFilter !== 'all' 
                           ? 'Próbálj meg másik keresési feltételt vagy szűrőt'
-                          : 'Jelenleg minden BKK jármű a menetrend szerint közlekedik'
+                          : selectedDate
+                            ? 'A kiválasztott napon nem találtunk élő vagy korábban elmentett BKK-forgalmi zavart.'
+                            : 'Jelenleg minden BKK jármű a menetrend szerint közlekedik'
                         }
                       </p>
                     </div>
                   ) : (
                     filteredAlerts.map((alert) => (
                       <BKKAlertCard
-                        key={alert.id}
+                        key={getAlertIdentity(alert)}
                         alert={alert}
-                        isSelected={selectedAlert?.id === alert.id}
+                        isSelected={selectedAlert ? getAlertIdentity(selectedAlert) === getAlertIdentity(alert) : false}
+                        hasRelatedIgazolas={alert.hasRelatedIgazolas}
+                        isHistorical={alert.isHistorical}
+                        otherStudentCount={alert.otherStudentCount}
                         onClick={() => handleSelectAlert(alert)}
                       />
                     ))
