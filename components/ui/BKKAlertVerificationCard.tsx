@@ -15,7 +15,71 @@ import {
 } from '@/lib/bkk-verification-schema';
 import { getBKKColors, getVehicleTypeName } from '@/lib/bkk-types';
 import { formatHungarianRoutes } from '@/lib/hungarian-grammar';
-import { ExternalLink, Clock } from 'lucide-react';
+import { renderGroupedRouteBadges } from '@/components/ui/BKKAlertCardHeader';
+import { Badge } from '@/components/ui/badge';
+import { AlertTriangle, Clock, ExternalLink, Info, Route, Wrench } from 'lucide-react';
+
+const CATEGORY_LABELS: Record<string, string> = {
+  villamos: 'Villamos',
+  hev: 'HÉV',
+  busz: 'Autóbusz',
+  metro: 'Metró',
+  ejszakai: 'Éjszakai járat',
+  troli: 'Trolibusz',
+  hajo: 'Hajó',
+  vonat: 'Vonat',
+};
+
+const EFFECT_PRESENTATION: Record<string, { label: string; variant: 'destructive' | 'warning' | 'info' | 'secondary' }> = {
+  NO_SERVICE: { label: 'Nem közlekedik / Pótlóbusz jár', variant: 'destructive' },
+  DETOUR: { label: 'Terelve közlekedik', variant: 'warning' },
+  SIGNIFICANT_DELAYS: { label: 'Megnövekedett menetidő', variant: 'warning' },
+  REDUCED_SERVICE: { label: 'Ritkábban közlekedik', variant: 'info' },
+  ADDITIONAL_SERVICE: { label: 'Sűrített közlekedés', variant: 'info' },
+  MODIFIED_SERVICE: { label: 'Módosított közlekedés', variant: 'secondary' },
+  OTHER_EFFECT: { label: 'Egyéb hatás', variant: 'secondary' },
+  UNKNOWN_EFFECT: { label: 'Ismeretlen hatás', variant: 'secondary' },
+  NO_EFFECT: { label: 'Nincs közvetlen hatás', variant: 'secondary' },
+  STOP_MOVED: { label: 'A megálló áthelyezve', variant: 'warning' },
+  ACCESSIBILITY_ISSUE: { label: 'Akadálymentességi probléma', variant: 'warning' },
+};
+
+const CAUSE_LABELS: Record<string, string> = {
+  MAINTENANCE: 'Karbantartás',
+  TECHNICAL_PROBLEM: 'Műszaki hiba',
+  WEATHER: 'Időjárási okok',
+  OTHER_CAUSE: 'Egyéb ok',
+  UNKNOWN_CAUSE: 'Ismeretlen ok',
+  STRIKE: 'Sztrájk',
+  DEMONSTRATION: 'Demonstráció',
+  ACCIDENT: 'Baleset',
+  HOLIDAY: 'Ünnepnap',
+  CONSTRUCTION: 'Építkezés',
+  POLICE_ACTIVITY: 'Rendőrségi intézkedés',
+  MEDICAL_EMERGENCY: 'Egészségügyi vészhelyzet',
+};
+
+function MetadataTile({
+  label,
+  icon,
+  children,
+  className = '',
+}: {
+  label: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`min-w-0 rounded-lg border p-3 ${className}`}>
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <div className="mt-2 min-w-0">{children}</div>
+    </div>
+  );
+}
 
 interface BKKAlertVerificationCardProps {
   bkkVerificationJson?: string | object;
@@ -88,6 +152,36 @@ export const BKKAlertVerificationCard: React.FC<BKKAlertVerificationCardProps> =
 
   if (isDisruption) {
     const disruption = bkkVerification as BKKDisruptionVerification;
+    const { priority } = disruption.alert_data;
+    const priorityPresentation = priority === 0
+      ? {
+          label: 'Magas',
+          variant: 'destructive' as const,
+          icon: <AlertTriangle className="h-3.5 w-3.5" />,
+          tileClassName: 'border-red-200/70 bg-red-50/60 dark:border-red-900/50 dark:bg-red-950/20',
+        }
+      : priority === 1
+        ? {
+            label: 'Közepes',
+            variant: 'warning' as const,
+            icon: <AlertTriangle className="h-3.5 w-3.5" />,
+            tileClassName: 'border-amber-200/70 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20',
+          }
+        : {
+            label: 'Alacsony',
+            variant: 'info' as const,
+            icon: <Info className="h-3.5 w-3.5" />,
+            tileClassName: 'border-blue-200/70 bg-blue-50/60 dark:border-blue-900/50 dark:bg-blue-950/20',
+          };
+    const effectKey = disruption.alert_data.effect?.trim().toUpperCase() ?? '';
+    const effectPresentation = EFFECT_PRESENTATION[effectKey] ?? {
+      label: effectKey ? 'Egyéb hatás' : 'Ismeretlen hatás',
+      variant: 'secondary' as const,
+    };
+    const causeKey = disruption.alert_data.cause?.trim().toUpperCase() ?? '';
+    const causeLabel = CAUSE_LABELS[causeKey] ?? (causeKey ? 'Egyéb ok' : 'Ismeretlen ok');
+    const categoryLabel = CATEGORY_LABELS[disruption.alert_data.category] ?? 'Ismeretlen járműtípus';
+    const affectedRoutes = disruption.alert_data.affected_routes;
     
     return (
       <Card className={`overflow-hidden border-0 ${className}`}>
@@ -101,7 +195,12 @@ export const BKKAlertVerificationCard: React.FC<BKKAlertVerificationCardProps> =
             <div className="bg-purple-800 text-white p-4">
               {/* Route Badges */}
               <div className="flex items-center gap-3 mb-3 flex-wrap">
-                {renderRouteBadges(disruption.alert_data.affected_routes, disruption.alert_data.category)}
+                {renderGroupedRouteBadges(affectedRoutes, disruption.alert_data.category)}
+                {affectedRoutes.length > 5 && (
+                  <span className="rounded bg-purple-700 px-2 py-1 text-xs text-purple-100">
+                    +{affectedRoutes.length - 5}
+                  </span>
+                )}
               </div>
               
               {/* Alert Title */}
@@ -137,23 +236,47 @@ export const BKKAlertVerificationCard: React.FC<BKKAlertVerificationCardProps> =
               </div>
               
               {/* Details Grid */}
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div>
-                  <Label className="text-gray-600 dark:text-gray-400 font-semibold">Prioritás</Label>
-                  <p className="text-gray-800 dark:text-gray-200">{disruption.alert_data.priority}</p>
-                </div>
-                <div>
-                  <Label className="text-gray-600 dark:text-gray-400 font-semibold">Hatás</Label>
-                  <p className="text-gray-800 dark:text-gray-200">{disruption.alert_data.effect}</p>
-                </div>
-                <div>
-                  <Label className="text-gray-600 dark:text-gray-400 font-semibold">Ok</Label>
-                  <p className="text-gray-800 dark:text-gray-200">{disruption.alert_data.cause}</p>
-                </div>
-                <div>
-                  <Label className="text-gray-600 dark:text-gray-400 font-semibold">Kategória</Label>
-                  <p className="text-gray-800 dark:text-gray-200">{getVehicleTypeName(disruption.alert_data.category)}</p>
-                </div>
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                <MetadataTile
+                  label="Prioritás"
+                  icon={priorityPresentation.icon}
+                  className={priorityPresentation.tileClassName}
+                >
+                  <Badge variant={priorityPresentation.variant} className="gap-1.5">
+                    {priorityPresentation.label}
+                  </Badge>
+                </MetadataTile>
+                <MetadataTile
+                  label="Kategória"
+                  icon={<Route className="h-3.5 w-3.5" />}
+                  className="border-purple-200/70 bg-purple-50/60 dark:border-purple-900/50 dark:bg-purple-950/20"
+                >
+                  <Badge variant="purple" className="max-w-full gap-1.5 whitespace-normal text-left leading-snug">
+                    <VehicleIcon vehicleType={disruption.alert_data.category} size={14} />
+                    {categoryLabel}
+                  </Badge>
+                </MetadataTile>
+                <MetadataTile
+                  label="Hatás"
+                  icon={<AlertTriangle className="h-3.5 w-3.5" />}
+                  className="border-amber-200/70 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20"
+                >
+                  <Badge
+                    variant={effectPresentation.variant}
+                    className="max-w-full whitespace-normal text-left leading-snug"
+                  >
+                    {effectPresentation.label}
+                  </Badge>
+                </MetadataTile>
+                <MetadataTile
+                  label="Ok"
+                  icon={<Wrench className="h-3.5 w-3.5" />}
+                  className="border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40"
+                >
+                  <Badge variant="outline" className="max-w-full whitespace-normal text-left leading-snug">
+                    {causeLabel}
+                  </Badge>
+                </MetadataTile>
               </div>
               
               {/* Official BKK Link */}
