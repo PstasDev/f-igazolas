@@ -138,18 +138,30 @@ export function FTVSyncStatus({
 
   if (compact) {
     return (
-      <div className="flex items-center gap-2">
-        {getStatusBadge()}
+      <div className="flex w-full min-w-0 items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
+            <Clapperboard className="h-3.5 w-3.5" />
+            FTV Sync
+          </span>
+          <span className="hidden whitespace-nowrap text-xs text-muted-foreground sm:inline">
+            {timeAgo}
+          </span>
+          {getStatusBadge()}
+        </div>
         {onSyncNow && (
           <Button
             size="sm"
             variant="ghost"
             onClick={onSyncNow}
             disabled={isSyncing}
-            className="h-7 gap-1"
+            aria-label={isSyncing ? 'FTV-szinkronizálás folyamatban' : 'FTV-adatok frissítése'}
+            className="h-7 shrink-0 gap-1 px-2 text-xs"
           >
             <RefreshCcw className={cn("h-3 w-3", isSyncing && "animate-spin")} />
-            Szinkronizálás
+            <span className="hidden sm:inline">
+              {isSyncing ? 'Frissítés...' : 'Frissítés'}
+            </span>
           </Button>
         )}
       </div>

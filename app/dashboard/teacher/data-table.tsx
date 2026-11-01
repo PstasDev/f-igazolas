@@ -50,6 +50,8 @@ import {
   Clapperboard,
   Download,
   ChevronDown,
+  Filter,
+  Search,
   Sparkles,
   Loader2,
   AlertTriangle
@@ -94,6 +96,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { IgazolasTableRow } from "@/app/dashboard/types"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { GoogleDriveIcon } from "./columns"
@@ -756,6 +759,12 @@ export function DataTable<TData, TValue>({
   };
 
   const selectedRowsCount = table.getFilteredSelectedRowModel().rows.length
+  const activeFilterCount =
+    (filterStatus !== "all" ? 1 : 0) +
+    (filterType !== "all" ? 1 : 0) +
+    (filterFTV !== "all" ? 1 : 0) +
+    (dateFrom ? 1 : 0) +
+    (dateTo ? 1 : 0)
 
   const getHoursDisplay = (igazolas: IgazolasTableRow) => {
     const hours = igazolas.hours
@@ -846,36 +855,110 @@ export function DataTable<TData, TValue>({
   return (
     <>
       <div className="space-y-4">
-        {/* Enhanced Filters */}
-        <Card className="border">
-          <Collapsible open={!isSearchCollapsed} onOpenChange={(open) => setIsSearchCollapsed(!open)}>
-            <CardHeader className="pb-4">
-              <CollapsibleTrigger className="w-full cursor-pointer">
-                <div className="flex items-center justify-between font-medium transition-colors">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-muted">
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
-                      </svg>
+        {/* Flat search, filters and legend toolbar */}
+        <Collapsible open={!isSearchCollapsed} onOpenChange={(open) => setIsSearchCollapsed(!open)}>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  aria-label="Keresés az igazolások között"
+                  placeholder="Diák neve, osztály, típus, státusz vagy megjegyzés alapján..."
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {searchValue && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchValue("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 transition-colors hover:bg-muted"
+                    aria-label="Keresés törlése"
+                  >
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                )}
+              </div>
+
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" size="icon" className="relative shrink-0" aria-label="Szűrők">
+                  <Filter className="h-4 w-4" />
+                  {activeFilterCount > 0 && (
+                    <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="shrink-0" aria-label="Jelmagyarázat">
+                    <Info className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="max-h-[70vh] w-80 overflow-y-auto">
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-2">
+                      <Info className="h-4 w-4" />
+                      <span className="font-semibold">Jelmagyarázat</span>
                     </div>
-                    <div className="text-left">
-                      <div className="text-lg font-semibold">Keresés és szűrés</div>
-                      <div className="text-sm text-muted-foreground">
-                        Szűrd az igazolásokat és rendezd őket oszlopfejlécre kattintással
+                    <div>
+                      <h4 className="mb-3 text-sm font-semibold text-muted-foreground">Órarend színkódok</h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="flex items-center gap-2 rounded-lg bg-muted/30 p-2">
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-blue-500 text-xs font-bold text-white shadow-sm">0</span>
+                          <span className="text-sm font-medium">Függőben / FTV importált</span>
+                        </div>
+                        <div className="flex items-center gap-2 rounded-lg bg-muted/30 p-2">
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-purple-500 text-xs font-bold text-white shadow-sm">0</span>
+                          <span className="text-sm font-medium">Diák korrekció</span>
+                        </div>
+                        <div className="flex items-center gap-2 rounded-lg bg-muted/30 p-2">
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-green-500 text-xs font-bold text-white shadow-sm">0</span>
+                          <span className="text-sm font-medium">Jóváhagyva</span>
+                        </div>
+                        <div className="flex items-center gap-2 rounded-lg bg-muted/30 p-2">
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-red-500 text-xs font-bold text-white shadow-sm">0</span>
+                          <span className="text-sm font-medium">Elutasítva</span>
+                        </div>
+                        <div className="flex items-center gap-2 rounded-lg bg-muted/30 p-2">
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded border bg-muted text-xs font-bold text-muted-foreground">0</span>
+                          <span className="text-sm font-medium">Nincs hiányzás</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="mb-3 text-sm font-semibold text-muted-foreground">Beadási késés</h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="flex items-center gap-2 rounded-lg bg-muted/30 p-2">
+                          <div className="h-5 w-5 shrink-0 rounded border bg-white dark:bg-slate-950" />
+                          <span className="text-sm font-medium">Kevesebb mint 2 hét</span>
+                        </div>
+                        <div className="flex items-center gap-2 rounded-lg bg-muted/30 p-2">
+                          <div className="h-5 w-5 shrink-0 rounded border bg-yellow-200 dark:bg-yellow-800" />
+                          <span className="text-sm font-medium">2 hét - 1 hónap</span>
+                        </div>
+                        <div className="flex items-center gap-2 rounded-lg bg-muted/30 p-2">
+                          <div className="h-5 w-5 shrink-0 rounded border bg-red-200 dark:bg-red-800" />
+                          <span className="text-sm font-medium">Több mint 1 hónap</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <CollapsibleContent>
+              <Card className="border">
+                <CardContent className="space-y-6 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">Részletes szűrők</div>
                     <Badge variant="secondary" className="px-3 py-1">
                       {table.getFilteredRowModel().rows.length} találat
                     </Badge>
-                    <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${isSearchCollapsed ? '' : 'rotate-180'}`} />
                   </div>
-                </div>
-              </CollapsibleTrigger>
-            </CardHeader>
-            <CollapsibleContent>
-              <CardContent className="pt-3 border-t space-y-6">
             {/* Quick Action - Könnyű feldolgozás */}
             <div className="p-4 rounded-lg border bg-muted/30">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
@@ -954,22 +1037,6 @@ export function DataTable<TData, TValue>({
                     'Aktiválás'
                   )}
                 </Button>
-              </div>
-            </div>
-
-            {/* Primary Search */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Keresés</Label>
-              <div className="relative">
-                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <Input
-                  placeholder="Diák neve, osztály, típus, státusz vagy megjegyzés alapján..."
-                  value={searchValue}
-                  onChange={(event) => setSearchValue(event.target.value)}
-                  className="pl-10"
-                />
               </div>
             </div>
 
@@ -1158,10 +1225,11 @@ export function DataTable<TData, TValue>({
                 </Button>
               </div>
             )}
-              </CardContent>
+                </CardContent>
+              </Card>
             </CollapsibleContent>
-          </Collapsible>
-        </Card>
+          </div>
+        </Collapsible>
 
         {/* Bulk Actions */}
         {selectedRowsCount > 0 && (
@@ -1213,80 +1281,12 @@ export function DataTable<TData, TValue>({
           </Card>
         )}
 
-        {/* Legend */}
-        <Card className="border">
-          <CardContent className="p-4">
-            <details className="group">
-              <summary className="flex cursor-pointer items-center justify-between font-medium transition-colors">
-                <div className="flex items-center gap-2">
-                  <Info className="h-4 w-4" />
-                  <span>Jelmagyarázat</span>
-                </div>
-                <svg
-                  className="h-4 w-4 transition-transform group-open:rotate-180"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </summary>
-              <div className="mt-4 pt-3 border-t space-y-6">
-                {/* Órarend színkódok */}
-                <div>
-                  <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Órarend színkódok</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-blue-500 text-white shadow-sm">0</span>
-                      <span className="text-sm font-medium">Függőben / FTV importált</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-purple-500 text-white shadow-sm">0</span>
-                      <span className="text-sm font-medium">Diák korrekció</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-green-500 text-white shadow-sm">0</span>
-                      <span className="text-sm font-medium">Jóváhagyva</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-red-500 text-white shadow-sm">0</span>
-                      <span className="text-sm font-medium">Elutasítva</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded bg-muted text-muted-foreground border">0</span>
-                      <span className="text-sm font-medium">Nincs hiányzás</span>
-                    </div>
-                  </div>
-                </div>
-                {/* Beadási késés színkódok */}
-                <div>
-                  <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Beadási késés</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <div className="w-5 h-5 border rounded bg-white dark:bg-slate-950 flex-shrink-0"></div>
-                      <span className="text-sm font-medium">Kevesebb mint 2 hét</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <div className="w-5 h-5 border rounded bg-yellow-200 dark:bg-yellow-800 flex-shrink-0"></div>
-                      <span className="text-sm font-medium">2 hét - 1 hónap</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <div className="w-5 h-5 border rounded bg-red-200 dark:bg-red-800 flex-shrink-0"></div>
-                      <span className="text-sm font-medium">Több mint 1 hónap</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </details>
-          </CardContent>
-        </Card>
-
-        {/* FTV Sync Status */}
-        {ftvSyncStatus && (
-          <div>
-            {ftvSyncStatus}
-          </div>
-        )}
+        <div className={ftvSyncStatus ? "md:overflow-hidden md:rounded-lg md:border md:bg-card" : "space-y-4"}>
+          {ftvSyncStatus && (
+            <div className="mb-3 flex min-h-9 items-center border-b bg-muted/30 px-3 py-1 md:mb-0">
+              {ftvSyncStatus}
+            </div>
+          )}
 
         {/* Mobile Card List (< md) - flat, compact, teacher-focused anatomy: student name & class is primary */}
         <div className="md:hidden space-y-1.5">
@@ -1347,9 +1347,9 @@ export function DataTable<TData, TValue>({
         {/* Table (>= md) */}
         <div className="hidden md:block">
         {/* Table */}
-        <Card>
+        <Card className={ftvSyncStatus ? "rounded-none border-0 shadow-none" : undefined}>
           <CardContent className="p-0">
-            <div className="rounded-lg overflow-hidden">
+            <div className={ftvSyncStatus ? "overflow-hidden" : "rounded-lg overflow-hidden"}>
               <div className="overflow-x-auto">
                 <Table className="min-w-full">
                   <TableHeader className="bg-muted/50">
@@ -1470,6 +1470,7 @@ export function DataTable<TData, TValue>({
           </div>
         </div>
         </div>{/* end hidden md:block */}
+        </div>
       </div>
 
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>

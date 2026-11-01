@@ -12,10 +12,10 @@ import { mapApiResponseToPeriods, getImpactedPeriods } from '@/lib/periods';
 import { useFTVSync } from '@/hooks/use-ftv-sync';
 import { isAttendanceRequired } from '@/lib/attendance-utils';
 import { format } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
 import { Plus } from 'lucide-react';
 import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
 import { TOUR_IDS, igazolasokStudentTourSteps } from '@/lib/onboarding-tours';
+import { HiddenScheduleDaysNotice } from '@/app/dashboard/components/HiddenScheduleDaysNotice';
 
 interface StudentTableViewProps {
   studentId?: string;
@@ -172,7 +172,7 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
     }
   };
 
-  const showScheduleBadge = !!schedule;
+  const showScheduleNotice = !!schedule;
 
   return (
     <div className="min-w-0 overflow-hidden">
@@ -183,11 +183,6 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
             <p className="text-sm text-muted-foreground">
               {getFilterDescription()}
             </p>
-            {showScheduleBadge && (
-              <Badge variant="outline" className="text-xs bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-900">
-                Szünnapokra vonatkozó igazolások elrejtve
-              </Badge>
-            )}
           </div>
         </div>
         <Button 
@@ -235,6 +230,7 @@ export function StudentTableView({ filter = 'all' }: StudentTableViewProps) {
           />
         )}
       </div>
+      {showScheduleNotice && <HiddenScheduleDaysNotice />}
       {filter === 'all' && (
         <OnboardingTour
           tourId={TOUR_IDS.IGAZOLASOK_STUDENT}

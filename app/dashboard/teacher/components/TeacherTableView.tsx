@@ -12,7 +12,6 @@ import { mapApiResponseToPeriods, getImpactedPeriods } from '@/lib/periods';
 import { useFTVSync } from '@/hooks/use-ftv-sync';
 import { isAttendanceRequired } from '@/lib/attendance-utils';
 import { format } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +25,7 @@ import {
 import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
 import { TOUR_IDS, igazolasokTeacherTourSteps } from '@/lib/onboarding-tours';
 import { HianyPotlasDialog } from './HianyPotlasDialog';
+import { HiddenScheduleDaysNotice } from '@/app/dashboard/components/HiddenScheduleDaysNotice';
 
 interface TeacherTableViewProps {
   filter: 'all' | 'pending' | 'approved' | 'rejected';
@@ -376,7 +376,7 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
     }
   };
 
-  const showScheduleBadge = !!schedule;
+  const showScheduleNotice = !!schedule;
 
   // Map data to table format
   const tableData = localIgazolasok.map(mapIgazolasToTableData);
@@ -445,11 +445,6 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
           <h1 className="text-xl font-semibold tracking-tight">{getTitle()}</h1>
           <div className="flex flex-wrap items-center gap-2 mt-1.5">
             <p className="text-sm text-muted-foreground">{getDescription()}</p>
-            {showScheduleBadge && (
-              <Badge variant="outline" className="text-xs bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800">
-                Szünnapokra vonatkozó igazolások elrejtve
-              </Badge>
-            )}
           </div>
         </div>
       </div>
@@ -474,13 +469,14 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
                   metadata={metadata}
                   isSyncing={isSyncing}
                   onSyncNow={syncNow}
-                  compact={false}
+                  compact
                 />
               ) : null
             }
           />
         )}
       </div>
+      {showScheduleNotice && <HiddenScheduleDaysNotice />}
     </div>
     {filter === 'all' && (
       <OnboardingTour
