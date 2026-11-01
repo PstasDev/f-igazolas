@@ -25,6 +25,8 @@ export class BKKDataProcessor {
   private static gtfsRoutes: Map<string, GTFSRoute> = new Map();
   private static gtfsStops: Map<string, GTFSStop> = new Map();
   private static gtfsLoaded = false;
+  private static gtfsLoading: Promise<void> | null = null;
+  private static reportedUnknownRouteIds = new Set<string>();
 
   // Cache for real-time data with timestamps
   private static alertsCache: {
@@ -53,22 +55,34 @@ export class BKKDataProcessor {
    */
   static async loadGTFSData(): Promise<void> {
     if (this.gtfsLoaded) return;
+    if (this.gtfsLoading) return this.gtfsLoading;
+
+    this.gtfsLoading = (async () => {
+      try {
+        // Load static route and stop data in parallel.
+        const [routesResponse, stopsResponse] = await Promise.all([
+          fetch('/BKK Examples/GTFS/routes.txt'),
+          fetch('/BKK Examples/GTFS/stops.txt'),
+        ]);
+        const [routesText, stopsText] = await Promise.all([
+          routesResponse.text(),
+          stopsResponse.text(),
+        ]);
+
+        this.parseGTFSRoutes(routesText);
+        this.parseGTFSStops(stopsText);
+
+        this.gtfsLoaded = true;
+        console.log(`Loaded ${this.gtfsRoutes.size} routes and ${this.gtfsStops.size} stops from GTFS data`);
+      } catch (error) {
+        console.error('Failed to load GTFS data:', error);
+      }
+    })();
 
     try {
-      // Load routes
-      const routesResponse = await fetch('/BKK Examples/GTFS/routes.txt');
-      const routesText = await routesResponse.text();
-      this.parseGTFSRoutes(routesText);
-
-      // Load stops
-      const stopsResponse = await fetch('/BKK Examples/GTFS/stops.txt');
-      const stopsText = await stopsResponse.text();
-      this.parseGTFSStops(stopsText);
-
-      this.gtfsLoaded = true;
-      console.log(`Loaded ${this.gtfsRoutes.size} routes and ${this.gtfsStops.size} stops from GTFS data`);
-    } catch (error) {
-      console.error('Failed to load GTFS data:', error);
+      await this.gtfsLoading;
+    } finally {
+      this.gtfsLoading = null;
     }
   }
 
@@ -182,6 +196,12 @@ export class BKKDataProcessor {
     try {
       // Ensure GTFS data is loaded
       await this.loadGTFSData();
+
+      // Fetch the delay feed alongside vehicle positions to avoid serial network waits.
+      const tripUpdatesPromise = this.fetchRealTimeTripUpdates().catch(error => {
+        console.warn('Failed to fetch trip updates, continuing without delay data:', error);
+        return '';
+      });
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
@@ -211,24 +231,19 @@ export class BKKDataProcessor {
       // Parse vehicle positions
       const vehicles = await this.parseVehiclePositionsFromText(positionsText);
       
-      // Fetch trip updates to enrich with delay information
-      try {
-        const tripUpdatesText = await this.fetchRealTimeTripUpdates();
-        if (tripUpdatesText) {
-          const delayMap = this.parseTripUpdatesForDelays(tripUpdatesText);
-          console.log(`Parsed ${delayMap.size} trip delays from updates`);
-          
-          // Enrich vehicles with delay information
-          vehicles.forEach(vehicle => {
-            if (vehicle.tripId && delayMap.has(vehicle.tripId)) {
-              const delaySeconds = delayMap.get(vehicle.tripId)!;
-              vehicle.delayMinutes = Math.round(delaySeconds / 60);
-              vehicle.hasDelay = Math.abs(vehicle.delayMinutes) > 2; // Consider it delayed if >2 minutes
-            }
-          });
-        }
-      } catch (error) {
-        console.warn('Failed to enrich with trip updates, continuing without delay data:', error);
+      // Enrich vehicles with delay information after both requests have completed.
+      const tripUpdatesText = await tripUpdatesPromise;
+      if (tripUpdatesText) {
+        const delayMap = this.parseTripUpdatesForDelays(tripUpdatesText);
+        console.log(`Parsed ${delayMap.size} trip delays from updates`);
+
+        vehicles.forEach(vehicle => {
+          if (vehicle.tripId && delayMap.has(vehicle.tripId)) {
+            const delaySeconds = delayMap.get(vehicle.tripId)!;
+            vehicle.delayMinutes = Math.round(delaySeconds / 60);
+            vehicle.hasDelay = Math.abs(vehicle.delayMinutes) > 2; // Consider it delayed if >2 minutes
+          }
+        });
       }
       
       return vehicles;
@@ -440,6 +455,13 @@ export class BKKDataProcessor {
     return this.gtfsRoutes.get(routeId) || null;
   }
 
+  private static reportUnknownRouteId(routeId: string, source: 'alerts' | 'vehicle positions'): void {
+    if (!routeId || this.gtfsRoutes.has(routeId) || this.reportedUnknownRouteIds.has(routeId)) return;
+
+    this.reportedUnknownRouteIds.add(routeId);
+    console.warn('[BKK] Ismeretlen route_id a statikus routes.txt-ben:', { routeId, source });
+  }
+
   /**
    * Get stop details from GTFS data
    */
@@ -532,6 +554,7 @@ export class BKKDataProcessor {
       const affectedRoutes = uniqueRawRoutes
         .map(routeId => {
           const gtfsRoute = this.getRouteDetails(routeId);
+          if (!gtfsRoute) this.reportUnknownRouteId(routeId, 'alerts');
           return gtfsRoute ? gtfsRoute.route_short_name : routeId;
         })
         .filter(route => route); // Remove empty routes
@@ -704,7 +727,8 @@ export class BKKDataProcessor {
         routeId = routeMatch[1];
         const gtfsRoute = this.getRouteDetails(routeId);
         routeName = gtfsRoute ? gtfsRoute.route_short_name : routeId;
-        
+        if (!gtfsRoute) this.reportUnknownRouteId(routeId, 'vehicle positions');
+
         // Determine vehicle type from GTFS route data (same logic as alerts)
         vehicleType = this.determineCategoryFromGTFSRoutes([routeId]);
       }

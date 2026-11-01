@@ -8,6 +8,8 @@
 import { BKKDataProcessor } from './bkk-processor';
 import { ProcessedBKKAlert, ProcessedVehiclePosition } from './bkk-types';
 
+export type BKKDataLoadingStage = 'static-data' | 'live-data' | 'processing' | 'cached' | 'waiting';
+
 export class BKKDataManager {
   private static instance: BKKDataManager | null = null;
   private isInitialized = false;
@@ -36,23 +38,29 @@ export class BKKDataManager {
    * Initialize or refresh BKK data
    * Multiple calls to this method will not trigger multiple network requests
    */
-  async initializeData(forceRefresh = false): Promise<{ alerts: ProcessedBKKAlert[]; vehicles: ProcessedVehiclePosition[] }> {
+  async initializeData(
+    forceRefresh = false,
+    onProgress?: (stage: BKKDataLoadingStage) => void
+  ): Promise<{ alerts: ProcessedBKKAlert[]; vehicles: ProcessedVehiclePosition[] }> {
     // If already initializing, wait for that to complete
     if (this.initializationPromise) {
       console.log('BKKDataManager: Already initializing, waiting...');
+      onProgress?.('waiting');
       await this.initializationPromise;
+      onProgress?.('processing');
       return { alerts: this.alerts, vehicles: this.vehicles };
     }
 
     // If recently initialized and not forced refresh, return cached data
     if (this.isInitialized && !forceRefresh && (Date.now() - this.lastUpdateTime) < 120000) {
       console.log('BKKDataManager: Returning cached data');
+      onProgress?.('cached');
       return { alerts: this.alerts, vehicles: this.vehicles };
     }
 
     // Start initialization process
     console.log('BKKDataManager: Starting data fetch...');
-    this.initializationPromise = this.performDataFetch();
+    this.initializationPromise = this.performDataFetch(onProgress);
 
     try {
       await this.initializationPromise;
@@ -62,16 +70,21 @@ export class BKKDataManager {
     }
   }
 
-  private async performDataFetch(): Promise<void> {
+  private async performDataFetch(onProgress?: (stage: BKKDataLoadingStage) => void): Promise<void> {
     try {
+      onProgress?.('static-data');
+      await BKKDataProcessor.loadGTFSData();
+
+      onProgress?.('live-data');
       console.log('BKKDataManager: Fetching real-time data...');
-      
+
       // Fetch both alerts and vehicles in parallel to minimize total loading time
       const [alerts, vehicles] = await Promise.all([
         BKKDataProcessor.fetchRealTimeAlerts(),
         BKKDataProcessor.fetchRealTimeVehiclePositions()
       ]);
 
+      onProgress?.('processing');
       this.alerts = alerts;
       this.vehicles = vehicles;
       this.lastUpdateTime = Date.now();

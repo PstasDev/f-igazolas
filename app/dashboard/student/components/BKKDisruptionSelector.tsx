@@ -23,11 +23,13 @@ import {
   AlertTriangle, 
   Search,
   CheckCircle,
+  CheckCircle2,
   Clock,
+  Circle,
   MapPinned
 } from 'lucide-react';
 import { BKKDataProcessor } from '@/lib/bkk-processor';
-import { bkkDataManager } from '@/lib/bkk-data-manager';
+import { bkkDataManager, type BKKDataLoadingStage } from '@/lib/bkk-data-manager';
 import { 
   ProcessedBKKAlert, 
   ProcessedVehiclePosition, 
@@ -49,6 +51,24 @@ interface UserLocation {
   accuracy?: number;
 }
 
+const BKK_LOADING_STEPS = [
+  {
+    stage: 'static-data',
+    title: 'Járat- és megállóadatok betöltése',
+    description: 'A járatok és a megállók adatainak előkészítése az azonosításhoz.',
+  },
+  {
+    stage: 'live-data',
+    title: 'Valós idejű adatok lekérése',
+    description: 'Forgalmi riasztások, járműpozíciók és késési információk lekérése a BKK-tól.',
+  },
+  {
+    stage: 'processing',
+    title: 'Adatok feldolgozása',
+    description: 'A járművek és a járatazonosítók összerendelése, majd a lista előkészítése.',
+  },
+] as const;
+
 export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisruptionSelectorProps) {
   const [alerts, setAlerts] = useState<ProcessedBKKAlert[]>([]);
   const [vehicles, setVehicles] = useState<ProcessedVehiclePosition[]>([]);
@@ -56,6 +76,7 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [loadingStage, setLoadingStage] = useState<BKKDataLoadingStage | 'fallback'>('static-data');
   const [locationError, setLocationError] = useState<string | null>(null);
   const [selectedAlert, setSelectedAlert] = useState<ProcessedBKKAlert | null>(null);
   const [selectedVehicle, setSelectedVehicleState] = useState<ProcessedVehiclePosition | null>(null);
@@ -69,7 +90,10 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
         setIsLoadingData(true);
         
         // Use the singleton data manager which handles caching and prevents duplicate requests
-        const { alerts: processedAlerts, vehicles: processedVehicles } = await bkkDataManager.initializeData();
+        const { alerts: processedAlerts, vehicles: processedVehicles } = await bkkDataManager.initializeData(
+          false,
+          (stage) => setLoadingStage(stage)
+        );
         
         // Process alerts
         const activeAlerts = BKKDataProcessor.getActiveAlerts(processedAlerts);
@@ -88,6 +112,7 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
         
       } catch (error) {
         console.error('BKKDisruptionSelector: Failed to load BKK data:', error);
+        setLoadingStage('fallback');
         
         // Final fallback: try to load example data directly
         try {
@@ -430,14 +455,79 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose }: BKKDisrup
   };
 
   const isMobile = useIsMobile();
+  const currentLoadingStepIndex = BKK_LOADING_STEPS.findIndex(step => step.stage === loadingStage);
 
   if (isLoadingData) {
     return (
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className={`${isMobile ? 'max-w-full h-screen w-full m-0 rounded-none' : 'max-w-4xl'}`}>
-          <div className="flex flex-col items-center justify-center py-8 gap-4">
-            <Spinner className="w-8 h-8" />
-            <p className="text-sm text-muted-foreground">BKK adatok betöltése... <br />Ez eltarthat egy darabig.</p>
+        <DialogContent
+          className={isMobile
+            ? 'fixed inset-0 flex h-[100dvh] w-full max-w-full flex-col justify-center rounded-none'
+            : 'max-w-md'}
+        >
+          <DialogHeader className="text-left">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center">
+                <BKKLogo size={48} />
+              </div>
+              <div>
+                <DialogTitle>BKK Forgalmi Információk</DialogTitle>
+                <DialogDescription>Az adatok betöltése folyamatban van.</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2" aria-busy="true" aria-live="polite">
+            {loadingStage === 'waiting' ? (
+              <div className="flex items-center gap-3 rounded-lg bg-muted/40 p-3">
+                <Spinner className="h-5 w-5 shrink-0" />
+                <p className="text-sm">Egy már folyamatban lévő BKK-adatbetöltésre várunk.</p>
+              </div>
+            ) : loadingStage === 'fallback' ? (
+              <div className="flex items-center gap-3 rounded-lg bg-amber-500/10 p-3 text-amber-800 dark:text-amber-300">
+                <AlertTriangle className="h-5 w-5 shrink-0" />
+                <p className="text-sm">A BKK-adatok nem érhetők el, mintaadatok betöltésével próbálkozunk.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {BKK_LOADING_STEPS.map((step, index) => {
+                  const isComplete = loadingStage === 'cached' || index < currentLoadingStepIndex;
+                  const isCurrent = index === currentLoadingStepIndex;
+
+                  return (
+                    <div key={step.stage} className="flex items-start gap-3">
+                      <div className="mt-0.5 shrink-0">
+                        {isComplete ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        ) : isCurrent ? (
+                          <Spinner className="h-5 w-5" />
+                        ) : (
+                          <Circle className="h-5 w-5 text-muted-foreground/50" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`text-sm font-medium ${isCurrent ? '' : 'text-muted-foreground'}`}>
+                          {step.title}
+                        </p>
+                        {isCurrent && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">{step.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground" role="status">
+              {loadingStage === 'waiting'
+                ? 'Amint elkészül, megjelenítjük az adatokat.'
+                : loadingStage === 'fallback'
+                  ? 'Kérjük, várj egy pillanatot.'
+                  : loadingStage === 'cached'
+                    ? 'Friss, gyorsítótárazott adatok használata.'
+                    : `Betöltési lépés: ${currentLoadingStepIndex + 1} / ${BKK_LOADING_STEPS.length}`}
+            </p>
           </div>
         </DialogContent>
       </Dialog>
