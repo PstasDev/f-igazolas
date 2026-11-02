@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Calendar, Clock, FileText, Check, Upload, Image, X as XIcon, Paperclip } from 'lucide-react';
+import { ArrowRight, Calendar, Clock, FileText, Check, Upload, Image, Search, X as XIcon } from 'lucide-react';
 import BKKLogo from '@/components/icons/BKKLogo';
 import MavLogo from '@/components/icons/MavLogo';
 import { apiClient } from '@/lib/api';
@@ -914,107 +914,110 @@ export function MultiStepIgazolasForm() {
                     <p className="text-sm mb-3">{selectedTipusInfo.description}</p>
                     
                     {/* BKK Integration for Transport Type */}
-                    {(selectedTipus?.nev?.toLowerCase() === 'közlekedés' || 
+                    {(selectedTipus?.nev?.toLowerCase() === 'közlekedés' ||
                       selectedTipus?.nev?.toLowerCase() === 'közlekedési probléma') && (
-                      <div className="mt-4 space-y-3"
+                      <div className="mt-4 border-t border-purple-200 pt-4 dark:border-purple-800"
                         data-debug={`BKK section shown for type: ${selectedTipus?.nev}`}
                       >
-                        <div className="bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
-                          <div className="flex items-start gap-4">
-                            <div className="flex-1 min-w-0">
-                              <h5 className="font-medium text-purple-900 dark:text-purple-100 mb-2 inline-flex items-center gap-2">
-                                <div className="flex-shrink-0 mt-1">
-                                  <BKKLogo size={60} />
-                                </div>
-                                  Forgalmi Információk (opcionális)
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/40">
+                            <BKKLogo size={32} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h5 className="font-semibold text-purple-950 dark:text-purple-100">
+                                Hivatalos közlekedési adat
                               </h5>
-                              <p className="text-sm text-purple-800 dark:text-purple-200 mb-3">
-                                Amennyiben a BKK rendszerében forgalmi zavar vagy késés <strong>lett regisztrálva</strong>, az alábbi gombra kattintva csatolhatod a hitelesített adatokat az igazolásodhoz.
-                              </p>
-                              
-                              {/* Info about MÁV train support */}
-                              <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-md p-3 mb-3">
-                                <div className="flex items-start gap-2">
-                                  <div className="flex-shrink-0 mt-0.5">
-                                    <MavLogo size={20} />
-                                  </div>
-                                  <p className="text-xs text-blue-800 dark:text-blue-200">
-                                    <strong>MÁV vonatok:</strong> Egyes vonatok valós idejű helyzete is elérhető a rendszerben, amelyek szintén csatolhatók az igazoláshoz.
-                                  </p>
-                                </div>
-                              </div>
-                              
-                              {!formData.bkkDisruption ? (
-                                <Button
-                                  type="button"
-                                  onClick={() => setShowBKKSelector(true)}
-                                  variant="outline"
-                                  className="w-full border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-600 dark:text-purple-300 dark:hover:bg-purple-950"
-                                >
-                                  <div className="flex items-center justify-center gap-3">
-                                    <Paperclip />
-                                    
-                                    <span>Csatolás</span>
-                                  </div>
-                                </Button>
-                              ) : (
-                                <div className="space-y-3">
-                                  {/* Selected BKK Item - Compact Display */}
-                                  <div className="bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
-                                    <div className="flex items-start gap-3">
-                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                                        formData.bkkDisruption.type === 'alert' 
-                                          ? 'bg-red-500'
-                                          : getBKKColors((formData.bkkDisruption.data as ProcessedVehiclePosition).vehicleType).background
-                                      }`}>
-                                        <span className="text-white text-sm">
-                                          {formData.bkkDisruption.type === 'alert' 
-                                            ? '⚠️' 
-                                            : getVehicleTypeEmoji((formData.bkkDisruption.data as ProcessedVehiclePosition).vehicleType)
-                                          }
-                                        </span>
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="font-medium text-purple-900 dark:text-purple-100 text-sm mb-1">
-                                          {formData.bkkDisruption.type === 'alert' 
-                                            ? 'Forgalmi Zavar' 
-                                            : 'Jármű Információ'
-                                          }
-                                        </p>
-                                        <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">
-                                          {formData.bkkDisruption.description}
-                                        </p>
-                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-500 text-xs">
-                                          ✅ Hivatalos BKK adat
-                                        </Badge>
-                                      </div>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={removeBKKDisruption}
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950 w-8 h-8 rounded-lg flex-shrink-0"
-                                      >
-                                        <span className="sr-only">Eltávolítás</span>
-                                        <span className="text-sm">✕</span>
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setShowBKKSelector(true)}
-                                    className="w-full border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-600 dark:text-purple-300 dark:hover:bg-purple-950 text-sm"
-                                  >
-                                    🔄 Másik adat kiválasztása
-                                  </Button>
-                                </div>
-                              )}
+                              <Badge variant="outline" className="border-purple-300 text-purple-700 dark:border-purple-700 dark:text-purple-200">
+                                Opcionális
+                              </Badge>
                             </div>
+                            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                              Ha a problémát rögzítette a BKK, keresd meg a hivatalos zavart vagy járatadatot. A kiválasztott adat automatikusan az igazolásodhoz kerül.
+                            </p>
                           </div>
                         </div>
+
+                        <p className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                          <span className="mt-0.5 shrink-0">
+                            <MavLogo size={18} />
+                          </span>
+                          <span>
+                            <strong className="font-semibold text-foreground">MÁV vonatok:</strong> Egyes vonatok valós idejű adatai is kiválaszthatók.
+                          </span>
+                        </p>
+
+                        {!formData.bkkDisruption ? (
+                          <Button
+                            type="button"
+                            onClick={() => setShowBKKSelector(true)}
+                            className="group mt-4 h-auto min-h-14 w-full justify-between whitespace-normal rounded-xl border border-purple-800 bg-purple-700 px-4 py-3 text-left text-white shadow-sm hover:border-purple-900 hover:bg-purple-800 hover:text-white focus-visible:ring-purple-500 dark:border-purple-500 dark:bg-purple-600 dark:hover:border-purple-400 dark:hover:bg-purple-500"
+                          >
+                            <span className="flex min-w-0 items-center gap-3">
+                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15">
+                                <Search className="h-4 w-4" aria-hidden="true" />
+                              </span>
+                              <span className="min-w-0 text-left">
+                                <span className="block text-sm font-semibold">Hivatalos adat keresése</span>
+                                <span className="block text-xs font-normal text-purple-100">BKK-forgalmi zavar vagy járműadat</span>
+                              </span>
+                            </span>
+                            <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                          </Button>
+                        ) : (
+                          <div className="mt-4 space-y-3">
+                            <div className="rounded-xl border border-emerald-300 bg-emerald-50/80 p-3 dark:border-emerald-800 dark:bg-emerald-950/30">
+                              <div className="flex items-start gap-3">
+                                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                                  formData.bkkDisruption.type === 'alert'
+                                    ? 'bg-red-500'
+                                    : getBKKColors((formData.bkkDisruption.data as ProcessedVehiclePosition).vehicleType).background
+                                }`}>
+                                  <span className="text-sm text-white">
+                                    {formData.bkkDisruption.type === 'alert'
+                                      ? '⚠️'
+                                      : getVehicleTypeEmoji((formData.bkkDisruption.data as ProcessedVehiclePosition).vehicleType)
+                                    }
+                                  </span>
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-sm font-medium text-emerald-950 dark:text-emerald-100">
+                                      {formData.bkkDisruption.type === 'alert' ? 'Forgalmi zavar kiválasztva' : 'Járműadat kiválasztva'}
+                                    </p>
+                                    <Badge variant="outline" className="border-emerald-300 bg-white/70 text-xs text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
+                                      <Check className="mr-1 h-3 w-3" aria-hidden="true" />
+                                      Hivatalos adat
+                                    </Badge>
+                                  </div>
+                                  <p className="mt-1 break-words text-xs leading-relaxed text-emerald-900 dark:text-emerald-200">
+                                    {formData.bkkDisruption.description}
+                                  </p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  aria-label="Hivatalos közlekedési adat eltávolítása"
+                                  onClick={removeBKKDisruption}
+                                  className="shrink-0 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-950 dark:text-emerald-200 dark:hover:bg-emerald-900/60 dark:hover:text-white"
+                                >
+                                  <XIcon className="h-4 w-4" aria-hidden="true" />
+                                </Button>
+                              </div>
+                            </div>
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setShowBKKSelector(true)}
+                              className="w-full border-purple-300 text-purple-800 hover:bg-purple-50 hover:text-purple-900 dark:border-purple-700 dark:text-purple-200 dark:hover:bg-purple-950"
+                            >
+                              <Search className="h-4 w-4" aria-hidden="true" />
+                              Másik adat keresése
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )}
                     

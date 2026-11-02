@@ -78,6 +78,9 @@ const BKK_LOADING_STEPS = [
   },
 ] as const;
 
+const MOBILE_FULLSCREEN_DIALOG_CLASSES =
+  'max-md:!left-0 max-md:!top-0 max-md:!translate-x-0 max-md:!translate-y-0 max-md:!w-full max-md:!max-w-full max-md:!h-[100dvh] max-md:!max-h-[100dvh] max-md:!rounded-none max-md:!flex max-md:!flex-col';
+
 const getAlertIdentity = (alert: ProcessedBKKAlert): string => {
   const startDate = alert.startTime instanceof Date ? alert.startTime.toISOString().slice(0, 10) : '';
   if (alert.id) return `id:${alert.id}`;
@@ -572,9 +575,10 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose, selectedDat
     return (
       <Dialog open={true} onOpenChange={onClose}>
         <DialogContent
-          className={isMobile
-            ? 'fixed inset-0 flex h-[100dvh] w-full max-w-full flex-col justify-center rounded-none'
-            : 'max-w-md'}
+          animation="fade"
+          className={`${isMobile
+            ? 'flex h-[100dvh] w-full max-w-full flex-col justify-center rounded-none'
+            : 'max-w-md'} ${MOBILE_FULLSCREEN_DIALOG_CLASSES} max-md:!justify-center`}
         >
           <DialogHeader className="text-left">
             <div className="flex items-center gap-3">
@@ -647,11 +651,11 @@ export function BKKDisruptionSelector({ onSelectDisruption, onClose, selectedDat
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className={`overflow-hidden p-0 ${
-        isMobile 
-          ? 'fixed inset-0 max-w-full h-full w-full m-0 rounded-none flex flex-col !translate-x-0 !translate-y-0 !left-0 !top-0' 
+      <DialogContent animation="fade" className={`overflow-hidden p-0 ${
+        isMobile
+          ? 'h-full w-full max-w-full m-0 rounded-none flex flex-col'
           : 'max-w-5xl h-[85vh] grid grid-rows-[auto_1fr_auto]'
-      }`} style={isMobile ? { height: '100dvh', maxHeight: '100dvh' } : {}}>
+      } ${MOBILE_FULLSCREEN_DIALOG_CLASSES}`} style={isMobile ? { height: '100dvh', maxHeight: '100dvh' } : {}}>
         {/* Compact Header - Fixed on mobile with safe area padding */}
         <DialogHeader className={`${isMobile ? 'flex-shrink-0' : ''} border-b ${isMobile ? 'p-3 pb-2 pt-safe' : 'p-4'}`} style={isMobile ? { paddingTop: 'max(0.75rem, env(safe-area-inset-top))' } : {}}>
           <div className="flex items-center gap-3">
