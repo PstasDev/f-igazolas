@@ -33,7 +33,8 @@ export const metadata: Metadata = {
   title: "Igazoláskezelő - Szent László Gimnázium F Szekció",
   description: "Igazoláskezelő rendszer a Szent László Gimnázium F Szekciójának.",
   icons: {
-    icon: "/logo.svg",
+    icon: "/icon.png",
+    apple: "/icons/igazolas-180.png",
   },
 };
 

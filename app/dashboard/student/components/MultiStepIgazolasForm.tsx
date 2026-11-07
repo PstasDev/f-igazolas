@@ -6,17 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Calendar, Clock, FileText, Check, Upload, Image, X as XIcon, Paperclip } from 'lucide-react';
+import { Calendar, Clock, FileText, Check, Upload, Image, X as XIcon, Paperclip, Info } from 'lucide-react';
 import BKKLogo from '@/components/icons/BKKLogo';
 import MavLogo from '@/components/icons/MavLogo';
 import { apiClient } from '@/lib/api';
 import { IgazolasTipus, IgazolasCreateRequest, Profile } from '@/lib/types';
 import { getIgazolasType } from '../../types';
-import { BELL_SCHEDULE, getPeriodSchedule, buildReszletesIdopontok } from '@/lib/periods';
+import { BELL_SCHEDULE, getPeriodSchedule, buildReszletesIdopontok, groupConsecutivePeriods } from '@/lib/periods';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useFrontendConfig } from '@/app/context/FrontendConfigContext';
@@ -304,6 +303,26 @@ export function MultiStepIgazolasForm() {
     return [...new Set(formData.selectedPeriods)].sort((a, b) => a - b);
   };
 
+  const getSelectedPeriodRanges = (): string[] => {
+    return groupConsecutivePeriods(getSelectedPeriods()).flatMap((run) => {
+      const firstPeriod = BELL_SCHEDULE[run[0]];
+      const lastPeriod = BELL_SCHEDULE[run[run.length - 1]];
+      return firstPeriod && lastPeriod ? [`${firstPeriod.start}–${lastPeriod.end}`] : [];
+    });
+  };
+
+  const updateAbsenceDuration = (isMultiDay: boolean) => {
+    if (formData.isMultiDay === isMultiDay) return;
+
+    updateFormData({
+      isMultiDay,
+      endDate: isMultiDay ? formData.date : '',
+      selectedPeriods: isMultiDay
+        ? Array.from({ length: BELL_SCHEDULE.length }, (_, i) => i)
+        : formData.selectedPeriods,
+    });
+  };
+
   // Calculate datetime strings for API submission
   const getStartDateTime = (): string => {
     if (formData.isMultiDay) {
@@ -481,7 +500,6 @@ export function MultiStepIgazolasForm() {
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef<number | null>(null);
   const dragMovedRef = useRef(false);
-  const selectionBeforeDragRef = useRef<number[]>([]);
 
   const rangeBetween = (a: number, b: number): number[] => {
     const [lo, hi] = a <= b ? [a, b] : [b, a];
@@ -490,32 +508,35 @@ export function MultiStepIgazolasForm() {
     return out;
   };
 
-  // Wrapped in useCallback with empty deps so the global listener registered
-  // in useEffect always holds a stable reference and only needs to be
-  // registered once. All mutable state is accessed via refs.
+  const togglePeriod = useCallback((period: number) => {
+    setFormData((fd) => {
+      const selectedPeriods = [...new Set(fd.selectedPeriods)];
+      const nextPeriods = selectedPeriods.includes(period)
+        ? selectedPeriods.filter((selectedPeriod) => selectedPeriod !== period)
+        : [...selectedPeriods, period];
+      return { ...fd, selectedPeriods: nextPeriods.sort((a, b) => a - b) };
+    });
+  }, []);
+
+  // Keep this callback stable for the global pointer listeners. Drag state is
+  // stored in refs, and period toggling uses a functional state update.
   const finalizePeriodSelection = useCallback(() => {
     if (!isDraggingRef.current) return;
     if (!dragMovedRef.current && dragStartRef.current !== null) {
       // Short tap: toggle this single period in the saved selection.
-      const p = dragStartRef.current;
-      const prev = selectionBeforeDragRef.current;
-      const next = prev.includes(p)
-        ? prev.filter((x) => x !== p)
-        : [...prev, p].sort((a, b) => a - b);
-      setFormData((fd) => ({ ...fd, selectedPeriods: next }));
+      togglePeriod(dragStartRef.current);
     }
     // If the user dragged, the contiguous range is already committed via
     // extendPeriodSelection — nothing more to do.
     isDraggingRef.current = false;
     dragStartRef.current = null;
     dragMovedRef.current = false;
-  }, []);
+  }, [togglePeriod]);
 
-  const beginPeriodSelection = (period: number, currentSelection: number[]) => {
+  const beginPeriodSelection = (period: number) => {
     isDraggingRef.current = true;
     dragStartRef.current = period;
     dragMovedRef.current = false;
-    selectionBeforeDragRef.current = [...currentSelection];
     // Do NOT mutate selectedPeriods here — wait to see if this becomes a drag
     // or a tap.
   };
@@ -532,7 +553,7 @@ export function MultiStepIgazolasForm() {
   // together previously caused a bug on mobile: browsers dispatch
   // compatibility mouse events after a touch interaction, which re-armed
   // and immediately re-finalized the drag, instantly undoing the tap.
-  const handlePeriodPointerDown = (period: number) => beginPeriodSelection(period, formData.selectedPeriods);
+  const handlePeriodPointerDown = (period: number) => beginPeriodSelection(period);
 
   const handlePeriodPointerMove = (e: React.PointerEvent) => {
     if (!isDraggingRef.current || dragStartRef.current === null) return;
@@ -544,7 +565,7 @@ export function MultiStepIgazolasForm() {
   };
 
   useEffect(() => {
-    // Register once; finalizePeriodSelection is stable (useCallback, []).
+    // Register once; finalizePeriodSelection stays stable through its callback dependencies.
     document.addEventListener('pointerup', finalizePeriodSelection);
     document.addEventListener('pointercancel', finalizePeriodSelection);
     return () => {
@@ -606,7 +627,7 @@ export function MultiStepIgazolasForm() {
 
   if (isLoading) {
     return (
-      <div className="w-full max-w-4xl mx-auto py-8">
+      <div className="w-full max-w-3xl mx-auto py-8">
         <div className="flex justify-center items-center">
           <Spinner className="w-8 h-8" />
         </div>
@@ -615,8 +636,8 @@ export function MultiStepIgazolasForm() {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto min-w-0 overflow-hidden">
-      <div className="flex flex-col gap-3 mb-4 pb-4 border-b" data-tour="new-igazolas-header">
+    <div className="w-full max-w-3xl mx-auto min-w-0 overflow-hidden">
+      <div className="flex flex-col gap-4 mb-6 pb-5 border-b" data-tour="new-igazolas-header">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight">
             {editMode ? 'Igazolás szerkesztése' : 'Új igazolás beküldése'}
@@ -626,28 +647,24 @@ export function MultiStepIgazolasForm() {
           </p>
         </div>
         {prefilledFromMulasztasok && (
-          <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <div className="rounded-md border-l-2 border-amber-500 bg-muted/30 px-4 py-3">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-yellow-600 flex items-center justify-center flex-shrink-0">
-                <Check className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium text-yellow-900 dark:text-yellow-100">
-                  ✨ Űrlap előre kitöltve mulasztásokból
-                </p>
-                <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+              <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">Űrlap előre kitöltve mulasztásokból</p>
+                <p className="mt-1 text-sm text-muted-foreground">
                   Az időpontok és megjegyzés automatikusan ki lettek töltve a kiválasztott {coveredMulasztasok.length} mulasztás alapján.
                   Ellenőrizd az adatokat és válaszd ki az igazolás típusát.
                 </p>
                 {coveredMulasztasok.length > 0 && (
                   <details className="mt-2">
-                    <summary className="text-sm text-yellow-600 dark:text-yellow-400 cursor-pointer hover:underline">
+                    <summary className="cursor-pointer text-sm text-muted-foreground underline-offset-4 hover:underline">
                       Lefedett mulasztások megtekintése ({coveredMulasztasok.length})
                     </summary>
-                    <div className="mt-2 space-y-1 pl-4 border-l-2 border-yellow-300 dark:border-yellow-700">
+                    <div className="mt-2 space-y-1 border-l pl-4">
                       {coveredMulasztasok.map((m) => (
-                        <div key={m.id} className="text-xs text-yellow-700 dark:text-yellow-300">
-                          📅 {m.datum} • {m.ora}. óra • {m.tantargy}
+                        <div key={m.id} className="text-xs text-muted-foreground">
+                          {m.datum} · {m.ora}. óra · {m.tantargy}
                         </div>
                       ))}
                     </div>
@@ -659,41 +676,45 @@ export function MultiStepIgazolasForm() {
         )}
       </div>
 
-      <div className="space-y-6">
-        {/* Step 1: Date Selection */}
+      <div className="space-y-8">
         <div className="space-y-4" data-tour="new-igazolas-date">
           <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-blue-500" />
-            <Label htmlFor="date" className="text-lg font-medium">Dátum</Label>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-base font-semibold tracking-tight">Hiányzás időpontja</h2>
           </div>
-          
-          {/* Toggle for single day vs multi-day */}
-          <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
-            <Label htmlFor="isMultiDay" className="text-sm font-medium cursor-pointer">
-              <input
-                id="isMultiDay"
-                type="checkbox"
-                checked={formData.isMultiDay}
-                onChange={(e) => {
-                  const isMultiDay = e.target.checked;
-                  updateFormData({ 
-                    isMultiDay,
-                    endDate: isMultiDay ? formData.date : '',
-                    selectedPeriods: isMultiDay
-                      ? Array.from({ length: BELL_SCHEDULE.length }, (_, i) => i)
-                      : formData.selectedPeriods
-                  });
-                }}
-                className="mr-2"
-              />
-              Több napos hiányzás
-            </Label>
-            <span className="text-xs text-muted-foreground">
-              {formData.isMultiDay ? '(Teljes napok)' : '(Egy nap)'}
-            </span>
+
+          <div className="space-y-2">
+            <p id="absence-duration-label" className="text-sm font-medium">Hiányzás időtartama</p>
+            <div
+              role="group"
+              aria-labelledby="absence-duration-label"
+              className="grid w-full max-w-sm grid-cols-2 gap-1 rounded-lg border bg-muted/30 p-1"
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                aria-pressed={!formData.isMultiDay}
+                onClick={() => updateAbsenceDuration(false)}
+                className={`w-full ${!formData.isMultiDay ? 'border border-border bg-background text-foreground shadow-sm hover:bg-background' : 'text-muted-foreground'}`}
+              >
+                Egy nap
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                aria-pressed={formData.isMultiDay}
+                onClick={() => updateAbsenceDuration(true)}
+                className={`w-full ${formData.isMultiDay ? 'border border-border bg-background text-foreground shadow-sm hover:bg-background' : 'text-muted-foreground'}`}
+              >
+                Több nap
+              </Button>
+            </div>
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              Több egymást követő nap esetén válaszd a „Több nap” lehetőséget. Ilyenkor a teljes időszak minden tanórája benne van az igazolásban.
+            </p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="date" className="text-sm">
                 {formData.isMultiDay ? 'Kezdő dátum' : 'Dátum'}
@@ -754,105 +775,103 @@ export function MultiStepIgazolasForm() {
           </div>
           
           {formData.isMultiDay && formData.date && formData.endDate && (
-            <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>Több napos hiányzás:</strong> {new Date(formData.date).toLocaleDateString('hu-HU')} - {new Date(formData.endDate).toLocaleDateString('hu-HU')}
-                {' '}({Math.ceil((new Date(formData.endDate).getTime() - new Date(formData.date).getTime()) / (1000 * 60 * 60 * 24)) + 1} nap)
-              </p>
-              <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
-                A hiányzás minden tanórát érint ezeken a napokon.
-              </p>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">
+                {new Date(formData.date).toLocaleDateString('hu-HU')} – {new Date(formData.endDate).toLocaleDateString('hu-HU')}
+              </span>
+              {' '}· {Math.ceil((new Date(formData.endDate).getTime() - new Date(formData.date).getTime()) / (1000 * 60 * 60 * 24)) + 1} nap
+            </p>
           )}
         </div>
 
-        {/* Step 2: Period Selection (only for single day) */}
+        {/* Period selection is only needed for a single-day absence. */}
         {!formData.isMultiDay && (
-          <>
-            <Separator />
-            <div className="space-y-6" data-tour="new-igazolas-periods">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-blue-500" />
-                <Label className="text-lg font-medium">Tanórák kiválasztása</Label>
-              </div>
-              
-              <TooltipProvider>
-                <div 
-                  className="flex flex-wrap gap-2 justify-center select-none touch-none"
-                  onPointerMove={handlePeriodPointerMove}
-                  onPointerUp={finalizePeriodSelection}
-                  onPointerCancel={finalizePeriodSelection}
-                >
-                  {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((h) => {
-                    const isSelected = formData.selectedPeriods.includes(h);
-
-                    let bgColor = "period-inactive";
-                    let glowColor = "";
-                    let tooltipText = `Nincs kiválasztva\n${getPeriodSchedule(h)}`;
-
-                    if (isSelected) {
-                      bgColor = "period-pending";
-                      glowColor = "period-glow-blue";
-                      tooltipText = `Kiválasztott óra\n${getPeriodSchedule(h)}`;
-                    }
-
-                    return (
-                      <Tooltip key={h}>
-                        <TooltipTrigger asChild>
-                          <span
-                            data-period={h}
-                            onPointerDown={() => handlePeriodPointerDown(h)}
-                            className={`inline-flex items-center justify-center w-10 h-10 text-sm font-bold rounded-lg cursor-pointer transition-all duration-200 ease-in-out transform ${bgColor} ${isSelected ? glowColor : ''} hover:scale-110 active:scale-95 touch-none`}
-                          >
-                            {h}
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent className="bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 border-slate-600 dark:border-slate-400 font-medium text-xs whitespace-pre-line max-w-xs shadow-lg">
-                          {tooltipText}
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  })}
-                </div>
-              </TooltipProvider>
-
-              <p className="text-xs text-muted-foreground text-center">
-                Koppints egy órára a kijelölés/törléshez, vagy húzz az ujjaddal/kurzorral összefüggő sáv kiválasztásához. Hézagos kijelölés is lehetséges.
-              </p>
-
-              <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
-                <p className="text-sm text-blue-800 dark:text-blue-200">
-                  <strong>Kiválasztott órák:</strong>{' '}
-                  {getSelectedPeriods().length > 0
-                    ? getSelectedPeriods().map(i => BELL_SCHEDULE[i]?.name).join(', ')
-                    : '—'}
-                </p>
-                {getSelectedPeriods().length > 0 && (
-                  <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
-                    Időtartam: {BELL_SCHEDULE[getSelectedPeriods()[0]]?.start} - {BELL_SCHEDULE[getSelectedPeriods()[getSelectedPeriods().length - 1]]?.end}
-                  </p>
-                )}
-              </div>
+          <div className="space-y-4 border-t pt-6" data-tour="new-igazolas-periods">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-base font-semibold tracking-tight">Tanórák kiválasztása</h2>
             </div>
-          </>
+
+            <TooltipProvider>
+              <div
+                className="flex flex-wrap justify-start gap-2 select-none touch-none sm:justify-center"
+                onPointerMove={handlePeriodPointerMove}
+                onPointerUp={finalizePeriodSelection}
+                onPointerCancel={finalizePeriodSelection}
+              >
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((h) => {
+                  const isSelected = formData.selectedPeriods.includes(h);
+                  const stateColor = isSelected
+                    ? 'period-pending period-glow-blue'
+                    : 'period-inactive';
+                  const tooltipText = `${isSelected ? 'Kiválasztott óra' : 'Nincs kiválasztva'}\n${getPeriodSchedule(h)}`;
+
+                  return (
+                    <Tooltip key={h}>
+                      <TooltipTrigger asChild>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          aria-pressed={isSelected}
+                          aria-label={getPeriodSchedule(h)}
+                          data-period={h}
+                          onPointerDown={() => handlePeriodPointerDown(h)}
+                          onKeyDown={(event) => {
+                            if (!event.repeat && (event.key === 'Enter' || event.key === ' ')) {
+                              event.preventDefault();
+                              togglePeriod(h);
+                            }
+                          }}
+                          className={`inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg text-sm font-bold transition-all duration-200 ease-in-out transform hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 touch-none ${stateColor}`}
+                        >
+                          {h}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs whitespace-pre-line border-slate-600 bg-slate-800 text-xs font-medium text-white shadow-lg dark:border-slate-400 dark:bg-slate-200 dark:text-slate-800">
+                        {tooltipText}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            </TooltipProvider>
+
+            <p className="text-center text-sm text-muted-foreground">
+              Koppints az órákra a kijelöléshez, vagy húzd végig az ujjad/kurzorod az összefüggő órákon. Különálló órákat is kiválaszthatsz.
+            </p>
+
+            <div className="space-y-1 text-center text-sm">
+              {getSelectedPeriods().length > 0 ? (
+                <>
+                  <p>
+                    <span className="font-medium text-foreground">Kiválasztott órák:</span>{' '}
+                    {getSelectedPeriods().map((i) => BELL_SCHEDULE[i]?.name).filter(Boolean).join(', ')}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {getSelectedPeriodRanges().length > 1 ? 'Időpontok' : 'Időpont'}: {getSelectedPeriodRanges().join(', ')}
+                  </p>
+                </>
+              ) : (
+                <p className="text-muted-foreground">Még nincs kiválasztott óra.</p>
+              )}
+            </div>
+          </div>
         )}
 
-        {/* Step 3: Type Selection */}
-        <Separator />
-        <div className="space-y-4" data-tour="new-igazolas-type">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-blue-500" />
-                <Label className="text-lg font-medium">Igazolás típusa</Label>
-              </div>
-              
-              {myProfile?.osztalyom && filteredIgazolasTipusok.length < igazolasTipusok.length && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    ℹ️ Az osztályfőnököd korlátozta az elérhető igazolástípusokat. 
-                    Csak a {filteredIgazolasTipusok.length} engedélyezett típus érhető el az osztályod számára.
-                  </p>
-                </div>
-              )}
+        <div className="space-y-4 border-t pt-6" data-tour="new-igazolas-type">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-base font-semibold tracking-tight">Igazolás típusa</h2>
+          </div>
+
+          {myProfile?.osztalyom && filteredIgazolasTipusok.length < igazolasTipusok.length && (
+            <p className="flex items-start gap-2 text-sm text-muted-foreground">
+              <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <span>
+                Az osztályfőnököd korlátozta az elérhető típusokat. Az osztályod számára {filteredIgazolasTipusok.length} típus érhető el.
+              </span>
+            </p>
+          )}
               
               <Select
                 value={formData.tipus?.toString() || ''}
@@ -894,7 +913,7 @@ export function MultiStepIgazolasForm() {
                         variant="outline"
                         size="sm"
                         onClick={() => updateFormData({ tipus: tipus.id })}
-                        className="flex items-center gap-1.5 text-xs hover:bg-blue-50 hover:border-blue-300 dark:hover:bg-blue-950 dark:hover:border-blue-700"
+                         className="flex items-center gap-1.5 text-xs hover:border-foreground/30 hover:bg-muted"
                       >
                         <span>{typeInfo.emoji}</span>
                         <span>{tipus.nev}</span>
@@ -906,42 +925,41 @@ export function MultiStepIgazolasForm() {
               
               {selectedTipusInfo && (
                 <div className="space-y-3">
-                  <div className={`p-4 rounded-md border ${selectedTipusInfo.color}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xl">{selectedTipusInfo.emoji}</span>
-                      <h4 className="font-medium">{selectedTipusInfo.name}</h4>
+                  <div className="rounded-lg border bg-card p-4">
+                    <div className="mb-4 flex items-start gap-3">
+                      <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-xl ${selectedTipusInfo.bgClass}`}>
+                        {selectedTipusInfo.emoji}
+                      </span>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold">{selectedTipusInfo.name}</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">{selectedTipusInfo.description}</p>
+                        <p className="mt-2 text-xs text-muted-foreground">{selectedTipusInfo.category}</p>
+                      </div>
                     </div>
-                    <p className="text-sm mb-3">{selectedTipusInfo.description}</p>
                     
                     {/* BKK Integration for Transport Type */}
                     {(selectedTipus?.nev?.toLowerCase() === 'közlekedés' || 
                       selectedTipus?.nev?.toLowerCase() === 'közlekedési probléma') && (
-                      <div className="mt-4 space-y-3"
+                      <div className="space-y-3 border-t pt-4"
                         data-debug={`BKK section shown for type: ${selectedTipus?.nev}`}
                       >
-                        <div className="bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                        <div>
                           <div className="flex items-start gap-4">
                             <div className="flex-1 min-w-0">
-                              <h5 className="font-medium text-purple-900 dark:text-purple-100 mb-2 inline-flex items-center gap-2">
-                                <div className="flex-shrink-0 mt-1">
-                                  <BKKLogo size={60} />
-                                </div>
-                                  Forgalmi Információk (opcionális)
+                              <h5 className="mb-2 inline-flex items-center gap-2 font-medium">
+                                <BKKLogo size={40} />
+                                <span>Forgalmi információk <span className="font-normal text-muted-foreground">(opcionális)</span></span>
                               </h5>
-                              <p className="text-sm text-purple-800 dark:text-purple-200 mb-3">
+                              <p className="mb-3 text-sm text-muted-foreground">
                                 Amennyiben a BKK rendszerében forgalmi zavar vagy késés <strong>lett regisztrálva</strong>, az alábbi gombra kattintva csatolhatod a hitelesített adatokat az igazolásodhoz.
                               </p>
                               
                               {/* Info about MÁV train support */}
-                              <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-md p-3 mb-3">
-                                <div className="flex items-start gap-2">
-                                  <div className="flex-shrink-0 mt-0.5">
-                                    <MavLogo size={20} />
-                                  </div>
-                                  <p className="text-xs text-blue-800 dark:text-blue-200">
-                                    <strong>MÁV vonatok:</strong> Egyes vonatok valós idejű helyzete is elérhető a rendszerben, amelyek szintén csatolhatók az igazoláshoz.
-                                  </p>
-                                </div>
+                              <div className="mb-3 flex items-start gap-2 border-l pl-3">
+                                <MavLogo size={20} />
+                                <p className="text-xs text-muted-foreground">
+                                  <strong className="text-foreground">MÁV vonatok:</strong> Egyes vonatok valós idejű helyzete is elérhető, és szintén csatolható az igazoláshoz.
+                                </p>
                               </div>
                               
                               {!formData.bkkDisruption ? (
@@ -949,7 +967,7 @@ export function MultiStepIgazolasForm() {
                                   type="button"
                                   onClick={() => setShowBKKSelector(true)}
                                   variant="outline"
-                                  className="w-full border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-600 dark:text-purple-300 dark:hover:bg-purple-950"
+                                  className="w-full"
                                 >
                                   <div className="flex items-center justify-center gap-3">
                                     <Paperclip />
@@ -960,7 +978,7 @@ export function MultiStepIgazolasForm() {
                               ) : (
                                 <div className="space-y-3">
                                   {/* Selected BKK Item - Compact Display */}
-                                  <div className="bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
+                                  <div className="rounded-md border bg-muted/30 p-3">
                                     <div className="flex items-start gap-3">
                                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                                         formData.bkkDisruption.type === 'alert' 
@@ -975,17 +993,17 @@ export function MultiStepIgazolasForm() {
                                         </span>
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                        <p className="font-medium text-purple-900 dark:text-purple-100 text-sm mb-1">
+                                        <p className="mb-1 text-sm font-medium">
                                           {formData.bkkDisruption.type === 'alert' 
                                             ? 'Forgalmi Zavar' 
                                             : 'Jármű Információ'
                                           }
                                         </p>
-                                        <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">
+                                        <p className="mb-2 text-xs text-muted-foreground">
                                           {formData.bkkDisruption.description}
                                         </p>
-                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-500 text-xs">
-                                          ✅ Hivatalos BKK adat
+                                        <Badge variant="outline" className="text-xs text-emerald-700 dark:text-emerald-300">
+                                          Hivatalos BKK-adat
                                         </Badge>
                                       </div>
                                       <Button
@@ -1006,7 +1024,7 @@ export function MultiStepIgazolasForm() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setShowBKKSelector(true)}
-                                    className="w-full border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-600 dark:text-purple-300 dark:hover:bg-purple-950 text-sm"
+                                    className="w-full text-sm"
                                   >
                                     🔄 Másik adat kiválasztása
                                   </Button>
@@ -1018,20 +1036,16 @@ export function MultiStepIgazolasForm() {
                       </div>
                     )}
                     
-                    <div className="flex gap-2 mt-3">
-                      <Badge variant="secondary">
-                        {selectedTipusInfo.category}
-                      </Badge>
-                    </div>
                   </div>
                 </div>
               )}
             </div>
 
-        {/* Step 4: Optional Fields */}
-        <Separator />
-        <div className="space-y-4">
-              <Label className="text-lg font-medium">Opcionális mezők</Label>
+        <div className="space-y-4 border-t pt-6">
+              <div>
+                <h2 className="text-base font-semibold tracking-tight">Opcionális részletek</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Indoklást vagy képet is csatolhatsz, ha szükséges.</p>
+              </div>
               
               <div className="space-y-4">
                 <div className="space-y-2" data-tour="new-igazolas-description">
@@ -1052,8 +1066,8 @@ export function MultiStepIgazolasForm() {
                   </Label>
                   <div className="space-y-2" data-tour="new-igazolas-image">
                     {imageFile ? (
-                      <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 rounded-md">
-                        <Image className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <div className="flex items-center gap-3 rounded-md border bg-muted/30 p-3">
+                        <Image className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{imageFile.name}</p>
                           <p className="text-xs text-muted-foreground">
@@ -1108,117 +1122,25 @@ export function MultiStepIgazolasForm() {
               </div>
             </div>
 
-        {/* Submit section */}
-        <Separator />
-        <div className="space-y-4">
-              <h4 className="font-medium text-lg">Igazolás összefoglalása</h4>
-              
-              <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                      {formData.isMultiDay ? 'Dátum tartomány' : 'Dátum'}
-                    </Label>
-                    {formData.isMultiDay ? (
-                      <p className="text-sm">
-                        {new Date(formData.date).toLocaleDateString('hu-HU')} - {new Date(formData.endDate || formData.date).toLocaleDateString('hu-HU')}
-                      </p>
-                    ) : (
-                      <p className="text-sm">{new Date(formData.date).toLocaleDateString('hu-HU')}</p>
-                    )}
-                  </div>
-                  
-                  {!formData.isMultiDay && (
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">Időszak</Label>
-                      <p className="text-sm">
-                        {getSelectedPeriods().map(i => BELL_SCHEDULE[i]?.name).join(', ')}
-                      </p>
-                    </div>
-                  )}
-                  
-                  {formData.isMultiDay && (
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">Típus</Label>
-                      <p className="text-sm">Teljes napok</p>
-                    </div>
-                  )}
-                  
-                  {selectedTipus && (
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">Típus</Label>
-                      <div className="flex items-center gap-2">
-                        <span>{selectedTipusInfo?.emoji}</span>
-                        <span className="text-sm">{selectedTipus.nev}</span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {formData.megjegyzes_diak && (
-                    <div className="md:col-span-2">
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">Indoklás</Label>
-                      <p className="text-sm">{formData.megjegyzes_diak}</p>
-                    </div>
-                  )}
-                  
-                  {imageFile && (
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">Csatolt kép</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Image className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        <span className="text-sm">{imageFile.name}</span>
-                        <span className="text-xs text-muted-foreground">({(imageFile.size / 1024 / 1024).toFixed(2)} MB)</span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {formData.bkkDisruption && (
-                    <div className="md:col-span-2">
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">BKK Igazolás</Label>
-                      <div className="flex items-start gap-3 mt-2">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          formData.bkkDisruption.type === 'alert' 
-                            ? 'bg-red-500'
-                            : getBKKColors((formData.bkkDisruption.data as ProcessedVehiclePosition).vehicleType).background
-                        }`}>
-                          <span className="text-white text-sm">
-                            {formData.bkkDisruption.type === 'alert' 
-                              ? '⚠️' 
-                              : getVehicleTypeEmoji((formData.bkkDisruption.data as ProcessedVehiclePosition).vehicleType)
-                            }
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                            {formData.bkkDisruption.description}
-                          </p>
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-500 text-xs">
-                            ✅ Hivatalos BKK adat
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
-                <p className="text-sm text-blue-800 dark:text-blue-200">
-                  {editMode 
-                    ? 'A módosítás elküldése után az igazolás ismét függőben lesz, amíg az osztályfőnököd újra el nem bírálja.' 
+        <div className="space-y-4 border-t pt-6">
+              <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <span>
+                  {editMode
+                    ? 'A módosítás elküldése után az igazolás ismét függőben lesz, amíg az osztályfőnököd újra el nem bírálja.'
                     : 'Az igazolás beküldése után az osztályfőnököd elbírálja azt. Értesítést nem kapsz az eredményről.'}
-                </p>
-              </div>
+                </span>
+              </p>
 
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={resetForm}>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <Button variant="outline" onClick={resetForm} className="w-full sm:w-auto">
                   Űrlap visszaállítása
                 </Button>
                 
                 <Button
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className="min-w-[160px]"
+                  className="min-w-[160px] w-full sm:w-auto"
                   data-tour="new-igazolas-submit"
                 >
                   {isSubmitting ? (

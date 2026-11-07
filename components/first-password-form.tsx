@@ -174,8 +174,8 @@ export function FirstPasswordForm({
         <Button 
           type="submit"
           disabled={isLoading}
-          className="w-full"
           size="lg"
+          className="w-full cursor-pointer"
         >
           {isLoading ? (
             <>OTP küldése...</>
@@ -191,7 +191,7 @@ export function FirstPasswordForm({
           type="button"
           variant="ghost"
           onClick={handleBackToLogin}
-          className="w-full"
+          className="w-full cursor-pointer  "
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Vissza a bejelentkezéshez

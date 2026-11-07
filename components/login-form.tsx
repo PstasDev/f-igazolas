@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation"
 import { useRole } from "@/app/context/RoleContext"
 import { toast } from "sonner"
 import { useEffect, useState } from "react"
-import { Fingerprint, KeyRound, Landmark, LogIn } from "lucide-react"
+import { Fingerprint, Landmark, LogIn } from "lucide-react"
 import { config } from "@/lib/config"
 import { ForgotPasswordForm } from "./forgot-password-form"
 import { FirstPasswordForm } from "./first-password-form"
@@ -137,37 +137,31 @@ export function LoginForm({
       onSubmit={handleSubmit}
       {...props}
     >
-      <FieldGroup>
+      <FieldGroup className="gap-6">
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Bejelentkezés</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            Add meg a felhasználóneved vagy e-mail címed és jelszavad
+            Jelentkezz be SZLG+-szal, vagy használd a jelszavadat
           </p>
         </div>
 
-        {passkeyAvailable && (
-          <>
-            <Field>
-              <Button
-                type="button"
-                variant="default"
-                size="lg"
-                disabled={passkeyLoading || isLoading}
-                onClick={handlePasskeyLogin}
-                className="w-full"
-              >
-                <Fingerprint className="mr-2 h-4 w-4" />
-                {passkeyLoading ? 'Hitelesítés…' : 'Bejelentkezés jelkulccsal'}
-              </Button>
-              <p className="text-muted-foreground mt-1 text-center text-xs">
-                Touch ID, Windows Hello vagy biometrikus hitelesítő használata.
-              </p>
-            </Field>
-            <FieldSeparator className="*:data-[slot=field-separator-content]:bg-background">
-              vagy jelszóval
-            </FieldSeparator>
-          </>
-        )}
+        <Field>
+          <Button
+            type="button"
+            variant="default"
+            size="lg"
+            disabled={isLoading || ssoRedirecting}
+            onClick={handleSSOLogin}
+            className="w-full cursor-pointer"
+          >
+            <Landmark className="mr-2 h-4 w-4" />
+            {ssoRedirecting ? 'Átirányítás…' : 'Bejelentkezés SZLG+-szal'}
+          </Button>
+        </Field>
+
+        <FieldSeparator className="*:data-[slot=field-separator-content]:bg-background">
+          vagy jelszóval
+        </FieldSeparator>
 
         <Field>
           <Label htmlFor="username">Felhasználónév vagy E-mail cím</Label>
@@ -200,7 +194,7 @@ export function LoginForm({
         <Button
           type="submit"
           disabled={isLoading}
-          className="w-full"
+          className="w-full cursor-pointer"
           size="lg"
         >
           {isLoading ? (
@@ -213,45 +207,34 @@ export function LoginForm({
           )}
         </Button>
 
-        <FieldSeparator className="*:data-[slot=field-separator-content]:bg-background">
-          vagy
-        </FieldSeparator>
-
-        <Field>
+        {passkeyAvailable && (
           <Button
-            variant="outline"
             type="button"
-            onClick={handleFirstPassword}
+            variant="ghost"
+            size="sm"
+            disabled={passkeyLoading || isLoading}
+            onClick={handlePasskeyLogin}
+            className="w-full text-muted-foreground hover:text-foreground cursor-pointer"
           >
-            <KeyRound className="mr-2 h-4 w-4" />
+            <Fingerprint className="h-4 w-4" />
+            {passkeyLoading ? 'Hitelesítés…' : 'Bejelentkezés jelkulccsal'}
+          </Button>
+        )}
+
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+          <Button
+            type="button"
+            variant="link"
+            onClick={handleFirstPassword}
+            className="h-auto px-0 py-0 text-sm font-normal text-muted-foreground transition-colors duration-200 hover:text-primary cursor-pointer"
+          >
             Még nincs jelszavam
           </Button>
-        </Field>
-
-        <FieldSeparator className="*:data-[slot=field-separator-content]:bg-background">
-          vagy SZLG+
-        </FieldSeparator>
-
-        <Field>
-          <Button
-            variant="outline"
-            type="button"
-            size="lg"
-            disabled={isLoading || ssoRedirecting}
-            onClick={handleSSOLogin}
-            className="w-full"
-          >
-            <Landmark className="mr-2 h-4 w-4" />
-            {ssoRedirecting ? 'Átirányítás…' : 'Bejelentkezés SZLG+-szal'}
-          </Button>
-        </Field>
-
-        <div className="text-center">
           <Button
             type="button"
             variant="link"
             onClick={handleForgotPassword}
-            className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200"
+            className="h-auto px-0 py-0 text-sm font-normal text-muted-foreground transition-colors duration-200 hover:text-primary cursor-pointer"
           >
             Elfelejtett jelszó?
           </Button>

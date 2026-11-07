@@ -101,15 +101,30 @@ export default function LoginPage() {
             <LoginForm onModeChange={setIsSpecialMode} />
           </div>
         </div>
-        <div className="text-center text-xs text-muted-foreground space-y-1">
-          <div className="flex items-center justify-center gap-3">
-            <Link href="/utmutato/tanuloi" className="hover:underline hover:text-foreground transition-colors">
+        <div className="text-center text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+            <Link href="/utmutato/tanuloi" className="transition-colors hover:text-foreground hover:underline">
               Tanulói útmutató
             </Link>
-            <span>•</span>
-            <Link href="/utmutato/osztalyfonoki" className="hover:underline hover:text-foreground transition-colors">
+            <Link href="/utmutato/osztalyfonoki" className="transition-colors hover:text-foreground hover:underline">
               Osztályfőnöki útmutató
             </Link>
+            <a
+              href="https://sso.szlg.info/adatvedelem/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-colors hover:text-foreground hover:underline"
+            >
+              Adatvédelem
+            </a>
+            <a
+              href="https://sso.szlg.info/aszf/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-colors hover:text-foreground hover:underline"
+            >
+              ÁSZF
+            </a>
           </div>
         </div>
       </div>

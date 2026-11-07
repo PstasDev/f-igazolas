@@ -174,7 +174,7 @@ export function ForgotPasswordForm({
         <Button 
           type="submit"
           disabled={isLoading}
-          className="w-full"
+          className="w-full cursor-pointer"
           size="lg"
         >
           {isLoading ? (
@@ -191,7 +191,7 @@ export function ForgotPasswordForm({
           type="button"
           variant="ghost"
           onClick={handleBackToLogin}
-          className="w-full"
+          className="w-full cursor-pointer"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Vissza a bejelentkezéshez
