@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Calendar, Clock, FileText, Check, Upload, Image, X as XIcon, Paperclip, Info } from 'lucide-react';
+import { Calendar, Clock, FileText, Check, Upload, Image, X as XIcon, Paperclip } from 'lucide-react';
 import BKKLogo from '@/components/icons/BKKLogo';
 import MavLogo from '@/components/icons/MavLogo';
 import { apiClient } from '@/lib/api';
@@ -938,28 +938,34 @@ export function MultiStepIgazolasForm() {
                     </div>
                     
                     {/* BKK Integration for Transport Type */}
-                    {(selectedTipus?.nev?.toLowerCase() === 'közlekedés' || 
+                    {(selectedTipus?.nev?.toLowerCase() === 'közlekedés' ||
                       selectedTipus?.nev?.toLowerCase() === 'közlekedési probléma') && (
-                      <div className="space-y-3 border-t pt-4"
+                      <div className="mt-4 space-y-3"
                         data-debug={`BKK section shown for type: ${selectedTipus?.nev}`}
                       >
-                        <div>
+                        <div className="bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
                           <div className="flex items-start gap-4">
                             <div className="flex-1 min-w-0">
-                              <h5 className="mb-2 inline-flex items-center gap-2 font-medium">
-                                <BKKLogo size={40} />
-                                <span>Forgalmi információk <span className="font-normal text-muted-foreground">(opcionális)</span></span>
+                              <h5 className="font-medium text-purple-900 dark:text-purple-100 mb-2 inline-flex items-center gap-2">
+                                <div className="flex-shrink-0 mt-1">
+                                  <BKKLogo size={60} />
+                                </div>
+                                  Forgalmi Információk (opcionális)
                               </h5>
-                              <p className="mb-3 text-sm text-muted-foreground">
+                              <p className="text-sm text-purple-800 dark:text-purple-200 mb-3">
                                 Amennyiben a BKK rendszerében forgalmi zavar vagy késés <strong>lett regisztrálva</strong>, az alábbi gombra kattintva csatolhatod a hitelesített adatokat az igazolásodhoz.
                               </p>
                               
                               {/* Info about MÁV train support */}
-                              <div className="mb-3 flex items-start gap-2 border-l pl-3">
-                                <MavLogo size={20} />
-                                <p className="text-xs text-muted-foreground">
-                                  <strong className="text-foreground">MÁV vonatok:</strong> Egyes vonatok valós idejű helyzete is elérhető, és szintén csatolható az igazoláshoz.
-                                </p>
+                              <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-md p-3 mb-3">
+                                <div className="flex items-start gap-2">
+                                  <div className="flex-shrink-0 mt-0.5">
+                                    <MavLogo size={20} />
+                                  </div>
+                                  <p className="text-xs text-blue-800 dark:text-blue-200">
+                                    <strong>MÁV vonatok:</strong> Egyes vonatok valós idejű helyzete is elérhető a rendszerben, amelyek szintén csatolhatók az igazoláshoz.
+                                  </p>
+                                </div>
                               </div>
                               
                               {!formData.bkkDisruption ? (
@@ -967,7 +973,7 @@ export function MultiStepIgazolasForm() {
                                   type="button"
                                   onClick={() => setShowBKKSelector(true)}
                                   variant="outline"
-                                  className="w-full"
+                                  className="w-full border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-600 dark:text-purple-300 dark:hover:bg-purple-950"
                                 >
                                   <div className="flex items-center justify-center gap-3">
                                     <Paperclip />
@@ -978,7 +984,7 @@ export function MultiStepIgazolasForm() {
                               ) : (
                                 <div className="space-y-3">
                                   {/* Selected BKK Item - Compact Display */}
-                                  <div className="rounded-md border bg-muted/30 p-3">
+                                  <div className="bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
                                     <div className="flex items-start gap-3">
                                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                                         formData.bkkDisruption.type === 'alert' 
@@ -993,17 +999,17 @@ export function MultiStepIgazolasForm() {
                                         </span>
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                        <p className="mb-1 text-sm font-medium">
+                                        <p className="font-medium text-purple-900 dark:text-purple-100 text-sm mb-1">
                                           {formData.bkkDisruption.type === 'alert' 
                                             ? 'Forgalmi Zavar' 
                                             : 'Jármű Információ'
                                           }
                                         </p>
-                                        <p className="mb-2 text-xs text-muted-foreground">
+                                        <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">
                                           {formData.bkkDisruption.description}
                                         </p>
-                                        <Badge variant="outline" className="text-xs text-emerald-700 dark:text-emerald-300">
-                                          Hivatalos BKK-adat
+                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-500 text-xs">
+                                          ✅ Hivatalos BKK adat
                                         </Badge>
                                       </div>
                                       <Button
@@ -1024,7 +1030,7 @@ export function MultiStepIgazolasForm() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setShowBKKSelector(true)}
-                                    className="w-full text-sm"
+                                    className="w-full border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-600 dark:text-purple-300 dark:hover:bg-purple-950 text-sm"
                                   >
                                     🔄 Másik adat kiválasztása
                                   </Button>
