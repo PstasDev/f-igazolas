@@ -289,6 +289,7 @@ export interface ChangePasswordOTPResponse {
 export interface IgazolasTipusToggleRequest {
   tipus_id: number;
   enabled: boolean;
+  osztaly_id?: number;
 }
 
 export interface IgazolasTipusToggleResponse {
