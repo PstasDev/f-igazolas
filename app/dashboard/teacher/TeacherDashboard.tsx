@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRole } from '@/app/context/RoleContext';
 import {
   SidebarInset,
@@ -13,10 +13,20 @@ import { TeacherTableView } from '@/app/dashboard/teacher/components/TeacherTabl
 import { StudentsManagementView } from '@/app/dashboard/teacher/components/StudentsManagementView';
 import { TeacherCreateIgazolasView } from '@/app/dashboard/teacher/components/TeacherCreateIgazolasView';
 import { PeriodConfiguration } from '@/components/admin/PeriodConfiguration';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function TeacherDashboard() {
   const { user } = useRole();
   const [selectedView, setSelectedView] = useState<'overview' | 'pending' | 'approved' | 'all' | 'students' | 'create' | 'periods'>('overview');
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
+  const teacherClasses = user?.profile?.osztalyaim || [];
+  const selectedClass = teacherClasses.find((osztaly) => osztaly.id === selectedClassId) || teacherClasses[0] || user?.profile?.osztalyom;
+
+  useEffect(() => {
+    if (teacherClasses.length && !teacherClasses.some((osztaly) => osztaly.id === selectedClassId)) {
+      setSelectedClassId(teacherClasses[0].id);
+    }
+  }, [teacherClasses, selectedClassId]);
 
   return (
     <SidebarProvider
@@ -31,9 +41,24 @@ export default function TeacherDashboard() {
       <SidebarInset>
         <DashboardHeader userName={user?.name || ''} userRole="Osztályfőnök" />
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-w-0 overflow-hidden">
+          {teacherClasses.length > 1 && selectedClass && (
+            <div className="max-w-sm space-y-2">
+              <p className="text-sm font-medium">Kezelt osztály</p>
+              <Select value={String(selectedClass.id)} onValueChange={(value) => setSelectedClassId(Number(value))}>
+                <SelectTrigger aria-label="Kezelt osztály kiválasztása">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {teacherClasses.map((osztaly) => (
+                    <SelectItem key={osztaly.id} value={String(osztaly.id)}>{osztaly.nev}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {selectedView === 'overview' && (
             <div className="space-y-4">
-              <TeacherStatsCards />
+              <TeacherStatsCards classId={selectedClass?.id} />
               <div>
                 <h2 className="text-lg font-semibold">Áttekintés</h2>
                 <p className="text-sm text-muted-foreground mt-1">A legutóbbi igazolások és fontosabb statisztikák</p>
@@ -47,28 +72,28 @@ export default function TeacherDashboard() {
                   </ul>
                 </div>
               </div>
-              <TeacherTableView filter="all" />
+              <TeacherTableView key={selectedClass?.id} filter="all" classId={selectedClass?.id} isFClass={selectedClass?.tagozat === 'F'} />
             </div>
           )}
           {selectedView === 'pending' && (
-            <TeacherTableView filter="pending" />
+            <TeacherTableView key={selectedClass?.id} filter="pending" classId={selectedClass?.id} isFClass={selectedClass?.tagozat === 'F'} />
           )}
           {selectedView === 'approved' && (
-            <TeacherTableView filter="approved" />
+            <TeacherTableView key={selectedClass?.id} filter="approved" classId={selectedClass?.id} isFClass={selectedClass?.tagozat === 'F'} />
           )}
           {selectedView === 'all' && (
-            <TeacherTableView filter="all" />
+            <TeacherTableView key={selectedClass?.id} filter="all" classId={selectedClass?.id} isFClass={selectedClass?.tagozat === 'F'} />
           )}
           {selectedView === 'students' && (
-            <StudentsManagementView />
+            <StudentsManagementView key={selectedClass?.id} classId={selectedClass?.id} />
           )}
           {selectedView === 'create' && (
-            <TeacherCreateIgazolasView />
+            <TeacherCreateIgazolasView key={selectedClass?.id} classId={selectedClass?.id} />
           )}
-          {selectedView === 'periods' && user?.profile?.osztalyom && (
+          {selectedView === 'periods' && selectedClass && (
             <PeriodConfiguration 
-              classId={user.profile.osztalyom.id} 
-              className={user.profile.osztalyom.nev}
+              classId={selectedClass.id} 
+              className={selectedClass.nev}
             />
           )}
         </div>

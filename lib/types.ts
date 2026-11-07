@@ -19,6 +19,8 @@ export interface Profile {
   id: number;
   user: User;
   osztalyom?: OsztalySimple;
+  osztalyaim?: OsztalySimple[];
+  is_studios?: boolean;
   ftv_registered?: boolean; // Whether user is registered in FTV system
 }
 
@@ -68,6 +70,7 @@ export interface IgazolasTipus {
   display_order: number;
   supports_group_absence: boolean;
   requires_studios: boolean;
+  available_tagozat?: string | null;
 }
 
 /**

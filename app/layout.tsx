@@ -30,8 +30,8 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Igazoláskezelő - Szent László Gimnázium F Szekció",
-  description: "Igazoláskezelő rendszer a Szent László Gimnázium F Szekciójának.",
+  title: "Igazoláskezelő - Szent László Gimnázium",
+  description: "Iskola-szintű igazoláskezelő rendszer a Szent László Gimnázium számára.",
   icons: {
     icon: "/icon.png",
     apple: "/icons/igazolas-180.png",

@@ -114,6 +114,7 @@ interface DataTableProps<TData, TValue> {
   onDataChange?: () => void
   onOptimisticUpdate?: (id: string, newAllapot: string) => void
   ftvSyncStatus?: React.ReactNode
+  showFtvFeatures?: boolean
 }
 
 // Utility function to get row highlight class based on submission delay
@@ -188,6 +189,7 @@ export function DataTable<TData, TValue>({
   onDataChange,
   onOptimisticUpdate,
   ftvSyncStatus,
+  showFtvFeatures = false,
 }: DataTableProps<TData, TValue>) {
   const { config, updateConfig, loading: configLoading } = useFrontendConfig()
   const [sorting, setSorting] = React.useState<SortingState>([])
@@ -1094,24 +1096,26 @@ export function DataTable<TData, TValue>({
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">FTV importált</Label>
-                <Select value={filterFTV} onValueChange={setFilterFTV}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="FTV státusz" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Mind</SelectItem>
-                    <SelectItem value="ftv">
-                      <div className="flex items-center gap-2">
-                        <Clapperboard className="h-3 w-3 text-blue-500 drop-shadow-md shadow-blue-500" />
-                        Csak <span className="text-blue-500 drop-shadow-md shadow-blue-500 font-bold">FTV</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="non-ftv">Csak manuális</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {showFtvFeatures && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">FTV importált</Label>
+                  <Select value={filterFTV} onValueChange={setFilterFTV}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="FTV státusz" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Mind</SelectItem>
+                      <SelectItem value="ftv">
+                        <div className="flex items-center gap-2">
+                          <Clapperboard className="h-3 w-3 text-blue-500 drop-shadow-md shadow-blue-500" />
+                          Csak <span className="text-blue-500 drop-shadow-md shadow-blue-500 font-bold">FTV</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="non-ftv">Csak manuális</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             {/* Date Range Filter */}

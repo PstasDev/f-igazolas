@@ -74,9 +74,12 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       
       // Determine user role based on profile
       // Check if user is an osztályfőnök (teacher)
-      const isTeacher = profile.osztalyom 
-        ? await checkIfTeacher(profile.user.id, profile.osztalyom.id)
-        : false;
+      const assignedClasses = profile.osztalyaim || [];
+      const isTeacher = assignedClasses.length > 0
+        ? true
+        : profile.osztalyom
+          ? await checkIfTeacher(profile.user.id, profile.osztalyom.id)
+          : false;
 
       const lastInitial = profile.user.last_name?.trim().charAt(0) || '';
       const firstInitial = profile.user.first_name?.trim().charAt(0) || '';
@@ -89,7 +92,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         username: profile.user.username,
         role: isTeacher ? 'teacher' : 'student',
         avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(avatarSeed)}`,
-        class: profile.osztalyom?.nev,
+        class: profile.osztalyom?.nev || assignedClasses[0]?.nev,
         profile,
         isSuperuser,
       };

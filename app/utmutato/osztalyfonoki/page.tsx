@@ -22,8 +22,8 @@ import {
 } from "lucide-react";
 
 export default function OsztalyfonokiUtmutato() {
-  const pageTitle = "Osztályfőnöki útmutató - Szent László Gimnázium F Szekció";
-  const pageDescription = "Átfogó útmutató osztályfőnökök számára az igazoláskezelő rendszer használatához. Gyors műveletek, részletes elbírálás, hivatalos igazolások kezelése és diákok adminisztrációja az F Szekcióban.";
+  const pageTitle = "Osztályfőnöki útmutató - Szent László Gimnázium";
+  const pageDescription = "Átfogó útmutató osztályfőnökök számára az iskola-szintű igazoláskezelő rendszer használatához.";
   const pageUrl = "https://igazolas.szlg.info/utmutato/osztalyfonoki";
   const pageImage = "https://igazolas.szlg.info/og-teacher-guide.png";
 
@@ -34,8 +34,8 @@ export default function OsztalyfonokiUtmutato() {
         <title>{pageTitle}</title>
         <meta name="title" content={pageTitle} />
         <meta name="description" content={pageDescription} />
-        <meta name="keywords" content="osztályfőnök, útmutató, igazolás, Szent László Gimnázium, F Szekció, tanár, elbírálás, hiányzás kezelés" />
-        <meta name="author" content="Szent László Gimnázium F Szekció" />
+        <meta name="keywords" content="osztályfőnök, útmutató, igazolás, Szent László Gimnázium, tanár, elbírálás, hiányzás kezelés" />
+        <meta name="author" content="Szent László Gimnázium" />
         <meta name="robots" content="index, follow" />
 
         {/* Open Graph / Facebook */}
@@ -47,7 +47,7 @@ export default function OsztalyfonokiUtmutato() {
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content="Osztályfőnöki útmutató - Igazoláskezelő rendszer" />
-        <meta property="og:site_name" content="F Szekció Igazoláskezelő" />
+        <meta property="og:site_name" content="Szent László Gimnázium Igazoláskezelő" />
         <meta property="og:locale" content="hu_HU" />
 
         {/* Twitter */}
@@ -81,7 +81,7 @@ export default function OsztalyfonokiUtmutato() {
           <div className="space-y-2">
             <h1 className="text-4xl font-bold tracking-tight">Osztályfőnöki útmutató</h1>
             <p className="text-xl text-muted-foreground">
-              Szent László Gimnázium F Szekció - Igazoláskezelő Rendszer
+              Szent László Gimnázium - Igazoláskezelő Rendszer
             </p>
             <p className="text-sm text-muted-foreground">
               Utoljára frissítve: 2026. július 1.
@@ -961,7 +961,7 @@ export default function OsztalyfonokiUtmutato() {
 
           {/* Footer */}
           <footer className="text-center text-sm text-muted-foreground py-8">
-            <p>Szent László Gimnázium F Szekció</p>
+            <p>Szent László Gimnázium</p>
             <p>Igazoláskezelő Rendszer - Osztályfőnöki útmutató</p>
             <p className="mt-2">© 2025 - Minden jog fenntartva</p>
           </footer>

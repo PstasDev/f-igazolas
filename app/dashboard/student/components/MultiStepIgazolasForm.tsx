@@ -228,25 +228,25 @@ export function MultiStepIgazolasForm() {
         setIgazolasTipusok(types);
         setMostUsedTipusok(mostUsed);
         
-        // Filter types based on student's class
+        // Apply the class permission matrix and any tagozat-level type scope.
         if (profile.osztalyom) {
-          // Get the student's class ID
           const myClassId = profile.osztalyom.id;
-          
-          // Filter out types that are not accepted by the student's class
           const acceptedTypes = types.filter(tipus => {
-            // Check if the student's class is in the nem_fogado_osztalyok list
+            const tagozatNotAllowed = Boolean(
+              tipus.available_tagozat && tipus.available_tagozat !== profile.osztalyom?.tagozat
+            );
             const isNotAccepted = tipus.nem_fogado_osztalyok?.some(
               osztaly => osztaly.id === myClassId
             );
-            return !isNotAccepted; // Only include if NOT in the rejected list
+            const studiosNotAllowed = tipus.requires_studios && !profile.is_studios;
+            return !tagozatNotAllowed && !isNotAccepted && !studiosNotAllowed;
           });
-          
           setFilteredIgazolasTipusok(acceptedTypes);
-          
+          const acceptedIds = new Set(acceptedTypes.map(type => type.id));
+          setMostUsedTipusok(mostUsed.filter(type => acceptedIds.has(type.id)));
         } else {
-          // If no class, show all types
-          setFilteredIgazolasTipusok(types);
+          setFilteredIgazolasTipusok([]);
+          setMostUsedTipusok([]);
         }
         
         // If we are in edit mode and waiting for the type ID to be resolved

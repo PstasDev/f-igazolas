@@ -64,7 +64,7 @@ interface IgazolasStats {
   }
 }
 
-export function CalendarView() {
+export function CalendarView({ classId, isFClass = false }: { classId?: number; isFClass?: boolean }) {
   const { user } = useRole()
   const [schedule, setSchedule] = useState<TanevRendje | null>(null)
   const [classes, setClasses] = useState<Osztaly[]>([])
@@ -94,6 +94,10 @@ export function CalendarView() {
   const isTeacher = user?.role === 'teacher'
   const isSuperuser = user?.isSuperuser || false
   const canManageOverrides = isTeacher || isSuperuser
+  const selectedClass = isTeacher
+    ? user?.profile?.osztalyaim?.find((osztaly) => osztaly.id === classId) || user?.profile?.osztalyom
+    : user?.profile?.osztalyom
+  const teacherFtvEnabled = isTeacher && isFClass
 
   // Use FTV sync hook for igazolások
   const {
@@ -102,10 +106,14 @@ export function CalendarView() {
     metadata,
     syncNow,
   } = useFTVSync({
-    fetchFunction: (mode) => isTeacher ? apiClient.listIgazolas(mode) : apiClient.getMyIgazolas(mode),
-    autoSync: isTeacher ? true : (isFtvRegistered ?? false), // Teachers always auto-sync, students only if FTV registered
+    fetchFunction: (mode) => isTeacher
+      ? apiClient.listIgazolas(teacherFtvEnabled ? mode : 'cached', false, classId)
+      : apiClient.getMyIgazolas(mode),
+    autoSync: isTeacher ? teacherFtvEnabled : (isFtvRegistered ?? false),
     checkFtvRegistration: !isTeacher, // Only check registration for students
     syncType: isTeacher ? 'class' : 'user', // Teachers use class-level sync, students use user-level sync
+    classId,
+    syncEnabled: isTeacher ? teacherFtvEnabled : true,
   })
 
   // Check FTV registration
@@ -120,10 +128,10 @@ export function CalendarView() {
       }
     }
 
-    if (user) {
+    if (user && !isTeacher) {
       checkFtvRegistration()
     }
-  }, [user])
+  }, [user, isTeacher])
 
   // Load schedule and classes data
   const loadData = async () => {
@@ -139,7 +147,7 @@ export function CalendarView() {
       const toDate = `${startYear + 1}-08-31`
       
       const promises: Promise<unknown>[] = [
-        apiClient.getTanevRendje(fromDate, toDate)
+        apiClient.getTanevRendje(fromDate, toDate, isTeacher ? classId : undefined)
       ]
       
       // Load classes if superuser
@@ -166,7 +174,7 @@ export function CalendarView() {
       loadData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
+  }, [user, classId])
 
   // Calculate igazolások stats per date
   // Filters out igazolások that fall entirely on non-attendance days when FTV sync is active
@@ -184,7 +192,7 @@ export function CalendarView() {
       
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         const dateStr = format(d, 'yyyy-MM-dd')
-        const studentClass = user?.profile?.osztalyom || null
+        const studentClass = selectedClass || null
         
         if (isAttendanceRequired(dateStr, studentClass, schedule)) {
           return true // Has at least one attendance-required day, keep it
@@ -204,7 +212,7 @@ export function CalendarView() {
         
         // Only count stats for attendance-required days
         if (schedule) {
-          const studentClass = user?.profile?.osztalyom || null
+          const studentClass = selectedClass || null
           if (!isAttendanceRequired(dateStr, studentClass, schedule)) {
             continue // Skip non-attendance days
           }
@@ -225,7 +233,7 @@ export function CalendarView() {
     })
     
     return stats
-  }, [allIgazolasok, schedule, user])
+  }, [allIgazolasok, schedule, selectedClass])
 
   // Get calendar days
   const calendarDays = useMemo(() => {
@@ -276,7 +284,7 @@ export function CalendarView() {
       // It's a date or nothing - create mode
       setEditingOverride(null)
       const dateToUse = dateOrOverride instanceof Date ? dateOrOverride : (selectedDate || new Date())
-      const defaultClassId = isSuperuser ? null : (user?.profile?.osztalyom?.id || null)
+      const defaultClassId = isSuperuser ? null : (selectedClass?.id || null)
       setOverrideForm({
         date: format(dateToUse, 'yyyy-MM-dd'),
         is_required: true,
@@ -319,6 +327,7 @@ export function CalendarView() {
           await apiClient.createClassOverride({
             date: overrideForm.date,
             is_required: overrideForm.is_required,
+            class_id: overrideForm.class_id,
             reason: overrideForm.reason,
           })
         }
@@ -338,7 +347,7 @@ export function CalendarView() {
   const getOverridesForDate = (date: Date) => {
     if (!schedule) return []
     const dateStr = format(date, 'yyyy-MM-dd')
-    const userClassId = user?.profile?.osztalyom?.id
+    const userClassId = selectedClass?.id
     return schedule.overrides.filter(o => 
       o.date === dateStr && 
       (o.class_id === null || o.class_id === userClassId)
@@ -431,7 +440,7 @@ export function CalendarView() {
   const checkAttendanceRequired = (date: Date): boolean => {
     if (!schedule) return false
     const dateStr = format(date, 'yyyy-MM-dd')
-    return isAttendanceRequired(dateStr, user?.profile?.osztalyom, schedule)
+    return isAttendanceRequired(dateStr, selectedClass, schedule)
   }
 
   if (loading) {
@@ -458,7 +467,7 @@ export function CalendarView() {
   return (
     <div className="space-y-6">
       {/* FTV Sync Status Card */}
-      {(isTeacher || isFtvRegistered) && metadata && (
+      {(teacherFtvEnabled || (!isTeacher && isFtvRegistered)) && metadata && (
         <FTVSyncStatus
           isSyncing={isSyncing}
           metadata={metadata}

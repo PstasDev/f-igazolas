@@ -8,6 +8,8 @@ interface UseFTVSyncOptions {
   autoSync?: boolean;
   debugPerformance?: boolean; // Enable performance debugging (for development)
   syncType?: FTVSyncType; // Specify sync type for metadata queries
+  classId?: number; // Class context for class-level sync metadata
+  syncEnabled?: boolean; // Disable all FTV calls for non-FTV classes
   checkFtvRegistration?: boolean; // Auto-check FTV registration before syncing
 }
 
@@ -37,6 +39,8 @@ export function useFTVSync({
   autoSync = true,
   debugPerformance = false,
   syncType = 'base',
+  classId,
+  syncEnabled = true,
   checkFtvRegistration = false,
 }: UseFTVSyncOptions): UseFTVSyncReturn {
   const [data, setData] = useState<Igazolas[]>([]);
@@ -84,18 +88,23 @@ export function useFTVSync({
 
   // Fetch metadata about last sync
   const fetchMetadata = useCallback(async () => {
+    if (!syncEnabled) {
+      setMetadata(null);
+      return null;
+    }
     try {
-      const response = await apiClient.getFTVSyncMetadata(syncType);
+      const response = await apiClient.getFTVSyncMetadata(syncType, classId);
       setMetadata(response.metadata);
       return response.metadata;
     } catch (err) {
       console.error('Failed to fetch sync metadata:', err);
       return null;
     }
-  }, [syncType]);
+  }, [syncType, classId, syncEnabled]);
 
   // Sync with live data in the background
   const syncLiveData = useCallback(async () => {
+    if (!syncEnabled) return;
     if (isSyncing) {
       // A sync is already running - queue a follow-up run instead of silently
       // dropping this request, so a user-triggered refresh right after a
@@ -146,7 +155,7 @@ export function useFTVSync({
         syncLiveDataRef.current?.();
       }
     }
-  }, [isSyncing, fetchMetadata, debugPerformance, checkRegistration]);
+  }, [isSyncing, fetchMetadata, debugPerformance, checkRegistration, syncEnabled]);
 
   // Keep the ref in sync so the `finally` block above can trigger a
   // follow-up run without adding a circular dependency to the callback.

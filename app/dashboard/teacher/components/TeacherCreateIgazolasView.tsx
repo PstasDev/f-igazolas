@@ -27,9 +27,11 @@ interface IgazolasTipus {
   id: number;
   nev: string;
   leiras?: string;
+  available_tagozat?: string | null;
+  nem_fogado_osztalyok?: Array<{ id: number }>;
 }
 
-export function TeacherCreateIgazolasView() {
+export function TeacherCreateIgazolasView({ classId }: { classId?: number }) {
   const [students, setStudents] = useState<EligibleStudent[]>([]);
   const [tipusok, setTipusok] = useState<IgazolasTipus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,12 +50,19 @@ export function TeacherCreateIgazolasView() {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [studentsData, tipusokData] = await Promise.all([
-          apiClient.getEligibleStudentsForIgazolas(),
-          apiClient.listIgazolasTipus()
+        const [studentsData, tipusokData, selectedClass] = await Promise.all([
+          apiClient.getEligibleStudentsForIgazolas(classId),
+          apiClient.listIgazolasTipus(),
+          classId !== undefined ? apiClient.getOsztaly(classId) : Promise.resolve(null),
         ]);
         setStudents(studentsData as EligibleStudent[]);
-        setTipusok(tipusokData as IgazolasTipus[]);
+        const allTypes = tipusokData as IgazolasTipus[];
+        setTipusok(selectedClass
+          ? allTypes.filter((type) =>
+              (!type.available_tagozat || type.available_tagozat === selectedClass.tagozat)
+              && !type.nem_fogado_osztalyok?.some((osztaly) => osztaly.id === selectedClass.id)
+            )
+          : allTypes);
       } catch (error) {
         console.error('Failed to load data:', error);
         toast.error('Nem sikerült betölteni az adatokat.');
@@ -63,7 +72,7 @@ export function TeacherCreateIgazolasView() {
     };
     
     loadData();
-  }, []);
+  }, [classId]);
 
   const toggleStudentSelection = (studentId: number) => {
     setSelectedStudents(prev =>
@@ -121,7 +130,7 @@ export function TeacherCreateIgazolasView() {
           vege: new Date(vege).toISOString(),
           tipus: selectedTipus,
           megjegyzes_diak: megjegyzes || null
-        });
+        }, classId);
 
         toast.success((result as { message: string }).message || 'Igazolás sikeresen létrehozva.');
       } else {
@@ -131,7 +140,7 @@ export function TeacherCreateIgazolasView() {
           vege: new Date(vege).toISOString(),
           tipus: selectedTipus,
           megjegyzes_diak: megjegyzes || null
-        });
+        }, classId);
 
         const data = result as { created: number; failed: number };
         toast.success(`${data.created} igazolás létrehozva${data.failed > 0 ? `, ${data.failed} sikertelen` : ''}.`);

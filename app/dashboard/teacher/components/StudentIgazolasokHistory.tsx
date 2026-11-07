@@ -10,10 +10,11 @@ import { apiClient } from '@/lib/api';
 import { Igazolas } from '@/lib/types';
 import { getIgazolasType, isMultiDayAbsence, buildCalendarGrid, getDayOfWeekShort } from '@/app/dashboard/types';
 import { toast } from 'sonner';
-import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
+import { Spinner } from '@/components/ui/spinner';
 
 interface StudentIgazolasokHistoryProps {
   studentId: string;
+  classId?: number;
 }
 
 interface StudentStats {
@@ -24,7 +25,7 @@ interface StudentStats {
   totalHours: number;
 }
 
-export function StudentIgazolasokHistory({ studentId }: StudentIgazolasokHistoryProps) {
+export function StudentIgazolasokHistory({ studentId, classId }: StudentIgazolasokHistoryProps) {
   const [igazolasok, setIgazolasok] = useState<Igazolas[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<StudentStats>({
@@ -39,7 +40,7 @@ export function StudentIgazolasokHistory({ studentId }: StudentIgazolasokHistory
     const fetchIgazolasok = async () => {
       try {
         setIsLoading(true);
-        const allIgazolasok = await apiClient.listIgazolas();
+        const allIgazolasok = await apiClient.listIgazolas('cached', false, classId);
         
         // Filter by student ID
         const studentIgazolasok = allIgazolasok.filter(
@@ -78,7 +79,7 @@ export function StudentIgazolasokHistory({ studentId }: StudentIgazolasokHistory
     };
 
     fetchIgazolasok();
-  }, [studentId]);
+  }, [studentId, classId]);
 
   const getStatusBadge = (allapot: string) => {
     if (allapot === 'Elfogadva') {
@@ -125,11 +126,10 @@ export function StudentIgazolasokHistory({ studentId }: StudentIgazolasokHistory
   if (isLoading) {
     return (
       <div className="py-4">
-        <FTVLoadingState 
-          variant="details"
-          title="Diák adatainak betöltése"
-          description="Igazolások és statisztikák betöltése az FTV rendszerből. Kérjük, várjon..."
-        />
+        <div className="flex items-center justify-center gap-2 py-8">
+          <Spinner className="h-5 w-5" />
+          <span className="text-sm text-muted-foreground">Igazolások betöltése...</span>
+        </div>
       </div>
     );
   }

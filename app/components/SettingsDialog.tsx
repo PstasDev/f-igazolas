@@ -138,6 +138,7 @@ export function SettingsDialog() {
   const { user } = useRole()
   const [igazolasTipusok, setIgazolasTipusok] = React.useState<IgazolasTipus[]>([])
   const [myClass, setMyClass] = React.useState<Osztaly | null>(null)
+  const [teacherClasses, setTeacherClasses] = React.useState<Array<{ id: number; nev: string; tagozat: string; kezdes_eve: number }>>([])
   const [loading, setLoading] = React.useState(false)
   const [togglingTipus, setTogglingTipus] = React.useState<number | null>(null)
   
@@ -153,10 +154,17 @@ export function SettingsDialog() {
       ])
         .then(([tipusok, profile]) => {
           setIgazolasTipusok(tipusok)
-          
-          // Get the teacher's class information
-          if (profile.osztalyom) {
-            return apiClient.getOsztaly(profile.osztalyom.id)
+          const assignedClasses = profile.osztalyaim || []
+          setTeacherClasses(assignedClasses)
+          const savedClassId = user?.id
+            ? Number(window.localStorage.getItem(`teacher-selected-class-${user.id}`))
+            : NaN
+          const selectedClass = assignedClasses.find((osztaly) => osztaly.id === savedClassId)
+            || assignedClasses.find((osztaly) => osztaly.id === profile.osztalyom?.id)
+            || assignedClasses[0]
+            || profile.osztalyom
+          if (selectedClass) {
+            return apiClient.getOsztaly(selectedClass.id)
           }
           return null
         })
@@ -168,7 +176,7 @@ export function SettingsDialog() {
         .catch(console.error)
         .finally(() => setLoading(false))
     }
-  }, [open, activePage, isTeacher])
+  }, [open, activePage, isTeacher, user?.id])
 
   const handleToggleIgazolasTipus = async (tipusId: number, currentlyEnabled: boolean) => {
     if (!myClass) {
@@ -182,6 +190,7 @@ export function SettingsDialog() {
       const result = await apiClient.toggleIgazolasTipus({
         tipus_id: tipusId,
         enabled: !currentlyEnabled, // Toggle the current state
+        osztaly_id: myClass.id,
       })
       
       toast.success(result.message)
@@ -200,6 +209,22 @@ export function SettingsDialog() {
       toast.error(errorMessage)
     } finally {
       setTogglingTipus(null)
+    }
+  }
+
+  const handleVerificationClassChange = async (value: string) => {
+    const classId = Number(value)
+    if (!Number.isFinite(classId)) return
+    setLoading(true)
+    try {
+      const selectedClass = await apiClient.getOsztaly(classId)
+      setMyClass(selectedClass)
+      if (user) window.localStorage.setItem(`teacher-selected-class-${user.id}`, String(classId))
+    } catch (error) {
+      console.error('Failed to load selected class:', error)
+      toast.error('Nem sikerült betölteni az osztály beállításait')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -375,11 +400,22 @@ export function SettingsDialog() {
               <p className="text-sm text-muted-foreground">
                 Engedélyezd vagy tiltsd le az egyes igazolástípusokat az osztályod számára.
               </p>
-              {myClass && (
-                <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-2">
-                  Osztály: {myClass.nev}
-                </p>
-              )}
+              {myClass && teacherClasses.length > 1 ? (
+                <Select value={String(myClass.id)} onValueChange={handleVerificationClassChange}>
+                  <SelectTrigger className="mt-2 max-w-xs" aria-label="Osztály kiválasztása">
+                    <SelectValue placeholder="Válassz osztályt" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teacherClasses.map((osztaly) => (
+                      <SelectItem key={osztaly.id} value={String(osztaly.id)}>
+                        {osztaly.nev}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : myClass ? (
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-2">Osztály: {myClass.nev}</p>
+              ) : null}
             </div>
             
             {loading ? (
@@ -404,8 +440,9 @@ export function SettingsDialog() {
                 ) : (
                   igazolasTipusok.map((tipus) => {
                     const typeConfig = getIgazolasType(tipus.nev)
+                    const sectionRestricted = Boolean(tipus.available_tagozat && tipus.available_tagozat !== myClass.tagozat)
                     const isDisabled = myClass.nem_fogadott_igazolas_tipusok?.some(t => t.id === tipus.id) || false
-                    const isEnabled = !isDisabled
+                    const isEnabled = !isDisabled && !sectionRestricted
                     const isToggling = togglingTipus === tipus.id
                     
                     return (
@@ -424,7 +461,12 @@ export function SettingsDialog() {
                               <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors ${typeConfig.color}`}>
                                 {tipus.nev}
                               </span>
-                              {isEnabled ? (
+                              {sectionRestricted ? (
+                                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                  <X className="h-3 w-3" />
+                                  Csak {tipus.available_tagozat} tagozat
+                                </span>
+                              ) : isEnabled ? (
                                 <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                                   <Check className="h-3 w-3" />
                                   Engedélyezve
@@ -481,7 +523,7 @@ export function SettingsDialog() {
                           <div className="flex items-center gap-2">
                             <Switch
                               checked={isEnabled}
-                              disabled={isToggling}
+                              disabled={isToggling || sectionRestricted}
                               onCheckedChange={() => handleToggleIgazolasTipus(tipus.id, isEnabled)}
                               aria-label={`Toggle ${tipus.nev}`}
                             />
@@ -606,15 +648,16 @@ export function SettingsDialog() {
                     <ItemDescription className="space-y-1">
                       <div className="flex items-center gap-2">
                         <School className="h-3 w-3" />
-                        <span>23F osztály</span>
+                        <span>Kőbányai Szent László Gimnázium</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Mail className="h-3 w-3" />
                         <a 
                           href="mailto:balla.botond.23f@szlgbp.hu" 
                           className="hover:underline text-blue-600 dark:text-blue-400"
+                          aria-label="E-mail küldése a fejlesztőnek"
                         >
-                          balla.botond.23f@szlgbp.hu
+                          Kapcsolatfelvétel
                         </a>
                       </div>
                     </ItemDescription>
@@ -641,8 +684,8 @@ export function SettingsDialog() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Mail className="h-3 w-3" />
-                      <a href={`mailto:${admin.email}`} className="hover:underline text-red-600 dark:text-red-400">
-                      {admin.email}
+                      <a href={`mailto:${admin.email}`} className="hover:underline text-red-600 dark:text-red-400" aria-label={`E-mail küldése: ${admin.name}`}>
+                      Kapcsolatfelvétel
                       </a>
                     </div>
                     </ItemDescription>

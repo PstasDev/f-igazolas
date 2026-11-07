@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Clock, CheckCircle2, Users } from 'lucide-react';
 import { apiClient } from '@/lib/api';
-import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
+import { Spinner } from '@/components/ui/spinner';
 
 interface TeacherStats {
   total: number;
@@ -15,7 +15,7 @@ interface TeacherStats {
   totalStudents: number;
 }
 
-export function TeacherStatsCards() {
+export function TeacherStatsCards({ classId }: { classId?: number }) {
   const [stats, setStats] = useState<TeacherStats>({
     total: 0,
     approved: 0,
@@ -31,8 +31,8 @@ export function TeacherStatsCards() {
       try {
         setIsLoading(true);
         const [igazolasok, profiles] = await Promise.all([
-          apiClient.listIgazolas(),
-          apiClient.listProfiles(),
+          apiClient.listIgazolas('cached', false, classId),
+          apiClient.getDiakjaim(classId),
         ]);
 
         const calculatedStats: TeacherStats = {
@@ -58,7 +58,7 @@ export function TeacherStatsCards() {
     };
 
     fetchStats();
-  }, []);
+  }, [classId]);
 
   const approvalRate = stats.total > 0 ? ((stats.approved / stats.total) * 100).toFixed(1) : 0;
 
@@ -99,11 +99,7 @@ export function TeacherStatsCards() {
         {[1, 2, 3, 4].map((i) => (
           <Card key={i}>
             <CardContent className="flex justify-center items-center py-6">
-              <FTVLoadingState 
-                variant="default"
-                title="Statisztikák betöltése"
-                description="Adatok betöltése az FTV rendszerből..."
-              />
+              <Spinner />
             </CardContent>
           </Card>
         ))}

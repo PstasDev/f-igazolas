@@ -18,7 +18,7 @@ import { apiClient } from "@/lib/api"
 import { useRole } from "@/app/context/RoleContext"
 import type { TanevRendje, Override, TanitasiSzunet, Osztaly } from "@/lib/types"
 import { IconAlertCircle, IconPlus, IconEdit, IconTrash, IconSchool, IconKey, IconShield, IconChartBar, IconUsers, IconArchive } from "@tabler/icons-react"
-import { Clapperboard, Megaphone } from "lucide-react"
+import { Clapperboard, FilePlus2, Megaphone } from "lucide-react"
 import { format } from "date-fns"
 import { PasswordManagement } from "@/components/admin/PasswordManagement"
 import { PermissionsManagement } from "@/components/admin/PermissionsManagement"
@@ -28,6 +28,7 @@ import { ClassActivityHeatmap } from "@/components/admin/ClassActivityHeatmap"
 import { ApprovalRatesAnalytics } from "@/components/admin/ApprovalRatesAnalytics"
 
 import { PermissionMatrix } from "@/components/admin/PermissionMatrix"
+import { IgazolasTypeImport } from "@/components/admin/IgazolasTypeImport"
 import { AcademicYearArchival } from "@/components/admin/AcademicYearArchival"
 import { ChangeNoteManagement } from "@/components/admin/ChangeNoteManagement"
 
@@ -334,6 +335,11 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
               <span className="hidden sm:inline">Jogok</span>
               <span className="sm:hidden">Jogok</span>
             </TabsTrigger>
+            <TabsTrigger value="igazolas-types" className="gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap">
+              <FilePlus2 className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Igazolástípusok</span>
+              <span className="sm:hidden">Típusok</span>
+            </TabsTrigger>
             
             {/* Schedule Management */}
             <TabsTrigger value="breaks" className="gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap">
@@ -417,7 +423,7 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
                 <div className="flex-1">
                   <CardTitle>Osztályok</CardTitle>
                   <CardDescription>
-                    Az iskola osztályainak listája, tanárok hozzárendelése és FTV szinkronizáció
+                    Az iskola osztályainak listája, tanárok hozzárendelése és FTV-szinkronizáció az F tagozat osztályaihoz
                   </CardDescription>
                 </div>
                 <Button 
@@ -435,7 +441,7 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
                     <>
                       <Clapperboard className="h-4 w-4 text-blue-500 dark:text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
                       <span className="font-bold text-blue-500 dark:text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]">
-                        FTV
+                        FTV (F)
                       </span>
                       <span className="font-medium text-blue-500/70 dark:text-blue-400/70">
                         Sync
@@ -591,6 +597,10 @@ export function AdminView({ activeTab = 'user-mgmt' }: AdminViewProps = {}) {
         {/* Permission Matrix Tab */}
         <TabsContent value="permissions" className="space-y-4">
           <PermissionMatrix />
+        </TabsContent>
+
+        <TabsContent value="igazolas-types" className="space-y-4">
+          <IgazolasTypeImport />
         </TabsContent>
 
         {/* Analytics Tab - Consolidated */}

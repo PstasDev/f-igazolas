@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -47,7 +47,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { StudentIgazolasokHistory } from './StudentIgazolasokHistory';
-import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
 import { apiClient } from '@/lib/api';
 import { DiakjaSignle, DiakjaCreateRequest } from '@/lib/types';
 import { toast } from 'sonner';
@@ -62,7 +61,7 @@ interface StudentStats {
   totalHours: number;
 }
 
-export function StudentsManagementView() {
+export function StudentsManagementView({ classId }: { classId?: number }) {
   const [selectedStudent, setSelectedStudent] = useState<DiakjaSignle | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [students, setStudents] = useState<DiakjaSignle[]>([]);
@@ -83,10 +82,10 @@ export function StudentsManagementView() {
   // Bulk operations - TODO: Implement bulk operations in future
   // const [selectedStudentIds, setSelectedStudentIds] = useState<Set<number>>(new Set());
 
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       setIsLoading(true);
-      const studentsData = await apiClient.getDiakjaim();
+      const studentsData = await apiClient.getDiakjaim(classId);
       setStudents(studentsData);
       setFilteredStudents(studentsData);
     } catch (error) {
@@ -95,11 +94,11 @@ export function StudentsManagementView() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [classId]);
 
   useEffect(() => {
-    fetchStudents();
-  }, []);
+    void fetchStudents();
+  }, [fetchStudents]);
 
   // Filter students based on search and status
   useEffect(() => {
@@ -234,7 +233,7 @@ export function StudentsManagementView() {
 
     try {
       setIsAddingStudents(true);
-      const response = await apiClient.createDiakjaim(validStudents);
+      const response = await apiClient.createDiakjaim(validStudents, classId);
       
       if (response.created_count > 0) {
         toast.success(response.message);
@@ -331,11 +330,10 @@ export function StudentsManagementView() {
     return (
       <Card>
         <CardContent className="flex justify-center items-center py-12">
-          <FTVLoadingState 
-            variant="sync"
-            title="Diákok betöltése"
-            description="Szinkronizálás az FTV Sync-el. Ez eltarthat egy darabig, kérjük ne frissítse az oldalt."
-          />
+          <div className="space-y-2 text-center">
+            <Spinner className="mx-auto h-6 w-6" />
+            <p className="text-sm text-muted-foreground">Osztály diákjainak betöltése...</p>
+          </div>
         </CardContent>
       </Card>
     );
@@ -689,7 +687,7 @@ export function StudentsManagementView() {
                 </SheetDescription>
               </SheetHeader>
               <div className="mt-6">
-                <StudentIgazolasokHistory studentId={selectedStudent.id.toString()} />
+                <StudentIgazolasokHistory studentId={selectedStudent.id.toString()} classId={classId} />
               </div>
             </>
           )}

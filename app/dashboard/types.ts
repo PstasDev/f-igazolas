@@ -44,9 +44,25 @@ export interface IgazolasType {
   description: string;
 }
 
+export interface FrontendIgazolasTypeDefinition {
+  key: string;
+  nev: string;
+  leiras: string;
+  beleszamit: boolean;
+  iskolaerdeku: boolean;
+  category: string;
+  category_emoji: string;
+  display_order: number;
+  has_sub_form: boolean;
+  sub_form_schema: null;
+  supports_group_absence: boolean;
+  requires_studios: boolean;
+  available_tagozat: string | null;
+}
+
 export const igazolasTypes: Record<string, IgazolasType> = {
   'stúdiós távollét': {
-    name: 'Studiós Távollét',
+    name: 'Stúdiós Távollét',
     emoji: '🎬',
     color: 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-500',
     bgClass: 'bg-teal-100 dark:bg-teal-900/40',
@@ -164,8 +180,80 @@ export const igazolasTypes: Record<string, IgazolasType> = {
     beleszamit: true,
     iskolaerdeku: false,
     description: 'Egyéb okok miatt volt távol a tanuló'
+  },
+  'nyelvvizsga': {
+    name: 'Nyelvvizsga',
+    emoji: '🌐',
+    color: 'bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-500',
+    bgClass: 'bg-cyan-100 dark:bg-cyan-900/40',
+    category: 'Tanulmányi',
+    beleszamit: true,
+    iskolaerdeku: false,
+    description: 'A tanuló előre egyeztetett nyelvvizsgán vett részt',
+  },
+  'érettségi': {
+    name: 'Érettségi',
+    emoji: '📝',
+    color: 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-500',
+    bgClass: 'bg-indigo-100 dark:bg-indigo-900/40',
+    category: 'Tanulmányi',
+    beleszamit: true,
+    iskolaerdeku: false,
+    description: 'A tanuló érettségi vizsgán vett részt',
   }
 };
+
+const TYPE_CATEGORY_KEYS: Record<string, string> = {
+  'stúdiós távollét': 'egyeb',
+  'médiás távollét': 'egyeb',
+  'orvosi igazolás': 'egeszsegugy',
+  'rosszullet': 'egeszsegugy',
+  'családi okok': 'csaladi',
+  'közlekedés': 'kozlekedes',
+  'oktv': 'verseny',
+  'verseny': 'verseny',
+  'sitabor': 'egyeb',
+  'utazas': 'egyeb',
+  'igazgatoi': 'egyeb',
+  'egyéb': 'egyeb',
+  'nyelvvizsga': 'tanulmanyi',
+  'érettségi': 'tanulmanyi',
+};
+
+const CATEGORY_EMOJIS: Record<string, string> = {
+  egeszsegugy: '🏥',
+  verseny: '🏆',
+  kulturalis: '🎭',
+  kozlekedes: '🚌',
+  tanulmanyi: '📚',
+  csaladi: '👨‍👩‍👧',
+  egyeb: '📝',
+};
+
+/**
+ * Canonical backend metadata for types that the frontend can display.
+ * The admin import screen uses this list and only offers types missing from
+ * the backend, making imports safe to repeat.
+ */
+export const frontendIgazolasTypeCatalog: FrontendIgazolasTypeDefinition[] =
+  Object.entries(igazolasTypes).map(([key, type], displayOrder) => {
+    const category = TYPE_CATEGORY_KEYS[key] || 'egyeb';
+    return {
+      key,
+      nev: type.name,
+      leiras: type.description,
+      beleszamit: type.beleszamit,
+      iskolaerdeku: type.iskolaerdeku,
+      category,
+      category_emoji: CATEGORY_EMOJIS[category] || '📝',
+      display_order: displayOrder,
+      has_sub_form: false,
+      sub_form_schema: null,
+      supports_group_absence: false,
+      requires_studios: key === 'stúdiós távollét',
+      available_tagozat: key === 'médiás távollét' ? 'F' : null,
+    };
+  });
 
 const typeMappings: Record<string, string> = {
   'szülői igazolás': 'családi okok',

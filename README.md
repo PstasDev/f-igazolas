@@ -1,8 +1,8 @@
 <div align="center">
 
-# 🎓 Igazoláskezelő (f-igazolas)
+# 🎓 Igazoláskezelő
 
-**Kőbányai Szent László Gimnázium - F Szekció Igazoláskezelő Rendszer**
+**Kőbányai Szent László Gimnázium - Iskola-szintű Igazoláskezelő Rendszer**
 
 *Központi platform hiányzások, késések és stúdiós távollétek kezelésére*
 
@@ -18,7 +18,7 @@
 
 ## 🚀 Áttekintés
 
-Az **Igazoláskezelő (f-igazolas)** egy átfogó igazoláskezelő rendszer, amelyet kifejezetten a **Kőbányai Szent László Gimnázium F Szekciója (Osztott Informatika-Média)** számára fejlesztettek. A rendszer célja, hogy központosítsa és egyszerűsítse az osztályfőnökök munkáját a különböző típusú hiányzások kezelésében.
+Az **Igazoláskezelő** egy átfogó igazoláskezelő rendszer a **Kőbányai Szent László Gimnázium** számára. A rendszer célja, hogy az iskola minden osztályában központosítsa és egyszerűsítse az osztályfőnökök munkáját a különböző típusú hiányzások kezelésében.
 
 > Ez a repository a **frontend**. A hozzá tartozó Django/NinjaAPI backend külön projekt, a bejelentkezést pedig az iskola központi **SZLG+** SSO szolgáltatása végzi (lásd [Bejelentkezés](#-bejelentkezés)).
 
@@ -330,7 +330,7 @@ Ezek segítenek a fejlesztésben és tesztelésben, API kulcs nélkül is.
 
 ## 👥 Felhasználói Szerepkörök
 
-### 🎒 Diákok (F Szekciós Tanulók)
+### 🎒 Diákok
 - 📝 **Igazolás Beadás** - Egyszerű, intuitív űrlapok
   - Általános hiányzások (betegség, családi ok, egyéb)
   - Stúdiós távollétek (FTV forgatások)
@@ -350,6 +350,7 @@ Ezek segítenek a fejlesztésben és tesztelésben, API kulcs nélkül is.
 ### 🛠️ Adminisztrátorok
 - 🔑 **Jelszókezelés** - Jelszavak generálása és visszaállítása
 - 🛡️ **Jogosultságok** - Jogosultságok és tanári hozzárendelések kezelése
+- 🧾 **Igazolástípusok** - Frontend-típusok egyenkénti importálása és osztályonkénti engedélyezése
 - 📊 **Statisztikák** - Belépések, adatbázis, API és tárhelyhasználat, jóváhagyási arányok
 - 🚧 **Karbantartási mód**, időszak-konfiguráció, tanév-archiválás
 - 📝 **Változásnapló** kezelése
@@ -451,9 +452,9 @@ Ez a projekt a **Kőbányai Szent László Gimnázium** belső használatára k�
 
 <div align="center">
 
-**💙 Készítette: Balla Botond (PstasDev), a 23F osztály tanulója**
+**💙 Készítette: Balla Botond (PstasDev), a Kőbányai Szent László Gimnázium tanulója**
 
-**❤️ A Kőbányai Szent László Gimnázium F Szekciója számára**
+**❤️ A Kőbányai Szent László Gimnázium számára**
 
 [🐛 Hiba Bejelentése](https://github.com/PstasDev/f-igazolas/issues) · [💡 Funkció Kérése](https://github.com/PstasDev/f-igazolas/issues) · [📖 Backend Repo](https://github.com/PstasDev/f-igazolas-backend)
 

@@ -8,6 +8,7 @@ import { Igazolas, TanevRendje } from '@/lib/types';
 import { toast } from 'sonner';
 import { FTVLoadingState } from '@/components/ui/ftv-loading-state';
 import { FTVSyncStatus } from '@/components/ui/ftv-sync-status';
+import { Spinner } from '@/components/ui/spinner';
 import { mapApiResponseToPeriods, getImpactedPeriods } from '@/lib/periods';
 import { useFTVSync } from '@/hooks/use-ftv-sync';
 import { isAttendanceRequired } from '@/lib/attendance-utils';
@@ -29,6 +30,8 @@ import { HiddenScheduleDaysNotice } from '@/app/dashboard/components/HiddenSched
 
 interface TeacherTableViewProps {
   filter: 'all' | 'pending' | 'approved' | 'rejected';
+  classId?: number;
+  isFClass?: boolean;
 }
 
 // Helper function to map Igazolas to the format expected by columns
@@ -73,7 +76,7 @@ function mapIgazolasToTableData(igazolas: Igazolas) {
   };
 }
 
-export function TeacherTableView({ filter }: TeacherTableViewProps) {
+export function TeacherTableView({ filter, classId, isFClass = false }: TeacherTableViewProps) {
   const [schedule, setSchedule] = useState<TanevRendje | null>(null);
   
   // Load schedule on mount
@@ -86,7 +89,7 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
         const fromDate = `${startYear}-09-01`;
         const toDate = `${startYear + 1}-08-31`;
         
-        const scheduleData = await apiClient.getTanevRendje(fromDate, toDate);
+        const scheduleData = await apiClient.getTanevRendje(fromDate, toDate, classId);
         setSchedule(scheduleData);
       } catch (error) {
         console.error('Failed to load schedule:', error);
@@ -104,9 +107,11 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
     metadata,
     syncNow,
   } = useFTVSync({
-    fetchFunction: (mode) => apiClient.listIgazolas(mode),
-    autoSync: true,
+    fetchFunction: (mode) => apiClient.listIgazolas(isFClass ? mode : 'cached', false, classId),
+    autoSync: isFClass,
     syncType: 'class', // Teachers use class-level sync
+    classId,
+    syncEnabled: isFClass,
   });
 
   // Filter based on status and attendance requirements
@@ -451,11 +456,18 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
       <div className="min-w-0" data-tour="igazolasok-teacher-table">
         {isLoading ? (
           <div className="py-4">
-            <FTVLoadingState 
-              variant="sync"
-              title="Igazolások betöltése"
-              description="Gyors betöltés cache-elt adatokkal. Háttérben szinkronizálás folyik..."
-            />
+            {isFClass ? (
+              <FTVLoadingState
+                variant="sync"
+                title="Igazolások betöltése"
+                description="Gyors betöltés cache-elt adatokkal. Háttérben FTV-szinkronizálás folyik..."
+              />
+            ) : (
+              <div className="flex items-center justify-center gap-2 py-8">
+                <Spinner className="h-5 w-5" />
+                <span className="text-sm text-muted-foreground">Osztály igazolásainak betöltése...</span>
+              </div>
+            )}
           </div>
         ) : (
           <DataTable 
@@ -463,7 +475,9 @@ export function TeacherTableView({ filter }: TeacherTableViewProps) {
             data={tableData} 
             onDataChange={syncNow} 
             onOptimisticUpdate={handleOptimisticUpdate}
+            showFtvFeatures={isFClass}
             ftvSyncStatus={
+              isFClass &&
               metadata ? (
                 <FTVSyncStatus
                   metadata={metadata}

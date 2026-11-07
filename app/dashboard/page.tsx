@@ -19,11 +19,19 @@ import { CalendarView } from "./components/CalendarView"
 import { AdminView } from "./components/AdminView"
 import { SystemMessageBanner } from "@/app/components/SystemMessageBanner"
 import { PasskeySetupDrawer } from "@/components/passkey-setup-drawer"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function Page() {
   const { isAuthenticated, user, isLoading } = useRole()
   const router = useRouter()
   const [currentView, setCurrentView] = useState<string>('igazolasok')
+  const [selectedTeacherClassId, setSelectedTeacherClassId] = useState<number | null>(null)
+  const isTeacher = user?.role === 'teacher';
+  const isSuperuser = user?.isSuperuser || false;
+  const teacherClasses = user?.profile?.osztalyaim || []
+  const selectedTeacherClass = teacherClasses.find((osztaly) => osztaly.id === selectedTeacherClassId)
+    || teacherClasses[0]
+    || user?.profile?.osztalyom
 
   useEffect(() => {
     // Only redirect after loading is complete and user is not authenticated
@@ -57,20 +65,34 @@ export default function Page() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!isTeacher || !user || teacherClasses.length === 0) return
+    const savedId = Number(window.localStorage.getItem(`teacher-selected-class-${user.id}`))
+    const savedClass = teacherClasses.find((osztaly) => osztaly.id === savedId)
+    const defaultClass = teacherClasses.find((osztaly) => osztaly.id === user.profile?.osztalyom?.id)
+      || teacherClasses[0]
+    const initialClass = savedClass || defaultClass
+    if (initialClass) setSelectedTeacherClassId(initialClass.id)
+  }, [isTeacher, user?.id, user?.profile?.osztalyaim, user?.profile?.osztalyom?.id, teacherClasses])
+
+  const handleTeacherClassChange = (value: string) => {
+    const classId = Number(value)
+    if (!Number.isFinite(classId)) return
+    setSelectedTeacherClassId(classId)
+    if (user) window.localStorage.setItem(`teacher-selected-class-${user.id}`, String(classId))
+  }
+
+  const handleViewChange = (view: string) => {
+    setCurrentView(view)
+    window.location.hash = view
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Spinner className="w-8 h-8" />
       </div>
     )
-  }
-
-  const isTeacher = user?.role === 'teacher';
-  const isSuperuser = user?.isSuperuser || false;
-
-  const handleViewChange = (view: string) => {
-    setCurrentView(view)
-    window.location.hash = view
   }
 
   const getPageTitle = () => {
@@ -106,10 +128,34 @@ export default function Page() {
       <SidebarInset>
         <SiteHeader title={getPageTitle()} />
         <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+          {isTeacher && teacherClasses.length > 1 && (currentView === 'igazolasok' || currentView === 'students' || currentView === 'naptar') && (
+            <div className="max-w-sm space-y-2">
+              <p className="text-sm font-medium">Kezelt osztály</p>
+              <Select
+                value={selectedTeacherClass ? String(selectedTeacherClass.id) : undefined}
+                onValueChange={handleTeacherClassChange}
+              >
+                <SelectTrigger aria-label="Kezelt osztály kiválasztása">
+                  <SelectValue placeholder="Válassz osztályt" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teacherClasses.map((osztaly) => (
+                    <SelectItem key={osztaly.id} value={String(osztaly.id)}>
+                      {osztaly.nev}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {/* Naptár view (all users) */}
           {currentView === 'naptar' && (
             <div>
-              <CalendarView />
+              <CalendarView
+                key={isTeacher ? selectedTeacherClass?.id : 'student-calendar'}
+                classId={isTeacher ? selectedTeacherClass?.id : undefined}
+                isFClass={selectedTeacherClass?.tagozat === 'F'}
+              />
             </div>
           )}
           
@@ -125,12 +171,21 @@ export default function Page() {
               {currentView === 'igazolasok' && (
                 <div>
                   <SystemMessageBanner />
-                  <TeacherTableView filter="all" />
+                  {selectedTeacherClass && (
+                    <TeacherTableView
+                      key={selectedTeacherClass.id}
+                      filter="all"
+                      classId={selectedTeacherClass.id}
+                      isFClass={selectedTeacherClass.tagozat === 'F'}
+                    />
+                  )}
                 </div>
               )}
               {currentView === 'students' && (
                 <div>
-                  <StudentsManagementView />
+                  {selectedTeacherClass && (
+                    <StudentsManagementView key={selectedTeacherClass.id} classId={selectedTeacherClass.id} />
+                  )}
                 </div>
               )}
             </>

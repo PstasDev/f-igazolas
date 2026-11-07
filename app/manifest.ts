@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Igazoláskezelő - Szent László Gimnázium F Szekció",
+    name: "Igazoláskezelő - Szent László Gimnázium",
     short_name: "Igazolás",
-    description: "Igazoláskezelő rendszer a Szent László Gimnázium F Szekciójának.",
+    description: "Iskola-szintű igazoláskezelő rendszer a Szent László Gimnázium számára.",
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",

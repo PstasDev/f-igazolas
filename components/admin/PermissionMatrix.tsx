@@ -13,7 +13,8 @@ import { cn } from "@/lib/utils"
 
 interface ClassInfo {
   id: number
-  name: string
+  name?: string
+  nev?: string
   tagozat: string
   kezdes_eve: number
 }
@@ -24,6 +25,7 @@ interface IgazolasTipusInfo {
   leiras: string
   beleszamit: boolean
   iskolaerdeku: boolean
+  available_tagozat?: string | null
 }
 
 interface PermissionMatrixData {
@@ -58,6 +60,9 @@ export function PermissionMatrix() {
 
   const togglePermission = (classId: number, typeId: number) => {
     if (!data) return
+    const targetClass = data.classes.find(cls => cls.id === classId)
+    const targetType = data.types.find(type => type.id === typeId)
+    if (targetClass && targetType?.available_tagozat && targetType.available_tagozat !== targetClass.tagozat) return
 
     const currentAllowed = data.matrix[classId]?.[typeId] ?? true
     const newAllowed = !currentAllowed
@@ -108,7 +113,7 @@ export function PermissionMatrix() {
 
     const headers = ['Class', ...data.types.map(t => t.nev)]
     const rows = data.classes.map(cls => {
-      const row = [cls.name]
+      const row = [cls.name || cls.nev || `${cls.kezdes_eve}${cls.tagozat}`]
       data.types.forEach(type => {
         const allowed = data.matrix[cls.id]?.[type.id] ?? true
         row.push(allowed ? 'Allowed' : 'Blocked')
@@ -173,7 +178,7 @@ export function PermissionMatrix() {
 
   // Filter classes and types based on search
   const filteredClasses = data.classes.filter(cls => 
-    (cls.name || `${cls.kezdes_eve}${cls.tagozat}`).toLowerCase().includes(searchTerm.toLowerCase())
+    (cls.name || cls.nev || `${cls.kezdes_eve}${cls.tagozat}`).toLowerCase().includes(searchTerm.toLowerCase())
   )
   const filteredTypes = data.types.filter(type =>
     type.nev.toLowerCase().includes(searchTerm.toLowerCase())
@@ -279,6 +284,9 @@ export function PermissionMatrix() {
                           {type.iskolaerdeku && (
                             <Badge variant="secondary" className="text-xs">Iskolaérdekű</Badge>
                           )}
+                          {type.available_tagozat && (
+                            <Badge variant="outline" className="text-xs">{type.available_tagozat} tagozat</Badge>
+                          )}
                         </div>
                       </th>
                     ))}
@@ -288,10 +296,11 @@ export function PermissionMatrix() {
                   {filteredClasses.map(cls => (
                     <tr key={cls.id} className="hover:bg-muted/50">
                       <td className="p-3 font-medium sticky left-0 bg-background border-r">
-                        <span>{cls.name || `${cls.kezdes_eve}${cls.tagozat}`}</span>
+                         <span>{cls.name || cls.nev || `${cls.kezdes_eve}${cls.tagozat}`}</span>
                       </td>
                       {filteredTypes.map(type => {
                         const allowed = data.matrix[cls.id]?.[type.id] ?? true
+                        const sectionRestricted = Boolean(type.available_tagozat && type.available_tagozat !== cls.tagozat)
                         const hasPendingChange = pendingChanges.some(
                           c => c.class_id === cls.id && c.type_id === type.id
                         )
@@ -300,15 +309,22 @@ export function PermissionMatrix() {
                           <td key={type.id} className="p-0 text-center">
                             <button
                               onClick={() => togglePermission(cls.id, type.id)}
+                              disabled={sectionRestricted}
                               className={cn(
                                 "w-full h-full p-4 transition-colors relative",
-                                allowed 
+                                sectionRestricted
+                                  ? "cursor-not-allowed bg-muted/60 opacity-60"
+                                  : allowed 
                                   ? "bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-950/50" 
                                   : "bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50"
                               )}
-                              title={allowed ? 'Click to block' : 'Click to allow'}
+                              title={sectionRestricted
+                                ? `Csak ${type.available_tagozat} tagozatú osztályok használhatják`
+                                : allowed ? 'Click to block' : 'Click to allow'}
                             >
-                              {allowed ? (
+                              {sectionRestricted ? (
+                                <IconX className="h-5 w-5 text-muted-foreground mx-auto" />
+                              ) : allowed ? (
                                 <IconCheck className="h-5 w-5 text-green-600 dark:text-green-400 mx-auto" />
                               ) : (
                                 <IconX className="h-5 w-5 text-red-600 dark:text-red-400 mx-auto" />

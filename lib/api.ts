@@ -1,6 +1,7 @@
 // API client for communicating with Django backend
 import Cookies from 'js-cookie';
 import { config } from './config';
+import type { FrontendIgazolasTypeDefinition } from '@/app/dashboard/types';
 import type {
   LoginRequest,
   TokenResponse,
@@ -418,10 +419,33 @@ class APIClient {
     return this.fetchWithAuth<IgazolasTipus>(`/igazolas-tipus/${tipusId}`);
   }
 
+  async importFrontendIgazolasType(type: FrontendIgazolasTypeDefinition): Promise<{ created: boolean; id: number; nev: string; message: string }> {
+    return this.fetchWithAuth<{ created: boolean; id: number; nev: string; message: string }>('/admin/igazolas-types/import-frontend', {
+      method: 'POST',
+      body: JSON.stringify({
+        nev: type.nev,
+        leiras: type.leiras,
+        beleszamit: type.beleszamit,
+        iskolaerdeku: type.iskolaerdeku,
+        category: type.category,
+        category_emoji: type.category_emoji,
+        display_order: type.display_order,
+        has_sub_form: type.has_sub_form,
+        sub_form_schema: type.sub_form_schema,
+        supports_group_absence: type.supports_group_absence,
+        requires_studios: type.requires_studios,
+        available_tagozat: type.available_tagozat,
+      }),
+    });
+  }
+
   // Igazolas endpoints
 
-  async listIgazolas(mode: FTVSyncMode = 'live', debugPerformance: boolean = false): Promise<Igazolas[]> {
+  async listIgazolas(mode: FTVSyncMode = 'live', debugPerformance: boolean = false, classId?: number): Promise<Igazolas[]> {
     const params = new URLSearchParams({ mode });
+    if (classId !== undefined) {
+      params.set('class_id', String(classId));
+    }
     if (debugPerformance) {
       params.append('debug-performance', 'true');
     }
@@ -578,12 +602,14 @@ class APIClient {
 
   // Diakjaim endpoints (for class teachers only)
 
-  async getDiakjaim(): Promise<DiakjaSignle[]> {
-    return this.fetchWithAuth<DiakjaSignle[]>('/diakjaim');
+  async getDiakjaim(classId?: number): Promise<DiakjaSignle[]> {
+    const query = classId !== undefined ? `?class_id=${classId}` : '';
+    return this.fetchWithAuth<DiakjaSignle[]>(`/diakjaim${query}`);
   }
 
-  async createDiakjaim(data: DiakjaCreateRequest[]): Promise<DiakjaCreateResponse> {
-    return this.fetchWithAuth<DiakjaCreateResponse>('/diakjaim', {
+  async createDiakjaim(data: DiakjaCreateRequest[], classId?: number): Promise<DiakjaCreateResponse> {
+    const query = classId !== undefined ? `?class_id=${classId}` : '';
+    return this.fetchWithAuth<DiakjaCreateResponse>(`/diakjaim${query}`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -692,8 +718,10 @@ class APIClient {
 
   // FTV Sync endpoints
 
-  async getFTVSyncMetadata(syncType: 'base' | 'user' | 'class' = 'base'): Promise<FTVSyncMetadataResponse> {
-    return this.fetchWithAuth<FTVSyncMetadataResponse>(`/sync/ftv/metadata?sync_type=${syncType}`);
+  async getFTVSyncMetadata(syncType: 'base' | 'user' | 'class' = 'base', classId?: number): Promise<FTVSyncMetadataResponse> {
+    const params = new URLSearchParams({ sync_type: syncType });
+    if (classId !== undefined) params.set('class_id', String(classId));
+    return this.fetchWithAuth<FTVSyncMetadataResponse>(`/sync/ftv/metadata?${params.toString()}`);
   }
 
   async manualFTVSync(debugPerformance: boolean = false): Promise<ManualFTVSyncResponse> {
@@ -724,10 +752,11 @@ class APIClient {
   }
 
   // Get schedule (breaks and overrides) with optional date filters
-  async getTanevRendje(fromDate?: string, toDate?: string): Promise<TanevRendje> {
+  async getTanevRendje(fromDate?: string, toDate?: string, classId?: number): Promise<TanevRendje> {
     const params = new URLSearchParams();
     if (fromDate) params.append('from_date', fromDate);
     if (toDate) params.append('to_date', toDate);
+    if (classId !== undefined) params.append('class_id', String(classId));
     const query = params.toString() ? `?${params.toString()}` : '';
     return this.fetchWithAuth<TanevRendje>(`/tanev_rendje${query}`);
   }
@@ -1312,12 +1341,14 @@ class APIClient {
   }
 
   // Feature #26: Teacher-Created Igazolások
-  async getEligibleStudentsForIgazolas(): Promise<unknown> {
-    return this.fetchWithAuth('/teachers/students/eligible-for-igazolas');
+  async getEligibleStudentsForIgazolas(classId?: number): Promise<unknown> {
+    const query = classId !== undefined ? `?class_id=${classId}` : '';
+    return this.fetchWithAuth(`/teachers/students/eligible-for-igazolas${query}`);
   }
 
-  async createIgazolasForStudent(data: unknown): Promise<unknown> {
-    const result = await this.fetchWithAuth('/teachers/igazolasok/create-for-student', {
+  async createIgazolasForStudent(data: unknown, classId?: number): Promise<unknown> {
+    const query = classId !== undefined ? `?class_id=${classId}` : '';
+    const result = await this.fetchWithAuth(`/teachers/igazolasok/create-for-student${query}`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -1325,8 +1356,9 @@ class APIClient {
     return result;
   }
 
-  async bulkCreateIgazolasForStudents(data: unknown): Promise<unknown> {
-    const result = await this.fetchWithAuth('/teachers/igazolasok/create-bulk', {
+  async bulkCreateIgazolasForStudents(data: unknown, classId?: number): Promise<unknown> {
+    const query = classId !== undefined ? `?class_id=${classId}` : '';
+    const result = await this.fetchWithAuth(`/teachers/igazolasok/create-bulk${query}`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
